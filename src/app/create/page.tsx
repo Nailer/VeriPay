@@ -86,45 +86,45 @@ export default function CreateTrade() {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center py-20 px-6 relative z-10 w-full max-w-2xl mx-auto">
+    <div className="flex-1 flex flex-col items-center py-20 px-6 relative z-10 w-full max-w-2xl mx-auto transition-colors duration-300">
       {/* Success Modal Backdrop */}
       {showSuccessModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-zinc-900/50 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-300 transition-colors">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300 transition-colors">
             {/* Design Element: Pink Glow */}
             <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#FF007A]/20 blur-[80px]" />
             
             <div className="relative z-10 text-center">
-              <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-500/20">
-                <CheckCircle2 className="w-10 h-10 text-green-500" />
+              <div className="w-20 h-20 bg-green-100 dark:bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-200 dark:border-green-500/20 transition-colors">
+                <CheckCircle2 className="w-10 h-10 text-green-600 dark:text-green-500 transition-colors" />
               </div>
 
-              <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Funds Secured!</h3>
+              <h3 className="text-2xl font-black text-zinc-900 dark:text-white mb-2 uppercase tracking-tight transition-colors">Funds Secured!</h3>
               <p className="text-[#FF007A] font-black text-3xl mb-6">{amount} MON</p>
               
-              <div className="bg-black/40 rounded-2xl p-4 border border-zinc-800 mb-8 text-left">
+              <div className="bg-zinc-50 dark:bg-black/40 rounded-2xl p-4 border border-zinc-200 dark:border-zinc-800 mb-8 text-left transition-colors">
                 <div className="flex flex-col gap-3">
                   <div>
-                    <span className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] block mb-1">Recipient Vendor</span>
-                    <span className="text-zinc-300 font-mono text-xs break-all leading-relaxed">{seller}</span>
+                    <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-[0.2em] block mb-1">Recipient Vendor</span>
+                    <span className="text-zinc-700 dark:text-zinc-300 font-mono text-xs break-all leading-relaxed transition-colors">{seller}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] block mb-1">Trade Reference</span>
-                    <span className="text-zinc-300 italic text-sm">"{metadata}"</span>
+                    <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-[0.2em] block mb-1">Trade Reference</span>
+                    <span className="text-zinc-700 dark:text-zinc-300 italic text-sm transition-colors">"{metadata}"</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 p-4 bg-[#FF007A]/10 border border-[#FF007A]/20 rounded-2xl mb-8">
+              <div className="flex items-center gap-3 p-4 bg-pink-50 dark:bg-[#FF007A]/10 border border-pink-200 dark:border-[#FF007A]/20 rounded-2xl mb-8 transition-colors">
                 <Camera className="w-6 h-6 text-[#FF007A] shrink-0" />
-                <p className="text-xs text-white font-bold leading-tight text-left">
+                <p className="text-xs text-zinc-800 dark:text-white font-bold leading-tight text-left transition-colors">
                   IMPORTANT: Please screenshot this receipt and send to the seller to verify your payment or your goods might be delayed!
                 </p>
               </div>
 
               <button 
                 onClick={() => router.push("/dashboard")}
-                className="w-full py-4 bg-white text-black font-black uppercase tracking-widest rounded-xl hover:bg-zinc-200 transition-all"
+                className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest rounded-xl hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all"
               >
                 Go to Dashboard
               </button>
@@ -134,25 +134,25 @@ export default function CreateTrade() {
       )}
 
       {/* Back Button */}
-      <Link href="/dashboard" className="self-start flex items-center gap-2 text-zinc-500 hover:text-white transition-colors mb-8 group">
+      <Link href="/dashboard" className="self-start flex items-center gap-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors mb-8 group">
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
         Back to Dashboard
       </Link>
 
-      <div className="w-full bg-zinc-900/40 border border-zinc-800 rounded-[2.5rem] p-10 backdrop-blur-xl shadow-2xl">
+      <div className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-10 backdrop-blur-xl shadow-2xl transition-colors duration-300">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-[#FF007A]/10 rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 bg-pink-50 dark:bg-[#FF007A]/10 rounded-xl flex items-center justify-center transition-colors">
             <ShieldCheck className="w-6 h-6 text-[#FF007A]" />
           </div>
-          <h2 className="text-3xl font-black text-white tracking-tight">New Escrow</h2>
+          <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight transition-colors">New Escrow</h2>
         </div>
         
-        <p className="text-zinc-400 mb-8 font-medium leading-relaxed">
+        <p className="text-zinc-600 dark:text-zinc-400 mb-8 font-medium leading-relaxed transition-colors">
           Lock your funds on Monad. Money is only released when you confirm delivery.
         </p>
         
         {error && (
-          <div className="p-4 mb-8 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium animate-in fade-in slide-in-from-top-2">
+          <div className="p-4 mb-8 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm font-medium animate-in fade-in slide-in-from-top-2 transition-colors">
             ⚠️ {error}
           </div>
         )}
@@ -167,7 +167,7 @@ export default function CreateTrade() {
               placeholder="0x..." 
               value={seller}
               onChange={(e) => setSeller(e.target.value)}
-              className="bg-black/50 border border-zinc-800 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-[#FF007A]/50 transition-all placeholder:text-zinc-700 font-mono text-sm"
+              className="bg-white dark:bg-black/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-5 py-4 text-zinc-900 dark:text-white focus:outline-none focus:border-[#FF007A]/50 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-700 font-mono text-sm"
             />
           </div>
           
@@ -182,9 +182,9 @@ export default function CreateTrade() {
                 placeholder="0.00" 
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full bg-black/50 border border-zinc-800 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-[#FF007A]/50 transition-all placeholder:text-zinc-700 font-bold text-lg"
+                className="w-full bg-white dark:bg-black/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-5 py-4 text-zinc-900 dark:text-white focus:outline-none focus:border-[#FF007A]/50 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-700 font-bold text-lg"
               />
-              <span className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-600 font-black text-[10px] tracking-widest uppercase opacity-50">Monad Ledger</span>
+              <span className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-600 font-black text-[10px] tracking-widest uppercase transition-colors">Monad Ledger</span>
             </div>
           </div>
 
@@ -196,7 +196,7 @@ export default function CreateTrade() {
               placeholder="Describe the item (e.g. iPhone 15 Pro Max, Lagos delivery)..." 
               value={metadata}
               onChange={(e) => setMetadata(e.target.value)}
-              className="bg-black/50 border border-zinc-800 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-[#FF007A]/50 transition-all placeholder:text-zinc-700 min-h-[120px] resize-none text-sm leading-relaxed"
+              className="bg-white dark:bg-black/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-5 py-4 text-zinc-900 dark:text-white focus:outline-none focus:border-[#FF007A]/50 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-700 min-h-[120px] resize-none text-sm leading-relaxed"
             />
           </div>
 
