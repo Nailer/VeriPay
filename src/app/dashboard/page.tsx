@@ -62,18 +62,19 @@ export default function Dashboard() {
         return;
       }
 
-      // 3. Fetch the last 10 trades
+      // 3. Fetch the last 10 trades sequentially to avoid rate limits
       const startId = Math.max(0, nextTradeId - 10);
-      const promises = [];
+      const fetchedTrades = [];
 
       for (let i = nextTradeId - 1; i >= startId; i--) {
-        promises.push(
-          publicClient.readContract({
+        try {
+          const res: any = await publicClient.readContract({
             address: CONTRACT_ADDRESS,
             abi: escrowAbi,
             functionName: "trades",
             args: [BigInt(i)],
-          }).then((res: any) => ({
+          });
+          fetchedTrades.push({
             id: i,
             buyer: res[0],
             seller: res[1],
@@ -81,11 +82,12 @@ export default function Dashboard() {
             released: res[3],
             sellerApprovedRefund: res[4],
             metadata: res[5]
-          }))
-        );
+          });
+        } catch (err) {
+          console.error(`Failed to fetch trade ${i}:`, err);
+        }
       }
 
-      const fetchedTrades = await Promise.all(promises);
       setTrades(fetchedTrades);
       
     } catch (err: any) {

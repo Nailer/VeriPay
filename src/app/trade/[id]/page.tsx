@@ -92,6 +92,38 @@ export default function TradeDetail() {
           public: { http: ["https://testnet-rpc.monad.xyz"] },
         },
       };
+      // Switch network to Monad Testnet before transaction
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0x279f" }], // 10143 in hex
+        });
+      } catch (switchError: any) {
+        if (switchError.code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [
+                {
+                  chainId: "0x279f",
+                  chainName: "Monad Testnet",
+                  nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
+                  rpcUrls: ["https://testnet-rpc.monad.xyz"],
+                },
+              ],
+            });
+          } catch (addError) {
+            setError("Failed to add Monad Testnet to wallet.");
+            setActionLoading(false);
+            return;
+          }
+        } else {
+          setError("Please switch to Monad Testnet in your wallet.");
+          setActionLoading(false);
+          return;
+        }
+      }
+
       const walletClient = createWalletClient({
         chain: MONAD_CHAIN as any,
         transport: custom(window.ethereum),
