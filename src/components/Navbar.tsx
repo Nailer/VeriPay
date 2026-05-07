@@ -19,6 +19,7 @@ const wallets = [
   createWallet("walletConnect"),
   createWallet("com.coinbase.wallet"),
   createWallet("me.rainbow"),
+  createWallet("com.walletconnect"),
   createWallet("io.rabby"),
   createWallet("io.zerion.wallet"),
 ];
@@ -77,8 +78,8 @@ export default function Navbar() {
             client={client} 
             wallets={wallets}
             appMetadata={{
-              name: "Monad Pay Lagos",
-              url: "https://monad-pay.xyz",
+              name: "Monad Pay",
+              url: "https://monad-pay-lagos.vercel.app",
             }}
             theme={mounted && isDark ? "dark" : "light"}
             connectModal={{ size: "wide" }}
