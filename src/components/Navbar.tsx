@@ -16,6 +16,7 @@ const wallets = [
     },
   }),
   createWallet("io.metamask"),
+  createWallet("walletConnect"),
   createWallet("com.coinbase.wallet"),
   createWallet("me.rainbow"),
   createWallet("io.rabby"),
@@ -75,6 +76,10 @@ export default function Navbar() {
           <ConnectButton 
             client={client} 
             wallets={wallets}
+            appMetadata={{
+              name: "Monad Pay Lagos",
+              url: "https://monad-pay.xyz",
+            }}
             theme={mounted && isDark ? "dark" : "light"}
             connectModal={{ size: "wide" }}
             chain={defineChain(10143)}

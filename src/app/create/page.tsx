@@ -47,13 +47,45 @@ export default function CreateTrade() {
     setLoading(true);
 
     try {
+      // Switch network to Monad Testnet before transaction
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0x279f" }], // 10143 in hex
+        });
+      } catch (switchError: any) {
+        if (switchError.code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [
+                {
+                  chainId: "0x279f",
+                  chainName: "Monad Testnet",
+                  nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
+                  rpcUrls: ["https://testnet-rpc.monad.xyz"],
+                },
+              ],
+            });
+          } catch (addError) {
+            setError("Failed to add Monad Testnet to wallet.");
+            setLoading(false);
+            return;
+          }
+        } else {
+          setError("Please switch to Monad Testnet in your wallet.");
+          setLoading(false);
+          return;
+        }
+      }
+
       const walletClient = createWalletClient({
-        chain: MONAD_CHAIN,
+        chain: MONAD_CHAIN as any,
         transport: custom(window.ethereum),
       });
 
       const publicClient = createPublicClient({
-        chain: MONAD_CHAIN,
+        chain: MONAD_CHAIN as any,
         transport: http("https://testnet-rpc.monad.xyz"),
       });
 
@@ -64,6 +96,7 @@ export default function CreateTrade() {
         args: [seller as `0x${string}`, metadata],
         value: parseEther(amount),
         account: account.address as `0x${string}`,
+        chain: MONAD_CHAIN as any,
       });
 
       const receipt = await publicClient.waitForTransactionReceipt({ 
