@@ -3,10 +3,24 @@
 import { ConnectButton } from "thirdweb/react";
 import { client } from "@/app/client";
 import { defineChain } from "thirdweb";
+import { createWallet, inAppWallet } from "thirdweb/wallets";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { Sun, Moon, Monitor, Plus } from "lucide-react";
 import { useState, useEffect } from "react";
+
+const wallets = [
+  inAppWallet({
+    auth: {
+      options: ["email", "google", "apple", "facebook", "phone"],
+    },
+  }),
+  createWallet("io.metamask"),
+  createWallet("com.coinbase.wallet"),
+  createWallet("me.rainbow"),
+  createWallet("io.rabby"),
+  createWallet("io.zerion.wallet"),
+];
 
 export default function Navbar() {
   const { theme, setTheme, resolvedTheme } = useTheme();
@@ -60,6 +74,7 @@ export default function Navbar() {
         <div className="flex items-center gap-2">
           <ConnectButton 
             client={client} 
+            wallets={wallets}
             theme={mounted && isDark ? "dark" : "light"}
             connectModal={{ size: "wide" }}
             chain={defineChain(10143)}
