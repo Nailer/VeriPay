@@ -121,7 +121,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex-1 flex flex-col py-24 px-6 max-w-5xl mx-auto w-full z-10 transition-colors duration-300">
+    <div className="flex-1 flex flex-col py-12 md:py-24 px-4 md:px-6 max-w-5xl mx-auto w-full z-10 transition-colors duration-300">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-6">
         <div>
           <h2 className="text-4xl font-bold text-zinc-900 dark:text-white mb-2 tracking-tight transition-colors">Recent Escrows</h2>
@@ -154,7 +154,7 @@ export default function Dashboard() {
             <Link 
               href={`/trade/${trade.id}`} 
               key={trade.id} 
-              className="group bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-8 hover:border-[#FF007A]/50 transition-all duration-500 hover:shadow-2xl hover:shadow-pink-500/5"
+              className="group bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 md:p-8 hover:border-[#FF007A]/50 transition-all duration-500 hover:shadow-2xl hover:shadow-pink-500/5"
             >
               <div className="flex items-center justify-between mb-6">
                 <div className="flex flex-col">

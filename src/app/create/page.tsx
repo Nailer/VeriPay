@@ -86,7 +86,7 @@ export default function CreateTrade() {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center py-20 px-6 relative z-10 w-full max-w-2xl mx-auto transition-colors duration-300">
+    <div className="flex-1 flex flex-col items-center py-10 md:py-20 px-4 md:px-6 relative z-10 w-full max-w-2xl mx-auto transition-colors duration-300">
       {/* Success Modal Backdrop */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-zinc-900/50 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-300 transition-colors">
@@ -139,7 +139,7 @@ export default function CreateTrade() {
         Back to Dashboard
       </Link>
 
-      <div className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-10 backdrop-blur-xl shadow-2xl transition-colors duration-300">
+      <div className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-6 md:p-10 backdrop-blur-xl shadow-2xl transition-colors duration-300">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 bg-pink-50 dark:bg-[#FF007A]/10 rounded-xl flex items-center justify-center transition-colors">
             <ShieldCheck className="w-6 h-6 text-[#FF007A]" />

@@ -5,7 +5,7 @@ import { client } from "@/app/client";
 import { defineChain } from "thirdweb";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { Sun, Moon, Monitor } from "lucide-react";
+import { Sun, Moon, Monitor, Plus } from "lucide-react";
 import { useState, useEffect } from "react";
 
 export default function Navbar() {
@@ -24,7 +24,7 @@ export default function Navbar() {
         <div className="w-10 h-10 rounded-xl bg-black dark:bg-white flex items-center justify-center shadow-lg shadow-black/10 dark:shadow-white/10 group-hover:shadow-black/30 dark:group-hover:shadow-white/30 transition-shadow">
           <span className="font-bold text-white dark:text-black text-xl tracking-tighter">MP</span>
         </div>
-        <span className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white">
+        <span className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white hidden sm:block">
           Monad Pay
         </span>
       </Link>
@@ -37,7 +37,7 @@ export default function Navbar() {
         </Link>
 
         {mounted && (
-          <div className="relative group">
+          <div className="relative group hidden sm:block">
             <button className="flex items-center justify-center w-9 h-9 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus:outline-none">
               {theme === "light" && <Sun className="w-4 h-4" />}
               {theme === "dark" && <Moon className="w-4 h-4" />}
@@ -57,12 +57,18 @@ export default function Navbar() {
           </div>
         )}
 
-        <ConnectButton 
-          client={client} 
-          theme={mounted && isDark ? "dark" : "light"}
-          connectModal={{ size: "wide" }}
-          chain={defineChain(10143)}
-        />
+        <div className="flex items-center gap-2">
+          <ConnectButton 
+            client={client} 
+            theme={mounted && isDark ? "dark" : "light"}
+            connectModal={{ size: "wide" }}
+            chain={defineChain(10143)}
+          />
+          <button className="hidden sm:flex flex-col items-center justify-center gap-0.5 px-2 py-2.5 min-w-[3rem] bg-transparent border border-zinc-200 dark:border-zinc-800 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors cursor-not-allowed">
+            <Plus className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+            <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 leading-none">Soon</span>
+          </button>
+        </div>
       </div>
     </header>
   );

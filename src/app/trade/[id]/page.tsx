@@ -173,7 +173,7 @@ export default function TradeDetail() {
   const isSeller = account?.address.toLowerCase() === trade.seller.toLowerCase();
 
   return (
-    <div className="flex-1 flex flex-col items-center py-16 px-6 relative z-10 w-full max-w-3xl mx-auto transition-colors duration-300">
+    <div className="flex-1 flex flex-col items-center py-8 md:py-16 px-4 md:px-6 relative z-10 w-full max-w-3xl mx-auto transition-colors duration-300">
       <div className="w-full mb-8 flex items-center justify-between">
         <Link href="/dashboard" className="inline-flex items-center gap-2 text-zinc-600 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors font-bold uppercase tracking-widest text-[10px]">
           <ArrowLeft className="w-4 h-4" /> Back to Ledger
@@ -184,11 +184,11 @@ export default function TradeDetail() {
         </div>
       </div>
 
-      <div className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-10 backdrop-blur-xl shadow-2xl transition-colors duration-300">
+      <div className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-6 md:p-10 backdrop-blur-xl shadow-2xl transition-colors duration-300">
         {/* Status Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 md:mb-10 gap-4 md:gap-6">
           <div>
-            <h2 className="text-4xl font-black text-zinc-900 dark:text-white mb-2 transition-colors">Trade #00{idStr}</h2>
+            <h2 className="text-3xl md:text-4xl font-black text-zinc-900 dark:text-white mb-2 transition-colors">Trade #00{idStr}</h2>
             <div className="flex items-center gap-2 text-zinc-500 text-sm italic">
               <Info className="w-4 h-4" />
               <span>{trade.metadata}</span>
@@ -212,12 +212,12 @@ export default function TradeDetail() {
 
         <div className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="p-8 rounded-[2rem] bg-white dark:bg-black/40 border border-zinc-200 dark:border-zinc-800 flex flex-col justify-center transition-colors">
+            <div className="p-6 md:p-8 rounded-[2rem] bg-white dark:bg-black/40 border border-zinc-200 dark:border-zinc-800 flex flex-col justify-center transition-colors">
               <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest mb-2 transition-colors">Locked Value</span>
-              <span className="text-4xl font-black text-zinc-900 dark:text-white transition-colors">{formatEther(trade.amount)} <span className="text-sm font-normal text-zinc-500">MON</span></span>
+              <span className="text-3xl md:text-4xl font-black text-zinc-900 dark:text-white transition-colors">{formatEther(trade.amount)} <span className="text-sm font-normal text-zinc-500">MON</span></span>
             </div>
 
-            <div className="p-8 rounded-[2rem] bg-white dark:bg-black/40 border border-zinc-200 dark:border-zinc-800 flex flex-col justify-center transition-colors">
+            <div className="p-6 md:p-8 rounded-[2rem] bg-white dark:bg-black/40 border border-zinc-200 dark:border-zinc-800 flex flex-col justify-center transition-colors">
               <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest mb-2 transition-colors">Agreement Status</span>
               {trade.released ? (
                 <div className="flex items-center gap-3 text-green-600 dark:text-green-400 font-black uppercase tracking-widest text-xs transition-colors">
@@ -232,14 +232,14 @@ export default function TradeDetail() {
           </div>
 
           <div className="grid grid-cols-1 gap-4">
-            <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between transition-colors">
+            <div className="p-5 md:p-6 rounded-2xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between transition-colors">
               <div className="flex flex-col">
                 <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest mb-1 transition-colors">Buyer (Payer)</span>
                 <span className="text-zinc-900 dark:text-white font-mono text-xs transition-colors">{trade.buyer.slice(0, 10)}...{trade.buyer.slice(-8)}</span>
               </div>
               {isBuyer && <span className="text-[10px] font-black bg-[#FF007A] text-white px-3 py-1 rounded-full">YOU</span>}
             </div>
-            <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between transition-colors">
+            <div className="p-5 md:p-6 rounded-2xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between transition-colors">
               <div className="flex flex-col">
                 <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest mb-1 transition-colors">Seller (Vendor)</span>
                 <span className="text-zinc-900 dark:text-white font-mono text-xs transition-colors">{trade.seller.slice(0, 10)}...{trade.seller.slice(-8)}</span>
@@ -251,7 +251,7 @@ export default function TradeDetail() {
 
         {/* Action Panel: Only visible if active */}
         {!trade.released && (isBuyer || isSeller) && (
-          <div className="mt-12 p-8 rounded-[2.5rem] bg-gradient-to-b from-zinc-100/50 dark:from-zinc-800/20 to-transparent border border-zinc-200 dark:border-zinc-800 transition-colors">
+          <div className="mt-10 md:mt-12 p-6 md:p-8 rounded-[2.5rem] bg-gradient-to-b from-zinc-100/50 dark:from-zinc-800/20 to-transparent border border-zinc-200 dark:border-zinc-800 transition-colors">
             <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-[0.3em] mb-6 text-center transition-colors">Settlement Actions</h3>
             <div className="flex flex-col gap-4">
 
@@ -287,6 +287,13 @@ export default function TradeDetail() {
                   Withdraw Refund
                 </button>
               )}
+
+              <Link
+                href={`/trade/${idStr}/chat`}
+                className="w-full flex items-center justify-center px-8 py-5 bg-transparent border-2 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 font-black uppercase tracking-widest rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-all"
+              >
+                Resolve Issues
+              </Link>
 
               {!isBuyer && !isSeller && (
                 <p className="text-center text-zinc-500 dark:text-zinc-600 text-xs italic transition-colors">You are viewing this trade as an observer.</p>
