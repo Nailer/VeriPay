@@ -92,27 +92,25 @@ export default function TradeDetail() {
           public: { http: ["https://testnet-rpc.monad.xyz"] },
         },
       };
-      // Switch network to Monad Testnet before transaction
+
       try {
         await window.ethereum.request({
           method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0x279f" }], // 10143 in hex
+          params: [{ chainId: "0x279f" }],
         });
       } catch (switchError: any) {
         if (switchError.code === 4902) {
           try {
             await window.ethereum.request({
               method: "wallet_addEthereumChain",
-              params: [
-                {
-                  chainId: "0x279f",
-                  chainName: "Monad Testnet",
-                  nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
-                  rpcUrls: ["https://testnet-rpc.monad.xyz"],
-                },
-              ],
+              params: [{
+                chainId: "0x279f",
+                chainName: "Monad Testnet",
+                nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
+                rpcUrls: ["https://testnet-rpc.monad.xyz"],
+              }],
             });
-          } catch (addError) {
+          } catch {
             setError("Failed to add Monad Testnet to wallet.");
             setActionLoading(false);
             return;
@@ -124,16 +122,8 @@ export default function TradeDetail() {
         }
       }
 
-      const walletClient = createWalletClient({
-        chain: MONAD_CHAIN as any,
-        transport: custom(window.ethereum),
-      });
-
-      const publicClient = createPublicClient({
-        chain: MONAD_CHAIN as any,
-        transport: http("https://testnet-rpc.monad.xyz"),
-      });
-
+      const walletClient = createWalletClient({ chain: MONAD_CHAIN as any, transport: custom(window.ethereum) });
+      const publicClient = createPublicClient({ chain: MONAD_CHAIN as any, transport: http("https://testnet-rpc.monad.xyz") });
 
       const hash = await walletClient.writeContract({
         address: CONTRACT_ADDRESS,
@@ -141,11 +131,11 @@ export default function TradeDetail() {
         functionName,
         args: [tradeId],
         account: account.address as `0x${string}`,
-        chain: MONAD_CHAIN as any, // <--- ADD THIS LINE TO FIX THE ERROR
+        chain: MONAD_CHAIN as any,
       });
 
       await publicClient.waitForTransactionReceipt({ hash });
-      await fetchTrade(); // Reload UI state
+      await fetchTrade();
     } catch (err: any) {
       console.error(err);
       setError(err.shortMessage || "Transaction failed.");
@@ -155,16 +145,16 @@ export default function TradeDetail() {
   };
 
   if (loading) return (
-    <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] transition-colors duration-300">
+    <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh]">
       <Loader2 className="w-10 h-10 text-[#FF007A] animate-spin mb-4" />
-      <p className="text-zinc-600 dark:text-zinc-500 font-bold uppercase tracking-widest text-[10px] transition-colors">Loading Ledger State...</p>
+      <p className="text-zinc-600 dark:text-zinc-500 font-bold uppercase tracking-widest text-[10px]">Loading Ledger State...</p>
     </div>
   );
 
   if (!trade) return (
-    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center transition-colors duration-300">
-      <HelpCircle className="w-16 h-16 text-zinc-300 dark:text-zinc-800 mb-4 transition-colors" />
-      <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2 transition-colors">Trade Record Not Found</h2>
+    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+      <HelpCircle className="w-16 h-16 text-zinc-300 dark:text-zinc-800 mb-4" />
+      <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Trade Record Not Found</h2>
       <Link href="/dashboard" className="text-[#FF007A] hover:underline">Return to Dashboard</Link>
     </div>
   );
@@ -172,94 +162,106 @@ export default function TradeDetail() {
   const isBuyer = account?.address.toLowerCase() === trade.buyer.toLowerCase();
   const isSeller = account?.address.toLowerCase() === trade.seller.toLowerCase();
 
+  // Helper: truncate address responsively
+  const truncAddr = (addr: string) => `${addr.slice(0, 8)}...${addr.slice(-6)}`;
+
   return (
-    <div className="flex-1 flex flex-col items-center py-8 md:py-16 px-4 md:px-6 relative z-10 w-full max-w-3xl mx-auto transition-colors duration-300">
-      <div className="w-full mb-8 flex items-center justify-between">
+    <div className="flex-1 flex flex-col items-center py-6 sm:py-8 md:py-16 px-4 sm:px-6 relative z-10 w-full max-w-3xl mx-auto transition-colors duration-300">
+
+      {/* Top bar */}
+      <div className="w-full mb-6 sm:mb-8 flex items-center justify-between">
         <Link href="/dashboard" className="inline-flex items-center gap-2 text-zinc-600 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors font-bold uppercase tracking-widest text-[10px]">
           <ArrowLeft className="w-4 h-4" /> Back to Ledger
         </Link>
         <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full animate-pulse ${trade.released ? 'bg-zinc-400 dark:bg-zinc-500' : 'bg-green-500'}`} />
-          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Monad Live Status</span>
+          <div className={`w-2 h-2 rounded-full animate-pulse ${trade.released ? "bg-zinc-400 dark:bg-zinc-500" : "bg-green-500"}`} />
+          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest hidden xs:block">Monad Live Status</span>
         </div>
       </div>
 
-      <div className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-6 md:p-10 backdrop-blur-xl shadow-2xl transition-colors duration-300">
+      <div className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-6 md:p-10 backdrop-blur-xl shadow-2xl transition-colors duration-300">
+
         {/* Status Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 md:mb-10 gap-4 md:gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-7 sm:mb-10 gap-3 sm:gap-6">
           <div>
-            <h2 className="text-3xl md:text-4xl font-black text-zinc-900 dark:text-white mb-2 transition-colors">Trade #00{idStr}</h2>
-            <div className="flex items-center gap-2 text-zinc-500 text-sm italic">
-              <Info className="w-4 h-4" />
-              <span>{trade.metadata}</span>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-zinc-900 dark:text-white mb-1.5 transition-colors">Trade #00{idStr}</h2>
+            <div className="flex items-start gap-2 text-zinc-500 text-xs sm:text-sm italic">
+              <Info className="w-4 h-4 shrink-0 mt-0.5" />
+              <span className="leading-relaxed">{trade.metadata}</span>
             </div>
           </div>
-          <div className={`px-6 py-2 rounded-2xl font-black text-[10px] uppercase tracking-widest border ${trade.released
-              ? 'bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/20'
+          <div className={`self-start sm:self-auto px-4 sm:px-6 py-1.5 sm:py-2 rounded-2xl font-black text-[10px] uppercase tracking-widest border whitespace-nowrap ${
+            trade.released
+              ? "bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/20"
               : trade.sellerApprovedRefund
-                ? 'bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-400/20'
-                : 'bg-pink-100 dark:bg-[#FF007A]/10 text-[#FF007A] border-pink-200 dark:border-[#FF007A]/20'
-            }`}>
+                ? "bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-400/20"
+                : "bg-pink-100 dark:bg-[#FF007A]/10 text-[#FF007A] border-pink-200 dark:border-[#FF007A]/20"
+          }`}>
             {trade.released ? "Settled" : trade.sellerApprovedRefund ? "Refund Ready" : "Funds Escrowed"}
           </div>
         </div>
 
         {error && (
-          <div className="p-4 mb-8 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm font-medium transition-colors">
+          <div className="p-4 mb-6 sm:mb-8 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm font-medium">
             ⚠️ {error}
           </div>
         )}
 
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="p-6 md:p-8 rounded-[2rem] bg-white dark:bg-black/40 border border-zinc-200 dark:border-zinc-800 flex flex-col justify-center transition-colors">
-              <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest mb-2 transition-colors">Locked Value</span>
-              <span className="text-3xl md:text-4xl font-black text-zinc-900 dark:text-white transition-colors">{formatEther(trade.amount)} <span className="text-sm font-normal text-zinc-500">MON</span></span>
+        <div className="space-y-5 sm:space-y-8">
+          {/* Amount + Status grid */}
+          <div className="grid grid-cols-2 gap-4 sm:gap-8">
+            <div className="p-4 sm:p-6 md:p-8 rounded-[1.5rem] sm:rounded-[2rem] bg-white dark:bg-black/40 border border-zinc-200 dark:border-zinc-800 flex flex-col justify-center transition-colors">
+              <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest mb-1.5 transition-colors">Locked Value</span>
+              <span className="text-xl sm:text-3xl md:text-4xl font-black text-zinc-900 dark:text-white transition-colors leading-tight">
+                {formatEther(trade.amount)}{" "}
+                <span className="text-xs sm:text-sm font-normal text-zinc-500">MON</span>
+              </span>
             </div>
 
-            <div className="p-6 md:p-8 rounded-[2rem] bg-white dark:bg-black/40 border border-zinc-200 dark:border-zinc-800 flex flex-col justify-center transition-colors">
-              <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest mb-2 transition-colors">Agreement Status</span>
+            <div className="p-4 sm:p-6 md:p-8 rounded-[1.5rem] sm:rounded-[2rem] bg-white dark:bg-black/40 border border-zinc-200 dark:border-zinc-800 flex flex-col justify-center transition-colors">
+              <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest mb-1.5 transition-colors">Status</span>
               {trade.released ? (
-                <div className="flex items-center gap-3 text-green-600 dark:text-green-400 font-black uppercase tracking-widest text-xs transition-colors">
-                  <CheckCircle2 className="w-6 h-6" /> Concluded
+                <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-black uppercase tracking-widest text-[10px] sm:text-xs transition-colors">
+                  <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" /> Concluded
                 </div>
               ) : (
-                <div className="flex items-center gap-3 text-yellow-600 dark:text-yellow-500 font-black uppercase tracking-widest text-xs transition-colors">
-                  <ShieldAlert className="w-6 h-6 animate-pulse" /> Protected
+                <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500 font-black uppercase tracking-widest text-[10px] sm:text-xs transition-colors">
+                  <ShieldAlert className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse shrink-0" /> Protected
                 </div>
               )}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4">
-            <div className="p-5 md:p-6 rounded-2xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between transition-colors">
-              <div className="flex flex-col">
+          {/* Parties */}
+          <div className="grid grid-cols-1 gap-3 sm:gap-4">
+            <div className="p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-3 transition-colors">
+              <div className="flex flex-col min-w-0">
                 <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest mb-1 transition-colors">Buyer (Payer)</span>
-                <span className="text-zinc-900 dark:text-white font-mono text-xs transition-colors">{trade.buyer.slice(0, 10)}...{trade.buyer.slice(-8)}</span>
+                <span className="text-zinc-900 dark:text-white font-mono text-[11px] sm:text-xs transition-colors truncate">{truncAddr(trade.buyer)}</span>
               </div>
-              {isBuyer && <span className="text-[10px] font-black bg-[#FF007A] text-white px-3 py-1 rounded-full">YOU</span>}
+              {isBuyer && <span className="text-[10px] font-black bg-[#FF007A] text-white px-2.5 py-1 rounded-full shrink-0">YOU</span>}
             </div>
-            <div className="p-5 md:p-6 rounded-2xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between transition-colors">
-              <div className="flex flex-col">
+            <div className="p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-3 transition-colors">
+              <div className="flex flex-col min-w-0">
                 <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest mb-1 transition-colors">Seller (Vendor)</span>
-                <span className="text-zinc-900 dark:text-white font-mono text-xs transition-colors">{trade.seller.slice(0, 10)}...{trade.seller.slice(-8)}</span>
+                <span className="text-zinc-900 dark:text-white font-mono text-[11px] sm:text-xs transition-colors truncate">{truncAddr(trade.seller)}</span>
               </div>
-              {isSeller && <span className="text-[10px] font-black bg-[#FF007A] text-white px-3 py-1 rounded-full">YOU</span>}
+              {isSeller && <span className="text-[10px] font-black bg-[#FF007A] text-white px-2.5 py-1 rounded-full shrink-0">YOU</span>}
             </div>
           </div>
         </div>
 
-        {/* Action Panel: Only visible if active */}
+        {/* Action Panel */}
         {!trade.released && (isBuyer || isSeller) && (
-          <div className="mt-10 md:mt-12 p-6 md:p-8 rounded-[2.5rem] bg-gradient-to-b from-zinc-100/50 dark:from-zinc-800/20 to-transparent border border-zinc-200 dark:border-zinc-800 transition-colors">
-            <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-[0.3em] mb-6 text-center transition-colors">Settlement Actions</h3>
-            <div className="flex flex-col gap-4">
+          <div className="mt-8 sm:mt-12 p-5 sm:p-6 md:p-8 rounded-[2rem] sm:rounded-[2.5rem] bg-gradient-to-b from-zinc-100/50 dark:from-zinc-800/20 to-transparent border border-zinc-200 dark:border-zinc-800 transition-colors">
+            <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-[0.3em] mb-5 sm:mb-6 text-center transition-colors">Settlement Actions</h3>
+            <div className="flex flex-col gap-3 sm:gap-4">
 
               {isBuyer && !trade.sellerApprovedRefund && (
                 <button
                   onClick={() => executeAction("releaseToSeller")}
                   disabled={actionLoading}
-                  className="w-full flex items-center justify-center px-8 py-5 bg-zinc-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest rounded-2xl hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all disabled:opacity-50"
+                  className="w-full flex items-center justify-center px-6 sm:px-8 py-4 sm:py-5 bg-zinc-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest rounded-xl sm:rounded-2xl hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all disabled:opacity-50 active:scale-[0.98] text-sm"
                 >
                   {actionLoading ? <Loader2 className="w-5 h-5 animate-spin mr-3" /> : null}
                   Confirm Delivery & Release MON
@@ -270,7 +272,7 @@ export default function TradeDetail() {
                 <button
                   onClick={() => executeAction("sellerApproveRefund")}
                   disabled={actionLoading}
-                  className="w-full flex items-center justify-center px-8 py-5 bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white font-black uppercase tracking-widest rounded-2xl hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-all disabled:opacity-50"
+                  className="w-full flex items-center justify-center px-6 sm:px-8 py-4 sm:py-5 bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white font-black uppercase tracking-widest rounded-xl sm:rounded-2xl hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-all disabled:opacity-50 active:scale-[0.98] text-sm"
                 >
                   {actionLoading ? <Loader2 className="w-5 h-5 animate-spin mr-3" /> : null}
                   Authorize Return of Funds
@@ -281,7 +283,7 @@ export default function TradeDetail() {
                 <button
                   onClick={() => executeAction("buyerClaimRefund")}
                   disabled={actionLoading}
-                  className="w-full flex items-center justify-center px-8 py-5 bg-[#FF007A] text-white font-black uppercase tracking-widest rounded-2xl hover:scale-[1.02] transition-all disabled:opacity-50 shadow-xl shadow-pink-500/20"
+                  className="w-full flex items-center justify-center px-6 sm:px-8 py-4 sm:py-5 bg-[#FF007A] text-white font-black uppercase tracking-widest rounded-xl sm:rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 shadow-xl shadow-pink-500/20 text-sm"
                 >
                   {actionLoading ? <Loader2 className="w-5 h-5 animate-spin mr-3" /> : null}
                   Withdraw Refund
@@ -290,13 +292,13 @@ export default function TradeDetail() {
 
               <Link
                 href={`/trade/${idStr}/chat`}
-                className="w-full flex items-center justify-center px-8 py-5 bg-transparent border-2 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 font-black uppercase tracking-widest rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-all"
+                className="w-full flex items-center justify-center px-6 sm:px-8 py-4 sm:py-5 bg-transparent border-2 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 font-black uppercase tracking-widest rounded-xl sm:rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-all text-sm"
               >
                 Resolve Issues
               </Link>
 
               {!isBuyer && !isSeller && (
-                <p className="text-center text-zinc-500 dark:text-zinc-600 text-xs italic transition-colors">You are viewing this trade as an observer.</p>
+                <p className="text-center text-zinc-500 dark:text-zinc-600 text-xs italic">You are viewing this trade as an observer.</p>
               )}
             </div>
           </div>
