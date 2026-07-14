@@ -1,0 +1,121 @@
+---
+title: "Notifications API"
+sidebarTitle: "Notifications API"
+description: "REST API endpoints for VeriPay's address-targeted notification system."
+---
+
+## Overview
+
+The Notifications API powers VeriPay's real-time alert system. It allows the frontend to create, fetch, and manage notifications tied to wallet addresses.
+
+**Base URL:** `/api/notifications`
+
+---
+
+## GET — Fetch Notifications
+
+Retrieves all notifications for a specific wallet address.
+
+### Request
+
+```http
+GET /api/notifications?address=0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18
+```
+
+### Parameters
+
+| Param | Type | Required | Description |
+| --- | --- | --- | --- |
+| `address` | `string` | Yes | The wallet address to fetch notifications for |
+
+### Response
+
+```json
+{
+  "notifications": [
+    {
+      "id": 1,
+      "type": "trade",
+      "tradeId": "5",
+      "fromAddress": "0xaBcD...1234",
+      "amount": "0.5",
+      "read": false,
+      "createdAt": "2 min ago"
+    },
+    {
+      "id": 2,
+      "type": "chat",
+      "tradeId": "3",
+      "fromAddress": "0xeFgH...5678",
+      "message": "When will you ship the item?",
+      "read": true,
+      "createdAt": "1 hour ago"
+    }
+  ]
+}
+```
+
+---
+
+## POST — Create Notification
+
+Creates a new notification for a wallet address.
+
+### Request
+
+```http
+POST /api/notifications
+Content-Type: application/json
+```
+
+### Body
+
+```json
+{
+  "toAddress": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
+  "type": "trade",
+  "tradeId": "5",
+  "fromAddress": "0xaBcD...1234",
+  "amount": "0.5"
+}
+```
+
+### Fields
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `toAddress` | `string` | Yes | Recipient wallet address |
+| `type` | `"trade" \| "chat"` | Yes | Notification type |
+| `tradeId` | `string` | Yes | Associated trade ID |
+| `fromAddress` | `string` | Yes | Sender wallet address |
+| `amount` | `string` | No | MON amount (for trade type) |
+| `message` | `string` | No | Chat message preview (for chat type) |
+
+---
+
+## PATCH — Mark All as Read
+
+Marks all notifications as read for a wallet address.
+
+### Request
+
+```http
+PATCH /api/notifications
+Content-Type: application/json
+```
+
+### Body
+
+```json
+{
+  "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18"
+}
+```
+
+### Response
+
+```json
+{
+  "success": true
+}
+```

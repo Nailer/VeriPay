@@ -1,0 +1,58 @@
+---
+title: "Transparency"
+sidebarTitle: "Transparency"
+description: "Every VeriPay transaction is verifiable on-chain. Our code is open source. There are no hidden fees or black boxes."
+---
+
+## Radical Transparency
+
+VeriPay is committed to **radical transparency** in every aspect of the platform.
+
+### On-Chain Verifiability
+
+Every escrow action is recorded permanently on the Monad blockchain:
+
+- **Trade creation** — recorded with buyer address, seller address, amount, and metadata
+- **Fund release** — recorded with the recipient address and trade ID
+- **Refund approval** — recorded with the trade ID
+- **Refund claim** — recorded with the refund recipient and trade ID
+
+You can verify any transaction using the [Monad Testnet Block Explorer](https://monad-testnet.socialscan.io/address/0xd0cc532f55ce6849d5b70e24d6188073f8921621):
+
+1. Navigate to the contract address
+2. View all transactions and internal transfers
+3. Decode function calls and event logs
+4. Verify that funds moved exactly as expected
+
+### Open Source Code
+
+VeriPay's **entire frontend codebase is open source** on GitHub. Anyone can:
+
+- Read every line of code to verify what the application does
+- Audit the smart contract ABI and interaction logic
+- Fork the repository and run their own instance
+- Submit pull requests to improve the platform
+
+### No Hidden Fees
+
+VeriPay charges **zero platform fees**. The only cost to users is the Monad network gas fee, which is:
+
+- Typically less than **$0.01** per transaction
+- Set by the Monad network, not by VeriPay
+- Visible in your wallet before you confirm any transaction
+
+| Fee Type | Amount |
+| --- | --- |
+| Platform fee | **$0.00** — Free |
+| Gas fee (create escrow) | ~$0.001 |
+| Gas fee (release funds) | ~$0.001 |
+| Gas fee (approve/claim refund) | ~$0.001 |
+
+### No Data Collection
+
+VeriPay does not collect personal data:
+
+- **No signup/registration** — your wallet address is your identity
+- **No email collection** (unless you choose social login, which is handled by Thirdweb)
+- **No analytics tracking** — we don't track your browsing behavior
+- **No cookies** — only `localStorage` for theme preference

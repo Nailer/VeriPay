@@ -1,0 +1,157 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "VeriPay",
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#FF007A",
+    "light": "#FF4DA6",
+    "dark": "#CC0062",
+    "anchors": {
+      "from": "#FF007A",
+      "to": "#9945FF"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "Launch App",
+      "url": "https://veripay.xyz"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Start Escrow",
+    "url": "https://veripay.xyz/create"
+  },
+  "tabs": [
+    {
+      "name": "API Reference",
+      "url": "api-reference"
+    },
+    {
+      "name": "Developer Guide",
+      "url": "developers"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "GitHub",
+      "icon": "github",
+      "url": "https://github.com/your-org/veripay"
+    },
+    {
+      "name": "Community",
+      "icon": "discord",
+      "url": "https://discord.gg/veripay"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": [
+        "introduction",
+        "mission",
+        "features",
+        "competitive-edge"
+      ]
+    },
+    {
+      "group": "User Guide",
+      "pages": [
+        "user-guide/prerequisites",
+        "user-guide/connect-wallet",
+        "user-guide/create-escrow",
+        "user-guide/dashboard",
+        "user-guide/release-funds",
+        "user-guide/request-refund",
+        "user-guide/in-trade-chat",
+        "user-guide/get-mon-tokens"
+      ]
+    },
+    {
+      "group": "Architecture",
+      "pages": [
+        "architecture/overview",
+        "architecture/tech-stack",
+        "architecture/smart-contract",
+        "architecture/frontend",
+        "architecture/notifications"
+      ]
+    },
+    {
+      "group": "Security & Trust",
+      "pages": [
+        "security/model",
+        "security/transparency",
+        "security/audit-status",
+        "security/risk-disclosures"
+      ]
+    },
+    {
+      "group": "Roadmap",
+      "pages": [
+        "roadmap"
+      ]
+    },
+    {
+      "group": "Use Cases",
+      "pages": [
+        "use-cases"
+      ]
+    },
+    {
+      "group": "FAQ",
+      "pages": [
+        "faq"
+      ]
+    },
+    {
+      "group": "Legal",
+      "pages": [
+        "legal/terms",
+        "legal/privacy",
+        "legal/disclaimer"
+      ]
+    },
+    {
+      "group": "Community",
+      "pages": [
+        "community"
+      ]
+    },
+    {
+      "group": "API Reference",
+      "pages": [
+        "api-reference/overview",
+        "api-reference/smart-contract-abi",
+        "api-reference/notifications-api",
+        "api-reference/chat-api",
+        "api-reference/integration-guide"
+      ]
+    },
+    {
+      "group": "Developer Guide",
+      "pages": [
+        "developers/local-setup",
+        "developers/project-structure",
+        "developers/environment-variables",
+        "developers/contributing"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "x": "https://x.com/VeriPayHQ",
+    "github": "https://github.com/your-org/veripay"
+  },
+  "feedback": {
+    "thumbsRating": true,
+    "suggestEdit": true
+  },
+  "analytics": {
+    "posthog": {
+      "apiKey": ""
+    }
+  }
+}

@@ -1,0 +1,67 @@
+---
+title: "Releasing Funds to Seller"
+sidebarTitle: "Release Funds"
+description: "How to confirm delivery and release escrowed MON tokens to the seller."
+---
+
+## Confirming Delivery
+
+When the seller has delivered the goods or completed the service, the buyer releases the locked funds. This is the **happy path** — the trade worked as intended.
+
+### Who Can Do This?
+
+Only the **buyer** (the wallet address that created the escrow) can release funds. The seller cannot release funds to themselves.
+
+### Step-by-Step
+
+<Steps>
+  <Step title="Go to the Trade Detail Page">
+    From the Dashboard, click on the trade you want to finalize. Or navigate directly to `/trade/{id}`.
+  </Step>
+  <Step title="Verify the Trade Details">
+    Confirm that:
+    - The trade description matches what you agreed on
+    - The seller address is correct
+    - You've actually received the goods/service
+  </Step>
+  <Step title="Click 'Confirm Delivery & Release MON'">
+    In the **Settlement Actions** panel, click the black/white button labeled **"Confirm Delivery & Release MON"**.
+  </Step>
+  <Step title="Approve the Transaction">
+    Your wallet will ask you to approve the `releaseToSeller` transaction. This is a standard blockchain transaction — review and confirm.
+  </Step>
+  <Step title="Funds Released">
+    Once confirmed on-chain:
+    - The locked MON is transferred to the seller's wallet
+    - The trade status changes to **"Settled"** (green badge)
+    - The trade is finalized — no further actions can be taken
+  </Step>
+</Steps>
+
+## What Happens On-Chain
+
+```
+releaseToSeller(tradeId)
+├── Verifies caller is the buyer
+├── Verifies trade has not already been released
+├── Transfers trade.amount MON to trade.seller
+├── Sets trade.released = true
+└── Emits FundsReleased(id, seller) event
+```
+
+<Warning>
+  **This action is irreversible.** Once you release funds to the seller, you cannot undo it. Only click "Confirm Delivery" when you have actually received and verified the goods/service.
+</Warning>
+
+## Tips for Buyers
+
+- **Inspect goods thoroughly** before releasing funds
+- **Test digital deliverables** (download files, check access) before confirming
+- **Use the in-trade chat** if you have questions before releasing
+- **Take your time** — there's no deadline to release funds. The escrow stays active until you act.
+
+## Next Step
+
+<Card title="Requesting a Refund" icon="arrow-right" href="/user-guide/request-refund">
+  What to do if something goes wrong and you need your money back.
+</Card>

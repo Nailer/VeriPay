@@ -1,0 +1,216 @@
+---
+title: "Smart Contract ABI"
+sidebarTitle: "Contract ABI"
+description: "Complete ABI reference for VeriPay's escrow smart contract with usage examples in TypeScript."
+---
+
+## Contract Details
+
+| Property | Value |
+| --- | --- |
+| **Address** | `0xd0cc532f55ce6849d5b70e24d6188073f8921621` |
+| **Network** | Monad Testnet (Chain ID: 10143) |
+| **RPC** | `https://testnet-rpc.monad.xyz` |
+
+## Full ABI
+
+```json
+[
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "_id", "type": "uint256" }
+    ],
+    "name": "buyerClaimRefund",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "_seller", "type": "address" },
+      { "internalType": "string", "name": "_metadata", "type": "string" }
+    ],
+    "name": "createTrade",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "uint256", "name": "id", "type": "uint256" },
+      { "indexed": false, "internalType": "address", "name": "to", "type": "address" }
+    ],
+    "name": "FundsReleased",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "uint256", "name": "id", "type": "uint256" }
+    ],
+    "name": "RefundAuthorized",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "_id", "type": "uint256" }
+    ],
+    "name": "releaseToSeller",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "_id", "type": "uint256" }
+    ],
+    "name": "sellerApproveRefund",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "uint256", "name": "id", "type": "uint256" },
+      { "indexed": true, "internalType": "address", "name": "buyer", "type": "address" },
+      { "indexed": true, "internalType": "address", "name": "seller", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
+    ],
+    "name": "TradeCreated",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "nextTradeId",
+    "outputs": [
+      { "internalType": "uint256", "name": "", "type": "uint256" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "", "type": "uint256" }
+    ],
+    "name": "trades",
+    "outputs": [
+      { "internalType": "address", "name": "buyer", "type": "address" },
+      { "internalType": "address", "name": "seller", "type": "address" },
+      { "internalType": "uint256", "name": "amount", "type": "uint256" },
+      { "internalType": "bool", "name": "released", "type": "bool" },
+      { "internalType": "bool", "name": "sellerApprovedRefund", "type": "bool" },
+      { "internalType": "string", "name": "metadata", "type": "string" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
+```
+
+## Usage Examples (TypeScript + viem)
+
+### Setup
+
+```typescript
+import { createPublicClient, createWalletClient, http, custom, parseEther } from 'viem';
+
+const MONAD_CHAIN = {
+  id: 10143,
+  name: 'Monad Testnet',
+  nativeCurrency: { name: 'MON', symbol: 'MON', decimals: 18 },
+  rpcUrls: {
+    default: { http: ['https://testnet-rpc.monad.xyz'] },
+  },
+};
+
+const CONTRACT_ADDRESS = '0xd0cc532f55ce6849d5b70e24d6188073f8921621';
+
+// For reading (no wallet needed)
+const publicClient = createPublicClient({
+  chain: MONAD_CHAIN,
+  transport: http('https://testnet-rpc.monad.xyz'),
+});
+
+// For writing (requires wallet)
+const walletClient = createWalletClient({
+  chain: MONAD_CHAIN,
+  transport: custom(window.ethereum),
+});
+```
+
+### Read Trade Data
+
+```typescript
+const trade = await publicClient.readContract({
+  address: CONTRACT_ADDRESS,
+  abi: escrowAbi,
+  functionName: 'trades',
+  args: [BigInt(0)], // Trade ID
+});
+
+console.log({
+  buyer: trade[0],
+  seller: trade[1],
+  amount: trade[2],     // bigint in wei
+  released: trade[3],
+  refundApproved: trade[4],
+  metadata: trade[5],
+});
+```
+
+### Create an Escrow
+
+```typescript
+const hash = await walletClient.writeContract({
+  address: CONTRACT_ADDRESS,
+  abi: escrowAbi,
+  functionName: 'createTrade',
+  args: [
+    '0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18', // seller
+    'iPhone 15 Pro Max, Lagos delivery',              // metadata
+  ],
+  value: parseEther('0.5'), // 0.5 MON
+  account: '0xYourAddress...',
+});
+
+// Wait for confirmation
+const receipt = await publicClient.waitForTransactionReceipt({ hash });
+```
+
+### Release Funds to Seller
+
+```typescript
+const hash = await walletClient.writeContract({
+  address: CONTRACT_ADDRESS,
+  abi: escrowAbi,
+  functionName: 'releaseToSeller',
+  args: [BigInt(0)], // Trade ID
+  account: '0xBuyerAddress...',
+});
+```
+
+### Approve Refund (Seller)
+
+```typescript
+const hash = await walletClient.writeContract({
+  address: CONTRACT_ADDRESS,
+  abi: escrowAbi,
+  functionName: 'sellerApproveRefund',
+  args: [BigInt(0)], // Trade ID
+  account: '0xSellerAddress...',
+});
+```
+
+### Claim Refund (Buyer)
+
+```typescript
+const hash = await walletClient.writeContract({
+  address: CONTRACT_ADDRESS,
+  abi: escrowAbi,
+  functionName: 'buyerClaimRefund',
+  args: [BigInt(0)], // Trade ID
+  account: '0xBuyerAddress...',
+});
+```

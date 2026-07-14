@@ -1,0 +1,142 @@
+---
+title: "Integration Guide"
+sidebarTitle: "Integration Guide"
+description: "How to integrate VeriPay's escrow functionality into your own application or marketplace."
+---
+
+## Overview
+
+You can integrate VeriPay's escrow smart contract into any application that supports EVM contract interactions. This guide shows you how.
+
+## Prerequisites
+
+- A JavaScript/TypeScript project
+- `viem` installed (`npm install viem`)
+- Access to Monad Testnet RPC: `https://testnet-rpc.monad.xyz`
+
+## Step 1: Install Dependencies
+
+```bash
+npm install viem
+```
+
+## Step 2: Configure the Contract
+
+```typescript
+import { createPublicClient, createWalletClient, http, custom, parseEther, formatEther } from 'viem';
+
+const MONAD_CHAIN = {
+  id: 10143,
+  name: 'Monad Testnet',
+  nativeCurrency: { name: 'MON', symbol: 'MON', decimals: 18 },
+  rpcUrls: {
+    default: { http: ['https://testnet-rpc.monad.xyz'] },
+  },
+};
+
+const CONTRACT_ADDRESS = '0xd0cc532f55ce6849d5b70e24d6188073f8921621';
+
+// Import the ABI (see API Reference for full ABI)
+const escrowAbi = [ /* ... full ABI ... */ ] as const;
+```
+
+## Step 3: Create an Escrow (Your App → Contract)
+
+```typescript
+async function createEscrow(sellerAddress: string, description: string, amountMON: string) {
+  const walletClient = createWalletClient({
+    chain: MONAD_CHAIN,
+    transport: custom(window.ethereum),
+  });
+
+  const [account] = await walletClient.getAddresses();
+
+  const hash = await walletClient.writeContract({
+    address: CONTRACT_ADDRESS,
+    abi: escrowAbi,
+    functionName: 'createTrade',
+    args: [sellerAddress as `0x${string}`, description],
+    value: parseEther(amountMON),
+    account,
+  });
+
+  return hash;
+}
+
+// Usage
+const txHash = await createEscrow(
+  '0x742d...bD18',
+  'Custom integration trade',
+  '1.0'
+);
+```
+
+## Step 4: Read Trade Data
+
+```typescript
+async function getTrade(tradeId: number) {
+  const publicClient = createPublicClient({
+    chain: MONAD_CHAIN,
+    transport: http('https://testnet-rpc.monad.xyz'),
+  });
+
+  const result = await publicClient.readContract({
+    address: CONTRACT_ADDRESS,
+    abi: escrowAbi,
+    functionName: 'trades',
+    args: [BigInt(tradeId)],
+  });
+
+  return {
+    buyer: result[0],
+    seller: result[1],
+    amount: formatEther(result[2]),
+    released: result[3],
+    sellerApprovedRefund: result[4],
+    metadata: result[5],
+  };
+}
+```
+
+## Step 5: Listen for Events
+
+```typescript
+const publicClient = createPublicClient({
+  chain: MONAD_CHAIN,
+  transport: http('https://testnet-rpc.monad.xyz'),
+});
+
+// Watch for new trades
+publicClient.watchContractEvent({
+  address: CONTRACT_ADDRESS,
+  abi: escrowAbi,
+  eventName: 'TradeCreated',
+  onLogs: (logs) => {
+    for (const log of logs) {
+      console.log('New trade:', log.args);
+    }
+  },
+});
+```
+
+## Integration Patterns
+
+### Marketplace Integration
+
+If you run a marketplace (e.g., an e-commerce store, a freelancing platform):
+
+1. When a buyer clicks "Purchase," create a VeriPay escrow instead of processing payment directly
+2. Display the escrow status on the order page
+3. When the seller marks the order as shipped, notify the buyer to confirm delivery
+4. On confirmation, funds release automatically
+
+### Webhook Integration (Coming Soon)
+
+Future versions will support webhooks that notify your server when:
+- A new escrow is created involving your users
+- Funds are released or refunded
+- Chat messages are sent
+
+<Info>
+  Need help integrating? Reach out to us at [support@veripay.xyz](mailto:support@veripay.xyz) or open an issue on [GitHub](https://github.com/your-org/veripay).
+</Info>

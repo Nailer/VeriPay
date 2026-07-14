@@ -1,0 +1,96 @@
+---
+title: "Chat API"
+sidebarTitle: "Chat API"
+description: "REST API endpoints for VeriPay's in-trade messaging system."
+---
+
+## Overview
+
+The Chat API enables real-time messaging between trade participants. Messages are linked to specific trade IDs and associated with wallet addresses.
+
+**Base URL:** `/api/chat`
+
+---
+
+## GET — Fetch Messages
+
+Retrieves all chat messages for a specific trade.
+
+### Request
+
+```http
+GET /api/chat?tradeId=5
+```
+
+### Parameters
+
+| Param | Type | Required | Description |
+| --- | --- | --- | --- |
+| `tradeId` | `string` | Yes | The trade ID to fetch messages for |
+
+### Response
+
+```json
+{
+  "messages": [
+    {
+      "id": 1,
+      "tradeId": "5",
+      "senderAddress": "0xaBcD...1234",
+      "message": "Hi, I've shipped the item. Tracking number: NG12345678",
+      "createdAt": "2026-07-13T15:30:00Z"
+    },
+    {
+      "id": 2,
+      "tradeId": "5",
+      "senderAddress": "0x742d...bD18",
+      "message": "Thanks! I'll confirm once I receive it.",
+      "createdAt": "2026-07-13T15:35:00Z"
+    }
+  ]
+}
+```
+
+---
+
+## POST — Send Message
+
+Sends a new chat message in a trade.
+
+### Request
+
+```http
+POST /api/chat
+Content-Type: application/json
+```
+
+### Body
+
+```json
+{
+  "tradeId": "5",
+  "senderAddress": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
+  "message": "When will you ship the item?"
+}
+```
+
+### Fields
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `tradeId` | `string` | Yes | The trade this message belongs to |
+| `senderAddress` | `string` | Yes | Sender's wallet address |
+| `message` | `string` | Yes | Message content (max 1000 characters) |
+
+### Response
+
+```json
+{
+  "success": true,
+  "messageId": 3
+}
+```
+
+<Info>
+  When a chat message is sent, a notification is automatically created for the other party in the trade.
+</Info>

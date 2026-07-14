@@ -1,0 +1,120 @@
+---
+title: "Project Structure"
+sidebarTitle: "Project Structure"
+description: "A detailed map of VeriPay's codebase — every directory and key file explained."
+---
+
+## Directory Tree
+
+```
+veripay/
+│
+├── abi/
+│   └── monad_pay_lagos.json       # Raw smart contract ABI (JSON)
+│
+├── public/                        # Static assets served at root URL
+│   └── favicon.ico
+│
+├── src/
+│   ├── app/                       # Next.js App Router
+│   │   │
+│   │   ├── layout.tsx             # Root layout — wraps every page
+│   │   │                          # (Navbar, ThemeProvider, ThirdwebProvider)
+│   │   │
+│   │   ├── providers.tsx          # Context providers wrapper component
+│   │   │
+│   │   ├── client.ts              # Thirdweb client singleton
+│   │   │
+│   │   ├── globals.css            # Global CSS (Tailwind @import directives)
+│   │   │
+│   │   ├── page.tsx               # Landing page (/) — hero + features
+│   │   │
+│   │   ├── create/
+│   │   │   └── page.tsx           # Create escrow form (/create)
+│   │   │
+│   │   ├── dashboard/
+│   │   │   └── page.tsx           # Trade list dashboard (/dashboard)
+│   │   │
+│   │   ├── trade/
+│   │   │   └── [id]/
+│   │   │       ├── page.tsx       # Trade detail + settlement (/trade/:id)
+│   │   │       └── chat/
+│   │   │           └── page.tsx   # In-trade chat (/trade/:id/chat)
+│   │   │
+│   │   └── api/
+│   │       ├── notifications/
+│   │       │   └── route.ts       # GET/POST/PATCH notifications API
+│   │       └── chat/
+│   │           └── route.ts       # GET/POST chat messages API
+│   │
+│   ├── components/
+│   │   └── Navbar.tsx             # Navigation bar (logo, links, wallet,
+│   │                              # notifications bell, theme switcher)
+│   │
+│   └── lib/
+│       └── abi.ts                 # Typed ABI export + CONTRACT_ADDRESS constant
+│
+├── .env.local                     # Environment variables (not in git)
+├── .gitignore
+├── next.config.ts                 # Next.js configuration
+├── package.json
+├── postcss.config.mjs             # PostCSS config for Tailwind CSS v4
+├── tsconfig.json                  # TypeScript configuration
+└── docs/                          # Documentation (this site!)
+    ├── mint.json                  # Mintlify configuration
+    ├── introduction.mdx
+    └── ...
+```
+
+## Key Files Explained
+
+### `src/app/layout.tsx`
+
+The root layout wraps every page with:
+- `Navbar` component for navigation
+- `ThemeProvider` (next-themes) for dark/light mode
+- `ThirdwebProvider` for wallet connectivity
+- Global font and HTML structure
+
+### `src/app/client.ts`
+
+Initializes the singleton Thirdweb client used across the app:
+
+```typescript
+import { createThirdwebClient } from "thirdweb";
+
+export const client = createThirdwebClient({
+  clientId: process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID!,
+});
+```
+
+### `src/lib/abi.ts`
+
+Exports two key values used throughout the app:
+
+```typescript
+export const escrowAbi = [...] as const;  // Full typed ABI
+export const CONTRACT_ADDRESS = "0xd0cc...1621" as `0x${string}`;
+```
+
+### `src/components/Navbar.tsx`
+
+The most complex component — handles:
+- Wallet connection button (Thirdweb `ConnectButton`)
+- Theme switching (Light / Dark / System)
+- Notification bell with polling and unread badge
+- Mobile responsive hamburger menu
+- Notification panel with read/unread state
+
+### `src/app/api/notifications/route.ts`
+
+Next.js API Route Handler (App Router):
+- `GET` — Fetch notifications by wallet address
+- `POST` — Create a new notification
+- `PATCH` — Mark all notifications as read
+
+### `src/app/api/chat/route.ts`
+
+Next.js API Route Handler:
+- `GET` — Fetch all messages for a trade ID
+- `POST` — Send a new message + trigger notification

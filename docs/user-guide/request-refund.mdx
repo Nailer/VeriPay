@@ -1,0 +1,89 @@
+---
+title: "Requesting a Refund"
+sidebarTitle: "Refund Process"
+description: "How VeriPay's two-step consent-based refund system works — protecting both buyers and sellers."
+---
+
+## How Refunds Work
+
+VeriPay uses a **two-step, consent-based refund mechanism**. This means the buyer cannot unilaterally withdraw funds — the seller must first agree to the refund. This prevents fraud from both sides.
+
+### The Refund Flow
+
+```
+Buyer wants refund → Seller approves refund → Buyer claims refund
+```
+
+<Steps>
+  <Step title="Step 1: Seller Authorizes Refund">
+    **Who:** The seller (the wallet that was designated to receive funds)
+
+    **How:** On the trade detail page (`/trade/{id}`), the seller clicks **"Authorize Return of Funds"**.
+
+    **What happens on-chain:**
+    ```
+    sellerApproveRefund(tradeId)
+    ├── Verifies caller is the seller
+    ├── Sets trade.sellerApprovedRefund = true
+    └── Emits RefundAuthorized(id) event
+    ```
+
+    The trade status changes to **"Refund Ready"** (blue badge).
+  </Step>
+  <Step title="Step 2: Buyer Claims Refund">
+    **Who:** The buyer (the wallet that created the escrow)
+
+    **How:** Once the seller has approved, the buyer clicks **"Withdraw Refund"** on the trade detail page.
+
+    **What happens on-chain:**
+    ```
+    buyerClaimRefund(tradeId)
+    ├── Verifies caller is the buyer
+    ├── Verifies sellerApprovedRefund == true
+    ├── Transfers trade.amount MON back to buyer
+    ├── Sets trade.released = true
+    └── Emits FundsReleased(id, buyer) event
+    ```
+
+    The locked MON is returned to the buyer's wallet, and the trade is finalized.
+  </Step>
+</Steps>
+
+## Why Two Steps?
+
+<CardGroup cols={2}>
+  <Card title="Protects Sellers" icon="shield-check">
+    Prevents buyers from claiming refunds after receiving goods. The seller must actively consent, meaning they can refuse if they've already delivered.
+  </Card>
+  <Card title="Protects Buyers" icon="user-shield">
+    If the seller is honest and hasn't delivered, they can approve the refund. The buyer can then reclaim their MON without needing a centralized authority.
+  </Card>
+</CardGroup>
+
+## What If the Seller Refuses to Refund?
+
+If a seller refuses to authorize a refund and you (the buyer) believe you've been wronged:
+
+1. **Use the in-trade chat** — navigate to `/trade/{id}/chat` to discuss the issue directly with the seller
+2. **Provide evidence** — share screenshots, tracking numbers, or other proof in the chat
+3. **Negotiate** — many disputes can be resolved through communication
+
+<Info>
+  **Coming soon:** VeriPay is building a **DAO-based arbitration system** where neutral third parties can review evidence and vote on dispute outcomes. This will be available before mainnet launch.
+</Info>
+
+## Refund Scenarios
+
+| Scenario | What Happens |
+| --- | --- |
+| Goods never shipped | Seller should approve refund → Buyer claims MON back |
+| Wrong item delivered | Use chat to negotiate → Seller approves partial or full refund |
+| Goods damaged in transit | Use chat with evidence → Seller approves refund |
+| Buyer changed their mind | Seller may choose to approve or deny — this is their right |
+| Seller disappeared | Currently: funds remain locked. Future: DAO arbitration or time-based auto-refund |
+
+## Next Step
+
+<Card title="In-Trade Chat" icon="arrow-right" href="/user-guide/in-trade-chat">
+  Learn how to use the built-in messaging system to communicate with the other party.
+</Card>

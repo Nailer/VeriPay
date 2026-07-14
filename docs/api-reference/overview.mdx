@@ -1,0 +1,63 @@
+---
+title: "API Reference Overview"
+sidebarTitle: "Overview"
+description: "VeriPay exposes two types of APIs — on-chain smart contract functions and off-chain REST endpoints."
+---
+
+## API Overview
+
+VeriPay provides two layers of APIs for developers and integrators:
+
+### 1. Smart Contract API (On-Chain)
+
+The escrow logic is entirely on-chain. You interact with it through standard EVM contract calls using any Web3 library (viem, ethers.js, web3.js).
+
+| Function | Type | Description |
+| --- | --- | --- |
+| `createTrade(seller, metadata)` | Write (payable) | Create a new escrow |
+| `releaseToSeller(id)` | Write | Release funds to seller |
+| `sellerApproveRefund(id)` | Write | Seller approves refund |
+| `buyerClaimRefund(id)` | Write | Buyer claims approved refund |
+| `trades(id)` | Read | Get trade data |
+| `nextTradeId()` | Read | Get next trade counter |
+
+📄 [Full ABI Reference →](/api-reference/smart-contract-abi)
+
+### 2. REST API (Off-Chain)
+
+VeriPay's Next.js API routes handle non-financial features like notifications and chat.
+
+| Endpoint | Method | Description |
+| --- | --- | --- |
+| `/api/notifications` | GET | Fetch notifications for a wallet address |
+| `/api/notifications` | POST | Create a notification |
+| `/api/notifications` | PATCH | Mark all notifications as read |
+| `/api/chat` | GET | Fetch chat messages for a trade |
+| `/api/chat` | POST | Send a chat message |
+
+📄 [Notifications API →](/api-reference/notifications-api)
+📄 [Chat API →](/api-reference/chat-api)
+
+### 3. Integration Guide
+
+Want to embed VeriPay escrow in your own application?
+
+📄 [Integration Guide →](/api-reference/integration-guide)
+
+## Authentication
+
+### Smart Contract
+
+No authentication needed. Anyone can read trade data. Write functions are access-controlled at the contract level (only buyer/seller of a specific trade).
+
+### REST API
+
+Currently, the REST API does not require authentication. Endpoints are filtered by wallet address. Future versions may add API key authentication for third-party integrations.
+
+## Base URLs
+
+| Environment | URL |
+| --- | --- |
+| Testnet App | `https://veripay.xyz` |
+| Monad RPC | `https://testnet-rpc.monad.xyz` |
+| Contract | `0xd0cc532f55ce6849d5b70e24d6188073f8921621` |

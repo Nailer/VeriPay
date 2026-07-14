@@ -1,0 +1,130 @@
+---
+title: "Key Features"
+sidebarTitle: "Features"
+description: "Everything VeriPay offers — from trustless escrow to real-time notifications, multi-wallet support, and mobile-first design."
+---
+
+## Core Features
+
+VeriPay is packed with features designed to make decentralized escrow accessible, secure, and delightful to use.
+
+### ⚡ Lightning-Fast Settlement
+
+<Frame>
+  <img src="/images/speed-benchmark.png" alt="Settlement Speed" />
+</Frame>
+
+Powered by Monad's parallel execution engine, VeriPay transactions settle in **under 2 seconds**. Compare that to:
+
+| Platform | Settlement Time |
+| --- | --- |
+| **VeriPay (Monad)** | **< 2 seconds** |
+| Ethereum L1 | 12–15 seconds |
+| Traditional escrow | 3–7 business days |
+| Bank wire transfer | 1–3 business days |
+
+### 🔒 Trustless Smart Contract Escrow
+
+Funds are locked in an **immutable, permissionless smart contract** on the Monad blockchain. This means:
+
+- **No human can access your funds** — not VeriPay, not a bank, not anyone
+- **Funds are released only when you confirm** delivery of goods/services
+- **The contract has no admin keys** — there is no "owner" who can drain funds or change rules
+- **Every action is verifiable on-chain** via the [Monad block explorer](https://monad-testnet.socialscan.io/address/0xd0cc532f55ce6849d5b70e24d6188073f8921621)
+
+### 🌍 Built for Africa
+
+VeriPay is designed from the ground up for the African market:
+
+- **Lagos-first UX** — built for how Nigerians actually trade (social media, WhatsApp deals, marketplace transactions)
+- **Low-bandwidth optimized** — works on slow connections and budget smartphones
+- **Local context** — trade descriptions like "iPhone 15 Pro Max, Lagos delivery within 48 hours" are first-class citizens
+- **Coming soon:** NGN → MON onramp so users can fund escrows directly with Naira
+
+### 💬 In-Trade Messaging
+
+Every active escrow has a **built-in chat** where buyer and seller can communicate directly:
+
+- Discuss trade details, delivery timelines, and conditions
+- Resolve disputes without leaving the platform
+- Messages are linked to the specific trade ID for context
+- No need to share phone numbers or personal contact info
+
+### 🔔 Real-Time Notifications
+
+Stay informed at every step of the trade lifecycle:
+
+<CardGroup cols={2}>
+  <Card title="Trade Created" icon="bell">
+    Sellers receive an instant notification when a buyer creates an escrow involving their address.
+  </Card>
+  <Card title="New Message" icon="message">
+    Both parties are notified when a new chat message arrives in any of their active trades.
+  </Card>
+  <Card title="Funds Released" icon="circle-check">
+    Sellers are notified the moment funds are released to their wallet.
+  </Card>
+  <Card title="Refund Authorized" icon="rotate-left">
+    Buyers are notified when a seller approves a refund request.
+  </Card>
+</CardGroup>
+
+Notifications are **address-targeted** — they're tied to your wallet address, not a separate account system. Connect your wallet and you're automatically subscribed.
+
+### 📱 Mobile-First, Responsive Design
+
+VeriPay is built with a **mobile-first philosophy**:
+
+- Fully responsive across all screen sizes (mobile, tablet, desktop)
+- Touch-optimized buttons and interactions
+- Collapsible mobile navigation with hamburger menu
+- Bottom-sheet modals on mobile for a native app-like feel
+- Works in any modern browser — Chrome, Safari, Firefox, Brave
+
+### 🏦 Multi-Wallet Support
+
+Connect with your preferred wallet — or create one instantly:
+
+| Wallet | Supported |
+| --- | --- |
+| MetaMask | ✅ |
+| WalletConnect | ✅ |
+| Coinbase Wallet | ✅ |
+| Rainbow | ✅ |
+| Rabby | ✅ |
+| Zerion | ✅ |
+| **Email login** | ✅ (via Thirdweb in-app wallet) |
+| **Google login** | ✅ |
+| **Apple login** | ✅ |
+| **Phone number** | ✅ |
+| **Facebook login** | ✅ |
+
+<Tip>
+  Don't have a crypto wallet? No problem. Choose **Email**, **Google**, or **Phone** login — VeriPay will create a secure, non-custodial wallet for you automatically. You don't need to know anything about crypto to get started.
+</Tip>
+
+### 🌓 Dark & Light Mode
+
+VeriPay supports three theme modes:
+
+- **Light mode** — clean, bright interface for daytime use
+- **Dark mode** — elegant dark theme that's easy on the eyes
+- **System mode** — automatically matches your device's system preference
+
+Switch anytime via the theme selector in the navigation bar.
+
+### 🧾 Consent-Based Refund System
+
+VeriPay's refund mechanism is designed to be **fair to both parties**:
+
+1. **Buyer requests refund** — indicates a problem with the trade
+2. **Seller must approve** — the seller clicks "Authorize Return of Funds" to consent
+3. **Buyer claims refund** — only after seller approval, the buyer can withdraw their MON
+
+This two-step consent model prevents:
+- Buyers from fraudulently claiming refunds after receiving goods
+- One-sided disputes where the seller has no say
+
+<Warning>
+  If a seller refuses to approve a refund and the buyer believes they've been scammed, they should use the **in-trade chat** to negotiate. Future versions will include **DAO-based arbitration** for unresolved disputes.
+</Warning>

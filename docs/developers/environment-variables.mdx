@@ -1,0 +1,76 @@
+---
+title: "Environment Variables"
+sidebarTitle: "Environment Variables"
+description: "All environment variables used by VeriPay and how to configure them."
+---
+
+## Overview
+
+VeriPay uses environment variables to configure blockchain addresses and third-party API keys. These are set in a `.env.local` file at the project root.
+
+<Warning>
+  Never commit `.env.local` to Git. It is already listed in `.gitignore`. Exposing your Thirdweb Client ID publicly can allow others to misuse your API quota.
+</Warning>
+
+## Variable Reference
+
+### `NEXT_PUBLIC_CONTRACT_ADDRESS`
+
+The deployed smart contract address on Monad.
+
+```env
+NEXT_PUBLIC_CONTRACT_ADDRESS=0xd0cc532f55ce6849d5b70e24d6188073f8921621
+```
+
+| Property | Value |
+| --- | --- |
+| **Required** | Yes |
+| **Prefix** | `NEXT_PUBLIC_` — exposed to the browser |
+| **Default** | Falls back to the testnet address in `src/lib/abi.ts` |
+
+### `NEXT_PUBLIC_THIRDWEB_CLIENT_ID`
+
+Your Thirdweb project Client ID — required for wallet connection, social login, and in-app wallets.
+
+```env
+NEXT_PUBLIC_THIRDWEB_CLIENT_ID=your_client_id_here
+```
+
+| Property | Value |
+| --- | --- |
+| **Required** | Yes (for wallet features) |
+| **Prefix** | `NEXT_PUBLIC_` — exposed to the browser |
+| **How to get it** | Sign up at [thirdweb.com](https://thirdweb.com/dashboard) → Create a project → Copy the Client ID |
+
+## Full `.env.local` Template
+
+```env
+# ─── Smart Contract ────────────────────────────────────────────
+# VeriPay Escrow contract address on Monad Testnet
+NEXT_PUBLIC_CONTRACT_ADDRESS=0xd0cc532f55ce6849d5b70e24d6188073f8921621
+
+# ─── Thirdweb ─────────────────────────────────────────────────
+# Get yours at: https://thirdweb.com/dashboard
+NEXT_PUBLIC_THIRDWEB_CLIENT_ID=your_thirdweb_client_id_here
+```
+
+## Adding New Variables
+
+When adding new environment variables:
+
+1. **Prefix with `NEXT_PUBLIC_`** if the variable needs to be accessible in the browser (client-side components)
+2. **No prefix** for server-only variables (only accessible in API routes and server components)
+3. **Restart the dev server** after changing `.env.local` — Next.js reads env vars at startup
+
+## Vercel Deployment
+
+When deploying to Vercel, add your environment variables in the Vercel dashboard:
+
+1. Go to your project → **Settings** → **Environment Variables**
+2. Add each variable from your `.env.local`
+3. Set them for **Production**, **Preview**, and **Development** environments
+4. Redeploy after adding variables
+
+<Tip>
+  For production deployments, update `NEXT_PUBLIC_CONTRACT_ADDRESS` to your mainnet contract address when you're ready to go live.
+</Tip>

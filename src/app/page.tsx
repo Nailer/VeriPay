@@ -25,7 +25,7 @@ export default function Home() {
           Trustless transactions{" "}
           <br className="hidden sm:block" />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-zinc-900 via-zinc-600 to-zinc-400 dark:from-white dark:via-zinc-400 dark:to-zinc-600">
-            secured by math.
+            secured with honesty.
           </span>
         </h1>
 

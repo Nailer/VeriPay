@@ -1,0 +1,105 @@
+---
+title: "Local Development Setup"
+sidebarTitle: "Local Setup"
+description: "How to clone and run VeriPay locally for development or contribution."
+---
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+- **Node.js** v18+ ([download](https://nodejs.org))
+- **npm**, **yarn**, or **pnpm** (npm comes with Node.js)
+- **Git** ([download](https://git-scm.com))
+- A code editor — we recommend [VS Code](https://code.visualstudio.com)
+- MetaMask browser extension (for testing wallet interactions)
+
+## Step 1: Clone the Repository
+
+```bash
+git clone https://github.com/your-org/veripay.git
+cd veripay
+```
+
+## Step 2: Install Dependencies
+
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+```
+
+## Step 3: Configure Environment Variables
+
+Create a `.env.local` file in the root directory:
+
+```bash
+cp .env.example .env.local
+```
+
+Then edit `.env.local` with your values:
+
+```env
+# Smart Contract (required)
+NEXT_PUBLIC_CONTRACT_ADDRESS=0xd0cc532f55ce6849d5b70e24d6188073f8921621
+
+# Thirdweb Client ID (required for wallet connection)
+# Get a free client ID at https://thirdweb.com/dashboard
+NEXT_PUBLIC_THIRDWEB_CLIENT_ID=your_thirdweb_client_id_here
+```
+
+<Info>
+  Get a free Thirdweb Client ID at [thirdweb.com/dashboard](https://thirdweb.com/dashboard). Without it, wallet connection features will be limited.
+</Info>
+
+## Step 4: Start the Development Server
+
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Step 5: Connect a Test Wallet
+
+1. Open MetaMask in your browser
+2. Visit the app at `localhost:3000`
+3. Click **"Connect Wallet"** and choose MetaMask
+4. When prompted, let VeriPay add Monad Testnet to your wallet
+5. Get test MON tokens from the [Monad Faucet](https://faucet.monad.xyz)
+
+## Available Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start development server at `localhost:3000` |
+| `npm run build` | Build production bundle |
+| `npm run start` | Start production server (after build) |
+| `npm run lint` | Run ESLint code quality checks |
+
+## Hot Reload
+
+The dev server supports **hot module replacement**. Any changes you make to files in `src/` will automatically reload in the browser without a full page refresh.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="'Module not found' error on startup">
+    Run `npm install` again to ensure all dependencies are installed. If the error persists, try deleting `node_modules/` and `package-lock.json`, then run `npm install` fresh.
+  </Accordion>
+  <Accordion title="Wallet connection not working in dev">
+    Ensure `NEXT_PUBLIC_THIRDWEB_CLIENT_ID` is set in `.env.local`. Restart the dev server after changing environment variables.
+  </Accordion>
+  <Accordion title="Transactions failing in development">
+    Make sure your MetaMask is connected to **Monad Testnet** (Chain ID: 10143). VeriPay will try to switch networks automatically, but MetaMask must be unlocked first.
+  </Accordion>
+  <Accordion title="TypeScript compilation errors">
+    Run `npm run lint` to see all TypeScript and ESLint errors. Most common issues are related to missing type annotations in the viem contract calls.
+  </Accordion>
+</AccordionGroup>

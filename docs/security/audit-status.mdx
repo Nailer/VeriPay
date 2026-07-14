@@ -1,0 +1,41 @@
+---
+title: "Audit Status"
+sidebarTitle: "Audit Status"
+description: "Current security audit status and plans for third-party verification."
+---
+
+## Current Status
+
+| Audit Type | Status | Details |
+| --- | --- | --- |
+| Internal code review | ✅ Complete | All smart contract functions reviewed by the founding team |
+| Community review | ✅ Ongoing | Open source code available for public inspection |
+| Automated analysis | 🔄 Planned | Slither, Mythril, and other static analysis tools |
+| Professional third-party audit | 🔄 Planned | Scheduled before mainnet launch |
+| Bug bounty program | 🔄 Planned | Will launch alongside mainnet |
+
+## Smart Contract Simplicity
+
+VeriPay's escrow contract is intentionally **simple and minimal**:
+
+- **6 functions** total (4 state-changing, 2 view)
+- **1 data structure** (the Trade struct)
+- **No external dependencies** — doesn't import other contracts
+- **No upgradability** — no proxy patterns, no admin functions
+- **No complex math** — straightforward value transfers
+
+This simplicity is a deliberate security choice. Fewer lines of code = fewer potential vulnerabilities.
+
+## Pre-Mainnet Audit Plan
+
+Before deploying to Monad Mainnet, VeriPay will:
+
+1. **Run automated vulnerability scanners** (Slither, Mythril, Echidna)
+2. **Engage a professional audit firm** (e.g., Trail of Bits, OpenZeppelin, Certik)
+3. **Publish the full audit report** publicly in the documentation
+4. **Launch a bug bounty program** to incentivize ongoing security research
+5. **Deploy to a staging environment** for extended testing before mainnet
+
+<Info>
+  The audit report will be published in this documentation section once completed. We believe in full transparency about our security posture.
+</Info>

@@ -1,0 +1,105 @@
+---
+title: "Contributing to VeriPay"
+sidebarTitle: "Contributing"
+description: "How to contribute to VeriPay — bug reports, feature requests, and pull requests welcome."
+---
+
+## Welcome, Contributors!
+
+VeriPay is open source and we welcome contributions from the community. Whether it's a bug fix, a new feature, improved documentation, or a translation — every contribution matters.
+
+## Ways to Contribute
+
+<CardGroup cols={2}>
+  <Card title="Report a Bug" icon="bug" href="https://github.com/your-org/veripay/issues/new?template=bug_report.md">
+    Found something broken? Open a GitHub issue with steps to reproduce.
+  </Card>
+  <Card title="Request a Feature" icon="lightbulb" href="https://github.com/your-org/veripay/issues/new?template=feature_request.md">
+    Have an idea? Open a feature request issue and describe the use case.
+  </Card>
+  <Card title="Submit a PR" icon="code-pull-request" href="https://github.com/your-org/veripay/pulls">
+    Fix a bug or implement a feature. See the PR process below.
+  </Card>
+  <Card title="Improve Docs" icon="book" href="https://github.com/your-org/veripay/tree/main/docs">
+    Found a typo or unclear explanation? Documentation PRs are always welcome.
+  </Card>
+</CardGroup>
+
+## Pull Request Process
+
+<Steps>
+  <Step title="Fork the Repository">
+    Click **"Fork"** on the [GitHub repository](https://github.com/your-org/veripay) to create your own copy.
+  </Step>
+  <Step title="Create a Feature Branch">
+    ```bash
+    git checkout -b feature/your-feature-name
+    # or
+    git checkout -b fix/bug-description
+    ```
+  </Step>
+  <Step title="Make Your Changes">
+    Follow the [coding standards](#coding-standards) below. Make focused, atomic commits.
+  </Step>
+  <Step title="Run Linting">
+    ```bash
+    npm run lint
+    ```
+    Ensure there are no ESLint or TypeScript errors before submitting.
+  </Step>
+  <Step title="Open a Pull Request">
+    Push your branch and open a PR against the `main` branch. Fill in the PR template with:
+    - What the PR does
+    - Why this change is needed
+    - Screenshots (for UI changes)
+    - Testing steps
+  </Step>
+  <Step title="Code Review">
+    A maintainer will review your PR. Be responsive to feedback — most PRs are merged within 2–3 business days.
+  </Step>
+</Steps>
+
+## Coding Standards
+
+### TypeScript
+
+- Use TypeScript for all new files — no `.js` files in `src/`
+- Provide explicit types for function parameters and return values
+- Use `as const` for ABI arrays to get full type inference with viem
+
+### Component Style
+
+- All React components use functional components (no class components)
+- Use `"use client"` directive only when the component needs browser APIs, hooks, or event handlers
+- Co-locate component state — avoid global state unless necessary
+- Use Tailwind CSS utility classes — no inline styles, no CSS modules
+
+### Naming Conventions
+
+| Type | Convention | Example |
+| --- | --- | --- |
+| Components | PascalCase | `TradeCard.tsx` |
+| Functions | camelCase | `fetchTrades()` |
+| Constants | UPPER_SNAKE_CASE | `CONTRACT_ADDRESS` |
+| Files (non-component) | kebab-case | `abi.ts` |
+
+### Commit Messages
+
+Follow the [Conventional Commits](https://www.conventionalcommits.org) format:
+
+```
+feat: add seller reputation display on trade cards
+fix: resolve wallet disconnect error on mobile Safari
+docs: update API reference with new notification fields
+chore: upgrade viem to v2.48.0
+```
+
+## Development Tips
+
+- **Test on mobile** — VeriPay is mobile-first. Always test your changes on a small screen.
+- **Test both themes** — Ensure your changes look good in both dark and light mode.
+- **Test wallet flows** — For blockchain features, test the full flow: wallet connect → sign tx → wait for receipt → UI update.
+
+## Code of Conduct
+
+Be respectful, constructive, and welcoming. We follow the [Contributor Covenant](https://www.contributor-covenant.org) code of conduct. Harassment, discrimination, or hostile behavior will not be tolerated.

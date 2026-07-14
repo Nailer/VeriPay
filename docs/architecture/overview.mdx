@@ -1,0 +1,145 @@
+---
+title: "Architecture Overview"
+sidebarTitle: "Overview"
+description: "A high-level view of VeriPay's system architecture — frontend, smart contracts, APIs, and blockchain infrastructure."
+---
+
+## System Architecture
+
+VeriPay is a **full-stack decentralized application** with three core layers: a Next.js frontend, a Solidity smart contract on Monad, and a lightweight API layer for off-chain features.
+
+### Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        A[Next.js Frontend<br/>React 19 + Tailwind CSS]
+        B[Thirdweb SDK<br/>Wallet Connection]
+        C[viem Client<br/>Blockchain Reads/Writes]
+    end
+
+    subgraph "API Layer"
+        D[Notifications API<br/>/api/notifications]
+        E[Chat API<br/>/api/chat]
+    end
+
+    subgraph "Blockchain Layer"
+        F[Monad Testnet<br/>Chain ID 10143]
+        G[Escrow Smart Contract<br/>0xd0cc...1621]
+    end
+
+    subgraph "External Services"
+        H[Monad RPC<br/>testnet-rpc.monad.xyz]
+        I[Block Explorer<br/>SocialScan]
+    end
+
+    A --> B
+    A --> C
+    A --> D
+    A --> E
+    C --> H
+    H --> F
+    F --> G
+    G --> I
+```
+
+### Layer Breakdown
+
+<CardGroup cols={3}>
+  <Card title="Client Layer" icon="browser">
+    **Next.js 16 + React 19**
+
+    The user-facing application. Handles all UI rendering, wallet connections, form inputs, and transaction signing. Runs in the user's browser.
+  </Card>
+  <Card title="Smart Contract" icon="file-contract">
+    **Solidity on Monad**
+
+    The on-chain escrow logic. Holds funds, enforces trade rules, and emits events. Fully immutable and permissionless.
+  </Card>
+  <Card title="API Layer" icon="server">
+    **Next.js API Routes**
+
+    Lightweight REST APIs for off-chain features: notifications and chat messages. These don't handle funds — they only facilitate communication.
+  </Card>
+</CardGroup>
+
+## Data Flow
+
+### Creating an Escrow
+
+```mermaid
+sequenceDiagram
+    participant B as Buyer (Browser)
+    participant W as Wallet (MetaMask)
+    participant R as Monad RPC
+    participant SC as Smart Contract
+    participant API as VeriPay API
+
+    B->>W: Sign createTrade() transaction
+    W->>R: Submit signed transaction
+    R->>SC: Execute createTrade()
+    SC-->>R: TradeCreated event emitted
+    R-->>B: Transaction receipt (success)
+    B->>API: POST /api/notifications (notify seller)
+    API-->>B: 200 OK
+    B->>B: Show success modal
+```
+
+### Releasing Funds
+
+```mermaid
+sequenceDiagram
+    participant B as Buyer
+    participant W as Wallet
+    participant R as Monad RPC
+    participant SC as Smart Contract
+
+    B->>W: Sign releaseToSeller() transaction
+    W->>R: Submit signed transaction
+    R->>SC: Execute releaseToSeller()
+    SC->>SC: Transfer MON to seller
+    SC-->>R: FundsReleased event emitted
+    R-->>B: Transaction receipt
+    B->>B: Refresh trade status → "Settled"
+```
+
+## Key Design Decisions
+
+### Why On-Chain for Escrow?
+
+| Decision | Rationale |
+| --- | --- |
+| Funds held by smart contract | Eliminates need to trust VeriPay (or any company) with user funds |
+| No admin keys on contract | Prevents rug pulls, insider theft, or unauthorized fund access |
+| Two-party refund consent | Prevents unilateral abuse by either buyer or seller |
+| On-chain metadata | Trade descriptions are permanently recorded and verifiable |
+
+### Why Off-Chain for Chat & Notifications?
+
+| Decision | Rationale |
+| --- | --- |
+| Chat via API routes | On-chain messages would be expensive (gas) and slow for real-time conversation |
+| Notifications via polling | Simple, reliable, no WebSocket complexity; 5-second polling interval |
+| No user accounts | Wallet address = identity. No signup, no passwords, no databases of personal info |
+
+## Security Architecture
+
+```mermaid
+graph LR
+    subgraph "Trusted (On-Chain)"
+        A[Escrow Funds]
+        B[Trade State]
+        C[Settlement Logic]
+    end
+
+    subgraph "Untrusted (Off-Chain)"
+        D[Chat Messages]
+        E[Notifications]
+        F[UI Rendering]
+    end
+
+    A -.->|"Immutable, auditable"| A
+    D -.->|"Convenience, not security-critical"| D
+```
+
+The critical security boundary is clear: **anything involving money happens on-chain**. Off-chain features (chat, notifications) are convenience layers that don't affect fund safety.

@@ -1,0 +1,71 @@
+---
+title: "Technology Stack"
+sidebarTitle: "Tech Stack"
+description: "The full technology stack powering VeriPay — from frontend frameworks to blockchain infrastructure."
+---
+
+## Full Stack Overview
+
+VeriPay is built with a modern, production-grade technology stack chosen for performance, developer experience, and ecosystem compatibility.
+
+### Frontend
+
+| Technology | Version | Purpose | Why We Chose It |
+| --- | --- | --- | --- |
+| [Next.js](https://nextjs.org) | 16.2+ | Full-stack React framework | Server-side rendering, file-based routing, API routes, and the best React DX |
+| [React](https://react.dev) | 19.2+ | UI component library | Industry standard, massive ecosystem, concurrent rendering |
+| [Tailwind CSS](https://tailwindcss.com) | 4.x | Utility-first CSS framework | Rapid prototyping, consistent design system, zero unused CSS |
+| [Lucide React](https://lucide.dev) | 0.479+ | Icon library | Beautiful, consistent SVG icons with React components |
+| [next-themes](https://github.com/pacocoursey/next-themes) | 0.4+ | Theme management | Seamless dark/light/system mode with zero flash |
+
+### Blockchain & Web3
+
+| Technology | Version | Purpose | Why We Chose It |
+| --- | --- | --- | --- |
+| [Monad](https://monad.xyz) | Testnet (10143) | Layer 1 blockchain | 10,000+ TPS, parallel execution, EVM-compatible, near-zero fees |
+| [viem](https://viem.sh) | 2.47+ | TypeScript Ethereum client | Modern, type-safe, tree-shakeable alternative to ethers.js |
+| [Thirdweb](https://thirdweb.com) | 5.x | Wallet SDK & infrastructure | Multi-wallet support (10+ options), social login, in-app wallets |
+| Solidity | ^0.8.x | Smart contract language | Industry standard for EVM-compatible chains |
+
+### Infrastructure
+
+| Technology | Purpose |
+| --- | --- |
+| [Vercel](https://vercel.com) | Frontend hosting & deployment |
+| [Remix IDE](https://remix.ethereum.org) | Smart contract compilation & deployment |
+| Monad RPC | `https://testnet-rpc.monad.xyz` — blockchain node access |
+| [SocialScan](https://monad-testnet.socialscan.io) | Block explorer for transaction verification |
+
+## Why This Stack?
+
+### Next.js 16 + React 19
+
+Next.js provides the **best developer experience** for building full-stack React applications:
+- **App Router** — file-based routing with layouts and loading states
+- **Server Components** — reduced client-side JavaScript for faster page loads
+- **API Routes** — built-in backend for notifications and chat, no separate server needed
+- **Automatic code splitting** — only loads the JavaScript needed for each page
+
+### viem over ethers.js
+
+We chose [viem](https://viem.sh) over the more popular ethers.js for several reasons:
+- **TypeScript-first** — full type inference for contract interactions
+- **Smaller bundle** — tree-shakeable, only includes what you use
+- **Better DX** — cleaner API for `readContract`, `writeContract`, and `waitForTransactionReceipt`
+- **Active development** — rapidly evolving with Monad compatibility
+
+### Thirdweb v5
+
+Thirdweb's wallet SDK is chosen specifically for **accessibility**:
+- **Social login** — users can sign in with email, Google, Apple, Facebook, or phone
+- **In-app wallets** — non-custodial wallets created automatically for social login users
+- **10+ wallet options** — MetaMask, WalletConnect, Coinbase, Rainbow, Rabby, Zerion
+- **ConnectButton** — drop-in UI component that handles the entire wallet connection flow
+
+### Monad
+
+Monad is the ideal chain for VeriPay because:
+- **Speed** — 10,000+ TPS means escrow creation and settlement feels instant
+- **Cost** — near-zero gas fees make micro-escrows economically viable
+- **EVM compatibility** — works with all existing Ethereum tooling (MetaMask, viem, etc.)
+- **Parallel execution** — transactions don't queue behind each other, no congestion

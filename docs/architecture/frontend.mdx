@@ -1,0 +1,126 @@
+---
+title: "Frontend Architecture"
+sidebarTitle: "Frontend"
+description: "How VeriPay's Next.js frontend is structured — routing, components, state management, and UI patterns."
+---
+
+## App Router Structure
+
+VeriPay uses Next.js 16's **App Router** for file-based routing. Every route is a directory under `src/app/` with a `page.tsx` file.
+
+### Route Map
+
+| Route | File | Description | Access |
+| --- | --- | --- | --- |
+| `/` | `src/app/page.tsx` | Landing page — hero section, features, CTAs | Public |
+| `/create` | `src/app/create/page.tsx` | Create new escrow form | Requires wallet |
+| `/dashboard` | `src/app/dashboard/page.tsx` | List of recent trades with live status | Public (reads blockchain) |
+| `/trade/[id]` | `src/app/trade/[id]/page.tsx` | Individual trade detail + settlement actions | Public (actions require wallet) |
+| `/trade/[id]/chat` | `src/app/trade/[id]/chat/` | In-trade messaging | Requires wallet |
+| `/api/notifications` | `src/app/api/notifications/` | Notification REST API | Internal |
+| `/api/chat` | `src/app/api/chat/` | Chat message REST API | Internal |
+
+### Component Architecture
+
+```
+src/
+├── app/
+│   ├── layout.tsx          # Root layout (Navbar, Providers, global styles)
+│   ├── providers.tsx       # ThemeProvider + ThirdwebProvider wrappers
+│   ├── client.ts           # Thirdweb client initialization
+│   ├── globals.css         # Global CSS (Tailwind directives)
+│   ├── page.tsx            # Landing page (server component)
+│   ├── create/page.tsx     # Create escrow (client component)
+│   ├── dashboard/page.tsx  # Trade dashboard (client component)
+│   ├── trade/[id]/
+│   │   ├── page.tsx        # Trade detail (client component)
+│   │   └── chat/           # Chat page
+│   └── api/                # REST API routes
+├── components/
+│   └── Navbar.tsx          # Navigation bar + notifications + theme switcher
+└── lib/
+    └── abi.ts              # Contract ABI + address constants
+```
+
+## Key Patterns
+
+### Client vs. Server Components
+
+| Component | Type | Reason |
+| --- | --- | --- |
+| Landing page (`/`) | Server | Static content, no wallet interaction needed |
+| Create page | Client (`"use client"`) | Wallet connection, form state, transaction signing |
+| Dashboard | Client | Reads from blockchain on mount, dynamic state |
+| Trade detail | Client | Wallet actions, dynamic data |
+| Navbar | Client | Theme state, wallet connection, notifications |
+
+### Blockchain Integration Pattern
+
+VeriPay uses a consistent pattern for reading from and writing to the smart contract:
+
+**Reading (Public Client):**
+```typescript
+const publicClient = createPublicClient({
+  chain: MONAD_CHAIN,
+  transport: http("https://testnet-rpc.monad.xyz"),
+});
+
+const result = await publicClient.readContract({
+  address: CONTRACT_ADDRESS,
+  abi: escrowAbi,
+  functionName: "trades",
+  args: [tradeId],
+});
+```
+
+**Writing (Wallet Client):**
+```typescript
+const walletClient = createWalletClient({
+  chain: MONAD_CHAIN,
+  transport: custom(window.ethereum),
+});
+
+const hash = await walletClient.writeContract({
+  address: CONTRACT_ADDRESS,
+  abi: escrowAbi,
+  functionName: "releaseToSeller",
+  args: [tradeId],
+  account: userAddress,
+});
+```
+
+### Chain Switching
+
+Before any write transaction, VeriPay ensures the user's wallet is connected to Monad Testnet:
+
+1. Attempt `wallet_switchEthereumChain` to chain ID `0x279f` (10143)
+2. If the chain isn't added yet (error code 4902), call `wallet_addEthereumChain` to add Monad Testnet automatically
+3. Only then proceed with the contract interaction
+
+This makes the UX seamless — users never need to manually configure Monad Testnet.
+
+### Theme System
+
+VeriPay supports dark, light, and system themes using `next-themes`:
+
+- Theme preference is stored in `localStorage`
+- The `resolvedTheme` value determines actual rendering
+- Tailwind's `dark:` modifier handles all dark mode styles
+- The Navbar includes a theme switcher with sun/moon/monitor icons
+
+## Responsive Design
+
+VeriPay is built **mobile-first** using Tailwind's responsive breakpoints:
+
+| Breakpoint | Width | Design |
+| --- | --- | --- |
+| Default | < 640px | Mobile — single column, hamburger menu, compact buttons |
+| `sm:` | ≥ 640px | Small tablet — two-column grids start |
+| `md:` | ≥ 768px | Tablet — more spacing, larger text |
+| `lg:` | ≥ 1024px | Desktop — full layout |
+
+Key responsive behaviors:
+- **Navbar:** Hamburger menu on mobile, horizontal nav on desktop
+- **Dashboard:** Single-column cards on mobile, 2-column grid on desktop
+- **Forms:** Full-width on mobile, centered with max-width on desktop
+- **Modals:** Bottom-sheet style on mobile, centered on desktop

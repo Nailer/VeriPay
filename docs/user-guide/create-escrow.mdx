@@ -1,0 +1,118 @@
+---
+title: "Create Your First Escrow"
+sidebarTitle: "Create Escrow"
+description: "Step-by-step guide to locking funds in a VeriPay escrow — your money is protected by a smart contract until you confirm delivery."
+---
+
+## Creating an Escrow
+
+When you create an escrow on VeriPay, you're **locking MON tokens in a smart contract** that acts as a neutral third party. The funds stay locked until you (the buyer) confirm that the seller has delivered what was promised.
+
+### Step-by-Step Guide
+
+<Steps>
+  <Step title="Navigate to the Create Page">
+    Click **"Start Escrow"** on the homepage, or click **"New Escrow"** in the navigation bar. You can also go directly to `/create`.
+  </Step>
+  <Step title="Enter the Seller's Wallet Address">
+    In the **"Seller Wallet Address"** field, paste the wallet address of the person you're paying. This is the `0x...` address that will receive the funds once you confirm delivery.
+
+    ```
+    Example: 0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18
+    ```
+
+    <Warning>
+      Double-check the seller's address carefully. Once the escrow is created, the recipient cannot be changed. Sending to the wrong address means the funds can only be released to that address.
+    </Warning>
+  </Step>
+  <Step title="Enter the Amount">
+    In the **"Amount to Secure (MON)"** field, enter the amount of MON tokens you want to lock in escrow.
+
+    - Minimum: Any amount above 0
+    - The amount must not exceed your wallet balance
+    - This is the exact amount the seller will receive upon delivery confirmation
+  </Step>
+  <Step title="Describe the Trade">
+    In the **"Trade Terms / Waybill Info"** field, describe what you're buying. Be specific — this becomes a permanent on-chain record that both parties can reference.
+
+    **Good examples:**
+    - "iPhone 15 Pro Max, 256GB, Blue. Lagos Island delivery within 48 hours."
+    - "Logo design project — 3 concepts, 2 revision rounds. Delivery via Google Drive."
+    - "10kg bag of rice, Ofada variety. Pickup at Oshodi Market, Shop B12."
+
+    <Tip>
+      The more specific your description, the clearer the trade terms are for both parties. This helps prevent disputes.
+    </Tip>
+  </Step>
+  <Step title="Submit the Transaction">
+    Click **"Fund & Secure Trade"**. Your wallet will prompt you to approve the transaction.
+
+    - If you're using MetaMask, a popup will ask you to confirm
+    - If you're on Monad Testnet for the first time, VeriPay will automatically add the network to your wallet
+    - The transaction includes the MON amount you specified — this is the escrow deposit
+  </Step>
+  <Step title="Wait for Confirmation">
+    VeriPay will show a loading spinner while the transaction is being confirmed on the Monad blockchain. This typically takes **under 2 seconds**.
+  </Step>
+  <Step title="Success!">
+    Once confirmed, you'll see a success modal showing:
+    - ✅ **"Funds Secured!"** confirmation
+    - The exact amount locked
+    - The seller's address
+    - Your trade description
+
+    The seller is **automatically notified** in-app that a new escrow has been created for them.
+  </Step>
+</Steps>
+
+## What Happens On-Chain
+
+When you click "Fund & Secure Trade," the following happens at the smart contract level:
+
+```
+createTrade(sellerAddress, "iPhone 15 Pro Max, Lagos delivery")
+└── msg.value: 0.5 MON (your escrow deposit)
+    ├── Creates a new Trade struct with a unique ID
+    ├── Records buyer (you), seller, amount, and metadata
+    ├── Sets released = false, sellerApprovedRefund = false
+    ├── Emits TradeCreated(id, buyer, seller, amount) event
+    └── Increments nextTradeId counter
+```
+
+Your funds are now **held by the smart contract** — not by VeriPay, not by the seller, not by any human. They can only be moved through the contract's defined functions.
+
+## After Creating an Escrow
+
+Once your escrow is live, you have several options:
+
+<CardGroup cols={2}>
+  <Card title="View in Dashboard" icon="table-columns" href="/user-guide/dashboard">
+    See all your trades and their current status.
+  </Card>
+  <Card title="Confirm Delivery" icon="circle-check" href="/user-guide/release-funds">
+    When the seller delivers, release the locked funds.
+  </Card>
+  <Card title="Request a Refund" icon="rotate-left" href="/user-guide/request-refund">
+    If something goes wrong, initiate the refund process.
+  </Card>
+  <Card title="Chat with Seller" icon="comments" href="/user-guide/in-trade-chat">
+    Discuss trade details or resolve issues directly.
+  </Card>
+</CardGroup>
+
+## Common Questions
+
+<AccordionGroup>
+  <Accordion title="Can I cancel an escrow after creating it?">
+    You cannot unilaterally cancel an escrow. This is by design — it protects the seller from buyers who might cancel after the seller has already shipped goods. To get your funds back, you need to use the [refund process](/user-guide/request-refund), which requires seller consent.
+  </Accordion>
+  <Accordion title="What if I enter the wrong seller address?">
+    Unfortunately, once the escrow is created, the seller address cannot be changed. Always double-check the address before submitting. If you sent to the wrong address, you'll need to coordinate with the actual address owner to have them approve a refund.
+  </Accordion>
+  <Accordion title="How much are the gas fees?">
+    Gas fees on Monad are extremely low — typically less than $0.01. You'll see the exact fee in your wallet's transaction approval popup before confirming.
+  </Accordion>
+  <Accordion title="Is there a maximum escrow amount?">
+    There is no maximum amount in the smart contract. However, on testnet, you're limited by how many MON tokens you can get from the faucet.
+  </Accordion>
+</AccordionGroup>

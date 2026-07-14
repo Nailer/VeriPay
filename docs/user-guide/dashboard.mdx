@@ -1,0 +1,73 @@
+---
+title: "Trade Dashboard"
+sidebarTitle: "Dashboard"
+description: "Monitor all your escrow trades in real-time — see statuses, amounts, and manage settlements from one place."
+---
+
+## The Dashboard
+
+The VeriPay Dashboard at `/dashboard` is your **command center** for all escrow activity. It shows the most recent trades on the platform with live status updates pulled directly from the Monad blockchain.
+
+## What You'll See
+
+Each trade card on the dashboard displays:
+
+| Element | Description |
+| --- | --- |
+| **Receipt ID** | Unique trade identifier (e.g., `#001`, `#002`) |
+| **Amount** | The MON value locked in escrow |
+| **Status Badge** | Current state of the trade |
+| **Trade Description** | The metadata/terms entered when the escrow was created |
+| **Action Link** | "Manage Settlement" → takes you to the trade detail page |
+
+## Trade Statuses
+
+Trades can be in one of three states:
+
+<CardGroup cols={3}>
+  <Card title="🔒 Funds Locked" icon="lock">
+    **Pink badge.** The escrow is active. MON tokens are locked in the smart contract. Waiting for the buyer to confirm delivery or the seller to approve a refund.
+  </Card>
+  <Card title="🔄 Refund Ready" icon="rotate-left">
+    **Blue badge.** The seller has approved a refund. The buyer can now claim their MON back by clicking "Withdraw Refund" on the trade detail page.
+  </Card>
+  <Card title="✅ Finalized" icon="circle-check">
+    **Green badge.** The trade is complete. Funds have been released to the seller (or refunded to the buyer). No further actions are possible.
+  </Card>
+</CardGroup>
+
+## How Data is Fetched
+
+The dashboard reads trade data **directly from the Monad blockchain** — not from a database. Here's what happens when you load the page:
+
+1. VeriPay calls `nextTradeId()` on the smart contract to determine how many trades exist
+2. It fetches the **10 most recent trades** by calling `trades(id)` for each
+3. Trade data (buyer, seller, amount, status, metadata) is decoded and displayed
+4. The page shows a loading spinner ("Syncing with Monad Ledger...") while this happens
+
+<Info>
+  Because data comes directly from the blockchain, what you see is **always accurate and up-to-date**. There's no cache, no delay, no stale data. The blockchain is the single source of truth.
+</Info>
+
+## Dashboard Actions
+
+### Start a New Trade
+Click the **"+ Start New Trade"** button in the top-right corner to navigate to the escrow creation page.
+
+### View Trade Details
+Click on any trade card to go to its detail page, where you can:
+- See full buyer/seller addresses
+- View the locked amount and trade description
+- Take settlement actions (release funds, approve refund, claim refund)
+- Open the in-trade chat
+
+### Error Handling
+If the dashboard can't connect to the Monad network, you'll see a red error banner:
+- **"Network Sync Error"** — check your internet connection or Monad RPC status
+- Click **"Retry"** to attempt fetching again
+
+## Next Step
+
+<Card title="Releasing Funds" icon="arrow-right" href="/user-guide/release-funds">
+  Learn how to confirm delivery and release escrowed MON to the seller.
+</Card>
