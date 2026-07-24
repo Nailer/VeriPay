@@ -99,7 +99,7 @@ export default function Dashboard() {
     return (
       <div className="flex-1 flex items-center justify-center min-h-[60vh] transition-colors duration-300">
         <div className="text-center">
-          <Loader2 className="w-10 h-10 text-[#FF007A] animate-spin mx-auto mb-4" />
+          <Loader2 className="w-10 h-10 text-zinc-900 dark:text-white animate-spin mx-auto mb-4" />
           <p className="text-zinc-500 animate-pulse text-sm">Syncing with Monad Ledger...</p>
         </div>
       </div>
@@ -116,19 +116,19 @@ export default function Dashboard() {
             Recent Escrows
           </h2>
           <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 transition-colors">
-            Real-time status of P2P trades on Monad Pay-Lagos.
+            Real-time status of P2P trades on VeriPay.
           </p>
         </div>
         <Link
           href="/create"
-          className="w-full sm:w-auto text-center px-6 py-3.5 sm:px-8 sm:py-4 bg-[#FF007A] text-white font-bold rounded-2xl hover:scale-105 transition-all shadow-lg shadow-pink-500/20 text-sm sm:text-base"
+          className="w-full sm:w-auto text-center px-6 py-3.5 sm:px-8 sm:py-4 bg-zinc-900 dark:bg-white text-white dark:text-black font-bold rounded-2xl hover:scale-105 transition-all shadow-lg text-sm sm:text-base"
         >
           + Start New Trade
         </Link>
       </div>
 
       {error ? (
-        <div className="p-5 rounded-2xl bg-red-500/10 border border-red-500/20 flex flex-col sm:flex-row items-start sm:items-center gap-3 text-red-600 dark:text-red-400">
+        <div className="p-5 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 flex flex-col sm:flex-row items-start sm:items-center gap-3 text-zinc-900 dark:text-white">
           <AlertCircle className="w-5 h-5 shrink-0" />
           <p className="text-sm flex-1">{error}</p>
           <button onClick={fetchTrades} className="text-xs underline uppercase tracking-widest font-bold shrink-0">Retry</button>
@@ -136,7 +136,7 @@ export default function Dashboard() {
       ) : trades.length === 0 ? (
         <div className="text-center py-20 sm:py-32 border-2 border-dashed border-zinc-300 dark:border-zinc-800 rounded-[2.5rem] bg-zinc-50 dark:bg-zinc-900/20 transition-colors px-6">
           <p className="text-zinc-500 text-base sm:text-lg mb-6">The ledger is empty. Be the first to secure a trade in Lagos.</p>
-          <Link href="/create" className="text-[#FF007A] font-bold hover:brightness-110 dark:hover:brightness-125 transition-all">
+          <Link href="/create" className="text-zinc-900 dark:text-white font-bold underline underline-offset-4 transition-all">
             Initialize First Escrow →
           </Link>
         </div>
@@ -146,7 +146,7 @@ export default function Dashboard() {
             <Link
               href={`/trade/${trade.id}`}
               key={trade.id}
-              className="group bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 hover:border-[#FF007A]/50 transition-all duration-500 hover:shadow-2xl hover:shadow-pink-500/5 active:scale-[0.98]"
+              className="group bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 hover:border-zinc-400 dark:hover:border-zinc-500 transition-all duration-500 hover:shadow-2xl active:scale-[0.98]"
             >
               <div className="flex items-center justify-between mb-4 sm:mb-6">
                 <div className="flex flex-col">
@@ -155,10 +155,10 @@ export default function Dashboard() {
                 </div>
                 <div className={`px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-black border ${
                   trade.released
-                    ? "bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/20"
+                    ? "bg-zinc-900 dark:bg-white text-white dark:text-black border-zinc-900 dark:border-white"
                     : trade.sellerApprovedRefund
-                      ? "bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-400/20"
-                      : "bg-pink-100 dark:bg-[#FF007A]/10 text-[#FF007A] border-pink-200 dark:border-[#FF007A]/20"
+                      ? "bg-white dark:bg-black text-zinc-900 dark:text-white border-zinc-400 dark:border-zinc-500"
+                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600"
                 }`}>
                   {trade.released ? "Finalized" : trade.sellerApprovedRefund ? "Refund Ready" : "Funds Locked"}
                 </div>
@@ -173,8 +173,8 @@ export default function Dashboard() {
 
               <div className="flex items-center justify-between pt-4 sm:pt-6 border-t border-zinc-200 dark:border-zinc-800/50 transition-colors">
                 <span className="text-xs font-bold text-zinc-500 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">Manage Settlement</span>
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center group-hover:bg-[#FF007A] transition-all">
-                  <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-zinc-600 dark:text-white group-hover:text-white group-hover:translate-x-0.5 transition-all" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center group-hover:bg-zinc-900 dark:group-hover:bg-white transition-all">
+                  <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-zinc-600 dark:text-white group-hover:text-white dark:group-hover:text-black group-hover:translate-x-0.5 transition-all" />
                 </div>
               </div>
             </Link>

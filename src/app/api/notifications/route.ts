@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { supabaseAdmin, isSupabaseConfigured } from "@/lib/supabase";
 
 export type NotificationType = "trade" | "chat";
 
@@ -13,9 +14,6 @@ export type Notification = {
   createdAt: string;
 };
 
-// In-memory store keyed by lowercase wallet address
-const notificationStore: Record<string, Notification[]> = {};
-
 // ─── GET /api/notifications?address=0x... ────────────────────────────────────
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -25,7 +23,33 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Missing address" }, { status: 400 });
   }
 
-  const notifications = notificationStore[address] ?? [];
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ notifications: [] });
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("notifications")
+    .select("id, type, trade_id, from_address, amount, message, read, created_at")
+    .eq("to_address", address)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) {
+    console.error("Notifications GET error:", error.message);
+    return NextResponse.json({ notifications: [] });
+  }
+
+  const notifications: Notification[] = (data ?? []).map((row) => ({
+    id: row.id,
+    type: row.type,
+    tradeId: row.trade_id,
+    fromAddress: row.from_address,
+    amount: row.amount ?? undefined,
+    message: row.message ?? undefined,
+    read: row.read,
+    createdAt: new Date(row.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  }));
+
   return NextResponse.json({ notifications });
 }
 
@@ -40,29 +64,41 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    if (!isSupabaseConfigured()) {
+      return NextResponse.json({ success: false, error: "Persistence not configured" }, { status: 503 });
+    }
+
     const key = (toAddress as string).toLowerCase();
 
-    if (!notificationStore[key]) {
-      notificationStore[key] = [];
+    const { data, error } = await supabaseAdmin
+      .from("notifications")
+      .insert({
+        to_address: key,
+        type,
+        trade_id: tradeId,
+        from_address: fromAddress,
+        amount,
+        message,
+        read: false,
+      })
+      .select("id, type, trade_id, from_address, amount, message, read, created_at")
+      .single();
+
+    if (error || !data) {
+      console.error("Notifications POST error:", error?.message);
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 
     const newNotification: Notification = {
-      id: Date.now(),
-      type,
-      tradeId,
-      fromAddress,
-      amount,
-      message,
-      read: false,
-      createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      id: data.id,
+      type: data.type,
+      tradeId: data.trade_id,
+      fromAddress: data.from_address,
+      amount: data.amount ?? undefined,
+      message: data.message ?? undefined,
+      read: data.read,
+      createdAt: new Date(data.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
-
-    notificationStore[key].unshift(newNotification); // newest first
-
-    // Keep at most 50 notifications per user
-    if (notificationStore[key].length > 50) {
-      notificationStore[key] = notificationStore[key].slice(0, 50);
-    }
 
     return NextResponse.json({ success: true, notification: newNotification });
   } catch (err) {
@@ -82,21 +118,21 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Missing address" }, { status: 400 });
     }
 
-    const key = address.toLowerCase();
-    const store = notificationStore[key];
-
-    if (!store) {
+    if (!isSupabaseConfigured()) {
       return NextResponse.json({ success: true });
     }
 
-    if (!ids || ids.length === 0) {
-      // Mark ALL as read
-      notificationStore[key] = store.map((n) => ({ ...n, read: true }));
-    } else {
-      const idSet = new Set(ids);
-      notificationStore[key] = store.map((n) =>
-        idSet.has(n.id) ? { ...n, read: true } : n
-      );
+    const key = address.toLowerCase();
+
+    let query = supabaseAdmin.from("notifications").update({ read: true }).eq("to_address", key);
+    if (ids && ids.length > 0) {
+      query = query.in("id", ids);
+    }
+
+    const { error } = await query;
+    if (error) {
+      console.error("Notifications PATCH error:", error.message);
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });

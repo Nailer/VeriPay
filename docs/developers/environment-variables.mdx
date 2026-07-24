@@ -42,6 +42,51 @@ NEXT_PUBLIC_THIRDWEB_CLIENT_ID=your_client_id_here
 | **Prefix** | `NEXT_PUBLIC_` — exposed to the browser |
 | **How to get it** | Sign up at [thirdweb.com](https://thirdweb.com/dashboard) → Create a project → Copy the Client ID |
 
+### `SUPABASE_URL`
+
+The API URL for VeriPay's Supabase project. Used server-side to persist chat messages, notifications, exchange orders, and usage analytics (wallet connects, page views, trade activity).
+
+```env
+SUPABASE_URL=https://gwruqdpbugqjrkyfvipa.supabase.co
+```
+
+| Property | Value |
+| --- | --- |
+| **Required** | Only for persistence/analytics features |
+| **Prefix** | None — server-only |
+| **Default** | Falls back to the project URL hardcoded in `src/lib/supabase.ts` |
+
+### `SUPABASE_SERVICE_ROLE_KEY`
+
+The Supabase **service role** secret key. This bypasses Row Level Security, so every database table it touches has RLS enabled with zero policies — meaning the public/anon key can't read or write any of this data, only the server can.
+
+```env
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_secret_here
+```
+
+| Property | Value |
+| --- | --- |
+| **Required** | Only for persistence/analytics features |
+| **Prefix** | None — server-only. **Never** prefix this with `NEXT_PUBLIC_`. |
+| **How to get it** | Supabase Dashboard → your project → Settings → API → `service_role` secret |
+
+<Warning>
+  `SUPABASE_SERVICE_ROLE_KEY` has full read/write access to every table in the database. Treat it like a root password — never commit it, never log it, and never expose it to the browser.
+</Warning>
+
+### `ADMIN_PASSCODE`
+
+Shared passcode that gates the `/admin` console (chats, exchange orders, usage stats).
+
+```env
+ADMIN_PASSCODE=choose-a-strong-passcode
+```
+
+| Property | Value |
+| --- | --- |
+| **Required** | Recommended — defaults to `lagos-admin` if unset |
+| **Prefix** | None — server-only |
+
 ## Full `.env.local` Template
 
 ```env
@@ -52,6 +97,13 @@ NEXT_PUBLIC_CONTRACT_ADDRESS=0xd0cc532f55ce6849d5b70e24d6188073f8921621
 # ─── Thirdweb ─────────────────────────────────────────────────
 # Get yours at: https://thirdweb.com/dashboard
 NEXT_PUBLIC_THIRDWEB_CLIENT_ID=your_thirdweb_client_id_here
+
+# ─── Supabase (chat, notifications, exchange orders, analytics) ─
+SUPABASE_URL=https://gwruqdpbugqjrkyfvipa.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_secret_here
+
+# ─── Admin console ──────────────────────────────────────────────
+ADMIN_PASSCODE=choose-a-strong-passcode
 ```
 
 ## Adding New Variables

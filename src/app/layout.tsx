@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import Navbar from "@/components/Navbar";
+import Analytics from "@/components/Analytics";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Monad Pay | Secure Escrow",
-  description: "Next-generation secure smart contract escrow platform built on Monad.",
+  title: "VeriPay | Secure Escrow & Exchange",
+  description: "VeriPay — trustless escrow and simple Naira-to-crypto exchange, built on Monad.",
 };
 
 export default function RootLayout({
@@ -32,6 +33,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-white text-zinc-900 dark:bg-black dark:text-zinc-50 selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black transition-colors duration-300">
         <Providers>
+          <Analytics />
           <Navbar />
           {children}
         </Providers>

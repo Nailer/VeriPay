@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ShieldCheck, Zap, Lock } from "lucide-react";
+import { ArrowRight, ShieldCheck, Zap, Lock, Wallet } from "lucide-react";
 
 export default function Home() {
   return (
@@ -30,7 +30,7 @@ export default function Home() {
         </h1>
 
         <p className="text-base sm:text-lg md:text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl mb-10 sm:mb-12 leading-relaxed transition-colors px-2">
-          Monad Pay provides a completely decentralized, fast, and transparent escrow service.
+          VeriPay provides a completely decentralized, fast, and transparent escrow service.
           Funds are securely locked in smart contracts until both parties are 100% satisfied.
         </p>
 
@@ -49,6 +49,18 @@ export default function Home() {
             View Trades Dashboard
           </Link>
         </div>
+
+        {/* No MON? → Exchange */}
+        <Link
+          href="/exchange"
+          className="group mt-8 sm:mt-10 inline-flex items-center gap-3 px-5 py-3 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-500 transition-all duration-500 hover:-translate-y-0.5"
+        >
+          <Wallet className="w-4 h-4 text-zinc-900 dark:text-white" />
+          <span className="text-xs sm:text-sm font-bold text-zinc-800 dark:text-zinc-200">
+            No MON yet? <span className="underline underline-offset-2">Buy with Naira</span> in two taps
+          </span>
+          <ArrowRight className="w-4 h-4 text-zinc-900 dark:text-white group-hover:translate-x-1 transition-transform duration-300" />
+        </Link>
       </main>
 
       {/* Features Section */}
@@ -90,7 +102,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="border-t border-zinc-200 dark:border-zinc-900 py-8 sm:py-12 px-5 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-zinc-500 text-xs sm:text-sm max-w-6xl mx-auto w-full relative z-10 transition-colors">
-        <p>© 2026 Monad Pay. All rights reserved.</p>
+        <p>© 2026 VeriPay. All rights reserved.</p>
         <div className="flex gap-4 sm:gap-6">
           <a href="https://www.coinapi.io/learn/glossary/escrow-service" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Terms of Service</a>
           <a href="https://monad-testnet.socialscan.io/address/0xd0cc532f55ce6849d5b70e24d6188073f8921621" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Smart Contracts</a>

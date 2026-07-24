@@ -131,9 +131,9 @@ export default function ChatPage() {
         <Link href={`/trade/${idStr}`} className="inline-flex items-center gap-2 text-zinc-600 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors font-bold uppercase tracking-widest text-[10px]">
           <ArrowLeft className="w-4 h-4" /> Back to Trade
         </Link>
-        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-100 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 rounded-full">
-          <ShieldCheck className="w-3 h-3 text-green-600 dark:text-green-400" />
-          <span className="text-[9px] sm:text-[10px] font-black text-green-700 dark:text-green-400 uppercase tracking-widest hidden xs:block">Encrypted</span>
+        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-full">
+          <ShieldCheck className="w-3 h-3 text-zinc-900 dark:text-white" />
+          <span className="text-[9px] sm:text-[10px] font-black text-zinc-900 dark:text-white uppercase tracking-widest hidden xs:block">Encrypted</span>
         </div>
       </div>
 
@@ -160,8 +160,8 @@ export default function ChatPage() {
             <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-0.5 font-bold">Trade #00{idStr}</p>
           </div>
           <div className="flex -space-x-1.5 sm:-space-x-2">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-900 bg-[#FF007A] flex items-center justify-center text-[9px] sm:text-[10px] font-bold text-white z-20">A</div>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-900 bg-blue-500 flex items-center justify-center text-[9px] sm:text-[10px] font-bold text-white z-10">B</div>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-900 bg-zinc-900 dark:bg-white flex items-center justify-center text-[9px] sm:text-[10px] font-bold text-white dark:text-black z-20">A</div>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-900 bg-zinc-600 flex items-center justify-center text-[9px] sm:text-[10px] font-bold text-white z-10">B</div>
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-900 bg-zinc-800 flex items-center justify-center text-[9px] sm:text-[10px] font-bold text-white">S</div>
           </div>
         </div>
@@ -177,7 +177,7 @@ export default function ChatPage() {
                   {!isMe && (
                     <div className="flex items-center gap-2 mb-1 pl-1">
                       {msg.isAdmin
-                        ? <span className="text-[10px] font-black uppercase tracking-widest text-[#FF007A]">Admin</span>
+                        ? <span className="text-[10px] font-black uppercase tracking-widest text-zinc-900 dark:text-white">Admin</span>
                         : <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{msg.sender}</span>}
                     </div>
                   )}
@@ -185,14 +185,14 @@ export default function ChatPage() {
                     msg.isAdmin
                       ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-tl-sm"
                       : isMe
-                        ? "bg-[#FF007A] text-white rounded-tr-sm shadow-md shadow-pink-500/20"
+                        ? "bg-zinc-900 text-white dark:bg-white dark:text-black rounded-tr-sm shadow-md"
                         : "bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white rounded-tl-sm shadow-sm"
                   }`}>
                     {msg.text}
                   </div>
                   <div className="flex items-center gap-1 mt-1 pr-1 text-[10px] font-medium text-zinc-400">
                     {msg.time}
-                    {isMe && <CheckCheck className="w-3 h-3 text-[#FF007A]" />}
+                    {isMe && <CheckCheck className="w-3 h-3 text-zinc-900 dark:text-white" />}
                   </div>
                 </div>
               </div>
@@ -210,12 +210,12 @@ export default function ChatPage() {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Type your message..."
-              className="flex-1 pl-4 sm:pl-5 pr-3 py-3 sm:py-4 bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF007A]/50 focus:border-[#FF007A]/50 text-sm transition-all"
+              className="flex-1 pl-4 sm:pl-5 pr-3 py-3 sm:py-4 bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-400/50 focus:border-zinc-500 text-sm transition-all"
             />
             <button
               type="submit"
               disabled={!inputValue.trim()}
-              className="p-3 sm:p-4 bg-[#FF007A] text-white rounded-xl hover:bg-pink-600 transition-colors disabled:opacity-50 shadow-lg shadow-pink-500/20 flex items-center justify-center shrink-0 active:scale-90"
+              className="p-3 sm:p-4 bg-zinc-900 dark:bg-white text-white dark:text-black rounded-xl hover:opacity-90 transition-all disabled:opacity-50 shadow-lg flex items-center justify-center shrink-0 active:scale-90"
             >
               <Send className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>

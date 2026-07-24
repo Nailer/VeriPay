@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useActiveAccount } from "thirdweb/react";
+import Logo from "@/components/Logo";
 
 type Notification = {
   id: number;
@@ -34,6 +35,16 @@ const wallets = [
   createWallet("io.rabby"),
   createWallet("io.zerion.wallet"),
 ];
+
+// Compact styling for the thirdweb connect button so the mobile header stays slim
+const compactConnectStyle = {
+  height: "36px",
+  minWidth: "0",
+  fontSize: "13px",
+  fontWeight: "700",
+  padding: "0 14px",
+  borderRadius: "9999px",
+} as const;
 
 export default function Navbar() {
   const { theme, setTheme, resolvedTheme } = useTheme();
@@ -108,15 +119,13 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 md:px-12 backdrop-blur-md border-b border-zinc-200 dark:border-white/10 sticky top-0 z-50 bg-white/90 dark:bg-black/90 transition-all duration-300">
+      <header className="flex items-center justify-between gap-2 px-3 py-2.5 sm:px-6 sm:py-4 md:px-12 backdrop-blur-md border-b border-zinc-200 dark:border-white/10 sticky top-0 z-50 bg-white/90 dark:bg-black/90 transition-all duration-300">
 
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 cursor-pointer group hover:opacity-80" onClick={() => setMobileMenuOpen(false)}>
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-black dark:bg-white flex items-center justify-center shadow-lg transition-shadow">
-            <span className="font-bold text-white dark:text-black text-lg sm:text-xl tracking-tighter">MP</span>
-          </div>
-          <span className="hidden sm:block text-lg sm:text-xl font-bold tracking-tight text-zinc-900 dark:text-white">
-            Monad Pay
+        {/* Logo + wordmark */}
+        <Link href="/" className="flex items-center gap-2 sm:gap-2.5 cursor-pointer group hover:opacity-80 shrink-0" onClick={() => setMobileMenuOpen(false)}>
+          <Logo className="w-8 h-8 sm:w-10 sm:h-10" />
+          <span className="text-xl sm:text-2xl font-black tracking-tight text-zinc-900 dark:text-white">
+            VeriPay
           </span>
         </Link>
 
@@ -127,6 +136,10 @@ export default function Navbar() {
           </Link>
           <Link href="/create" className="text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
             New Escrow
+          </Link>
+          <Link href="/exchange" className="flex items-center gap-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
+            Exchange
+            <span className="px-1.5 py-0.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black text-[9px] font-black uppercase tracking-wider">New</span>
           </Link>
 
           {/* Theme switcher */}
@@ -155,7 +168,7 @@ export default function Navbar() {
           <div className="flex items-center gap-2">
             <ConnectButton
               client={client} wallets={wallets}
-              appMetadata={{ name: "Monad Pay", url: "https://monad-pay-lagos.vercel.app" }}
+              appMetadata={{ name: "VeriPay", url: "https://monad-pay-lagos.vercel.app" }}
               theme={mounted && isDark ? "dark" : "light"}
               connectModal={{ size: "wide" }}
               chain={defineChain(10143)}
@@ -169,15 +182,16 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Mobile right side: bell + hamburger */}
-        <div className="flex sm:hidden items-center gap-2">
-          {/* Compact wallet button on mobile */}
+        {/* Mobile right side: connect + bell + hamburger */}
+        <div className="flex sm:hidden items-center gap-1.5 shrink-0">
           <ConnectButton
             client={client} wallets={wallets}
-            appMetadata={{ name: "Monad Pay", url: "https://monad-pay-lagos.vercel.app" }}
+            appMetadata={{ name: "VeriPay", url: "https://monad-pay-lagos.vercel.app" }}
             theme={mounted && isDark ? "dark" : "light"}
             connectModal={{ size: "compact" }}
             chain={defineChain(10143)}
+            connectButton={{ label: "Connect", style: compactConnectStyle }}
+            detailsButton={{ style: compactConnectStyle }}
           />
           <NotificationBell
             bellRef={bellRef} panelRef={panelRef}
@@ -189,7 +203,7 @@ export default function Navbar() {
           <button
             onClick={() => setMobileMenuOpen((v) => !v)}
             aria-label="Toggle menu"
-            className="flex items-center justify-center w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400"
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300"
           >
             {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </button>
@@ -198,7 +212,7 @@ export default function Navbar() {
 
       {/* Mobile slide-down menu */}
       {mobileMenuOpen && (
-        <div className="sm:hidden fixed inset-x-0 top-[57px] z-40 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-4 py-5 flex flex-col gap-1 animate-in fade-in slide-in-from-top-2 duration-200 shadow-xl">
+        <div className="sm:hidden fixed inset-x-0 top-[53px] z-40 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-4 py-5 flex flex-col gap-1 animate-in fade-in slide-in-from-top-2 duration-200 shadow-xl">
           <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}
             className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-semibold text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
             Dashboard
@@ -206,6 +220,11 @@ export default function Navbar() {
           <Link href="/create" onClick={() => setMobileMenuOpen(false)}
             className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-semibold text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
             New Escrow
+          </Link>
+          <Link href="/exchange" onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center gap-2 px-4 py-3.5 rounded-xl text-base font-semibold text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
+            Buy / Sell Crypto
+            <span className="px-1.5 py-0.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black text-[9px] font-black uppercase tracking-wider">New</span>
           </Link>
           <div className="border-t border-zinc-200 dark:border-zinc-800 mt-2 pt-4 px-4">
             <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-3">Theme</p>
@@ -247,7 +266,7 @@ function NotificationBell({
   isMobile?: boolean;
 }) {
   return (
-    <div className="relative">
+    <div className={isMobile ? "static" : "relative"}>
       <button
         ref={bellRef}
         id="notification-bell"
@@ -255,33 +274,35 @@ function NotificationBell({
         aria-label="Notifications"
         className={`relative flex items-center justify-center w-9 h-9 rounded-full border transition-all duration-200 focus:outline-none
           ${panelOpen
-            ? "bg-[#FF007A] border-[#FF007A] text-white shadow-lg shadow-pink-500/30"
+            ? "bg-zinc-900 dark:bg-white border-zinc-900 dark:border-white text-white dark:text-black shadow-lg"
             : "bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800"
           }`}
       >
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#FF007A] text-white text-[9px] font-black flex items-center justify-center border-2 border-white dark:border-black animate-pulse">
+          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black text-[9px] font-black flex items-center justify-center border-2 border-white dark:border-black animate-pulse">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
 
-      {/* Notification panel */}
+      {/* Notification panel — full-width sheet on mobile, dropdown on desktop */}
       {panelOpen && (
         <div
           ref={panelRef}
           id="notification-panel"
-          className={`absolute top-[calc(100%+12px)] w-[min(92vw,380px)] max-h-[70vh] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl overflow-hidden z-[100] flex flex-col animate-in fade-in slide-in-from-top-2 duration-200
-            ${isMobile ? "right-0" : "right-0"}`}
+          className={`absolute max-h-[70vh] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl overflow-hidden z-[100] flex flex-col animate-in fade-in slide-in-from-top-2 duration-200
+            ${isMobile
+              ? "inset-x-2 top-[calc(100%+8px)]"
+              : "right-0 top-[calc(100%+12px)] w-[min(92vw,380px)]"}`}
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/80">
             <div className="flex items-center gap-2">
-              <Bell className="w-4 h-4 text-[#FF007A]" />
+              <Bell className="w-4 h-4 text-zinc-900 dark:text-white" />
               <span className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-wider">Notifications</span>
               {unreadCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-[#FF007A]/10 text-[#FF007A] text-[10px] font-black">{unreadCount} new</span>
+                <span className="px-2 py-0.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black text-[10px] font-black">{unreadCount} new</span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -313,12 +334,12 @@ function NotificationBell({
                     <Link
                       href={`/trade/${notif.tradeId}`}
                       onClick={() => setPanelOpen(false)}
-                      className={`flex items-start gap-3 px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-colors relative ${!notif.read ? "bg-pink-50/50 dark:bg-[#FF007A]/5" : ""}`}
+                      className={`flex items-start gap-3 px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-colors relative ${!notif.read ? "bg-zinc-100/70 dark:bg-zinc-800/40" : ""}`}
                     >
-                      <div className={`mt-0.5 flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center ${notif.type === "trade" ? "bg-purple-100 dark:bg-purple-500/10" : "bg-blue-100 dark:bg-blue-500/10"}`}>
+                      <div className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center bg-zinc-100 dark:bg-zinc-800">
                         {notif.type === "trade"
-                          ? <ShieldCheck className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                          : <MessageSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+                          ? <ShieldCheck className="w-4 h-4 text-zinc-900 dark:text-white" />
+                          : <MessageSquare className="w-4 h-4 text-zinc-900 dark:text-white" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-wide leading-tight">
@@ -326,12 +347,12 @@ function NotificationBell({
                         </p>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed line-clamp-2">
                           {notif.type === "trade"
-                            ? <>From <span className="font-mono">{notif.fromAddress.slice(0, 8)}…{notif.fromAddress.slice(-6)}</span> · <span className="text-[#FF007A] font-bold">{notif.amount} MON</span></>
+                            ? <>From <span className="font-mono">{notif.fromAddress.slice(0, 8)}…{notif.fromAddress.slice(-6)}</span> · <span className="text-zinc-900 dark:text-white font-bold">{notif.amount} MON</span></>
                             : <>&ldquo;{notif.message}&rdquo;</>}
                         </p>
                         <p className="text-[10px] text-zinc-400 mt-1 font-medium">{notif.createdAt}</p>
                       </div>
-                      {!notif.read && <div className="flex-shrink-0 w-2 h-2 rounded-full bg-[#FF007A] mt-1.5" />}
+                      {!notif.read && <div className="flex-shrink-0 w-2 h-2 rounded-full bg-zinc-900 dark:bg-white mt-1.5" />}
                     </Link>
                   </li>
                 ))}
@@ -341,7 +362,7 @@ function NotificationBell({
 
           {notifications.length > 0 && (
             <div className="px-4 py-2.5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/80">
-              <p className="text-[10px] text-zinc-400 text-center font-medium uppercase tracking-widest">Monad Pay · Address-targeted alerts</p>
+              <p className="text-[10px] text-zinc-400 text-center font-medium uppercase tracking-widest">VeriPay · Address-targeted alerts</p>
             </div>
           )}
         </div>
