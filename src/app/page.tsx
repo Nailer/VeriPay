@@ -5,10 +5,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen relative overflow-hidden transition-colors duration-300">
       {/* Background gradients */}
-      <div className="absolute top-0 inset-x-0 h-full overflow-hidden pointer-events-none -z-10">
-        <div className="absolute -top-[30%] -right-[10%] w-[70%] h-[70%] rounded-full bg-zinc-200/50 dark:bg-zinc-800/30 blur-[120px] mix-blend-multiply dark:mix-blend-screen animate-pulse" />
-        <div className="absolute top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-zinc-300/50 dark:bg-zinc-900/40 blur-[100px] mix-blend-multiply dark:mix-blend-screen" />
-      </div>
+      <div className="bg-ambient absolute top-0 inset-x-0 h-full overflow-hidden pointer-events-none -z-10" />
 
       {/* Hero Section */}
       <main className="flex-1 flex flex-col items-center justify-center text-center px-5 py-16 sm:py-24 md:py-32 w-full max-w-5xl mx-auto z-10">

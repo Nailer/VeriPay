@@ -13,6 +13,7 @@ import {
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useActiveAccount } from "thirdweb/react";
 import Logo from "@/components/Logo";
+import { usePolling } from "@/lib/usePolling";
 
 type Notification = {
   id: number;
@@ -73,13 +74,9 @@ export default function Navbar() {
     } catch { /* silent */ }
   }, [account?.address]);
 
-  // Poll every 5 seconds when wallet connected
-  useEffect(() => {
-    if (!account?.address) return;
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 5000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications, account?.address]);
+  // Alerts aren't time-critical, and this runs on every page for every visitor,
+  // so poll at a relaxed cadence and only while the tab is visible.
+  usePolling(fetchNotifications, 20_000, Boolean(account?.address));
 
   // Close notification panel on outside click
   useEffect(() => {

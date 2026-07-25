@@ -7,6 +7,7 @@ import { ArrowLeft, ShieldCheck, Send, Lock, CheckCheck } from "lucide-react";
 import { useActiveAccount } from "thirdweb/react";
 import { createPublicClient, http } from "viem";
 import { CONTRACT_ADDRESS, escrowAbi } from "@/lib/abi";
+import { usePolling } from "@/lib/usePolling";
 
 export default function ChatPage() {
   const params = useParams();
@@ -61,12 +62,9 @@ export default function ChatPage() {
     }
   }, [idStr]);
 
-  useEffect(() => {
-    fetchTrade();
-    fetchMessages();
-    const interval = setInterval(fetchMessages, 2000);
-    return () => clearInterval(interval);
-  }, [fetchTrade, fetchMessages]);
+  useEffect(() => { fetchTrade(); }, [fetchTrade]);
+
+  usePolling(fetchMessages, 4000);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {

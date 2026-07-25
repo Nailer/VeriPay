@@ -197,7 +197,7 @@ export default function TradeDetail() {
         </div>
       </div>
 
-      <div className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-6 md:p-10 backdrop-blur-xl shadow-2xl transition-colors duration-300">
+      <div className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-6 md:p-10 shadow-2xl transition-colors duration-300">
 
         {/* Status Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-7 sm:mb-10 gap-3 sm:gap-6">

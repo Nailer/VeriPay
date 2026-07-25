@@ -163,8 +163,19 @@ async function fetchBybitNgnRate(): Promise<number | null> {
 type Cache = { snapshot: PricingSnapshot; at: number };
 const g = globalThis as unknown as { __vpPricing?: Cache; __vpPricingInflight?: Promise<PricingSnapshot> };
 
-/** Prices are re-fetched at most this often; the UI polls faster and rides the cache. */
-const CACHE_TTL_MS = 10_000;
+/**
+ * How old a snapshot may be before we kick off a refresh.
+ *
+ * Deliberately shorter than the UI's poll interval — but note we serve the
+ * cached value *immediately* and refresh in the background (stale-while-
+ * revalidate). With a blocking cache set to exactly the poll interval, every
+ * single request landed on an expiry and paid the full 1–3s cost of three
+ * upstream API calls; the endpoint felt broken even though it was "cached".
+ */
+const CACHE_TTL_MS = 8_000;
+
+/** Past this, a snapshot is too old to serve and we block on a fresh fetch. */
+const CACHE_HARD_MAX_MS = 120_000;
 
 async function buildSnapshot(): Promise<PricingSnapshot> {
   const [binance, gecko, bybitRate] = await Promise.all([
@@ -227,13 +238,10 @@ async function buildSnapshot(): Promise<PricingSnapshot> {
   };
 }
 
-/** Cached, de-duplicated pricing snapshot. Concurrent callers share one fetch. */
-export async function getPricing(): Promise<PricingSnapshot> {
-  const cached = g.__vpPricing;
-  if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.snapshot;
-
+function refresh(): Promise<PricingSnapshot> {
   if (g.__vpPricingInflight) return g.__vpPricingInflight;
 
+  const previous = g.__vpPricing;
   g.__vpPricingInflight = buildSnapshot()
     .then((snapshot) => {
       g.__vpPricing = { snapshot, at: Date.now() };
@@ -241,12 +249,37 @@ export async function getPricing(): Promise<PricingSnapshot> {
     })
     .catch((err) => {
       console.error("[pricing] snapshot failed:", err);
-      if (cached) return cached.snapshot; // serve stale rather than nothing
+      if (previous) return previous.snapshot; // serve stale rather than nothing
       throw err;
     })
     .finally(() => { g.__vpPricingInflight = undefined; });
 
   return g.__vpPricingInflight;
+}
+
+/**
+ * Cached, de-duplicated pricing snapshot.
+ *
+ * Fresh  → return it.
+ * Stale  → return it *now* and refresh in the background, so callers never
+ *          wait on Binance/CoinGecko/Bybit round-trips.
+ * Absent
+ * or ancient → block on a real fetch.
+ */
+export async function getPricing(): Promise<PricingSnapshot> {
+  const cached = g.__vpPricing;
+
+  if (cached) {
+    const age = Date.now() - cached.at;
+    if (age < CACHE_TTL_MS) return cached.snapshot;
+
+    if (age < CACHE_HARD_MAX_MS) {
+      void refresh().catch(() => { /* background refresh; stale value already served */ });
+      return cached.snapshot;
+    }
+  }
+
+  return refresh();
 }
 
 export async function getCoin(symbol: string): Promise<CoinPrice | undefined> {

@@ -8,6 +8,13 @@ function isAuthorized(request: Request): boolean {
   return request.headers.get("x-admin-code") === ADMIN_PASSCODE;
 }
 
+// Eight queries, two of them full table reads. Usage counters don't need to be
+// second-accurate, so serve a short-lived cache rather than re-running the lot
+// for every poll and every open admin tab.
+const STATS_TTL_MS = 30_000;
+type StatsCache = { at: number; payload: unknown };
+const g = globalThis as unknown as { __vpStats?: StatsCache };
+
 // ─── GET /api/admin/stats — platform-wide usage metrics ─────────────────────
 export async function GET(request: Request) {
   if (!isAuthorized(request)) {
@@ -16,6 +23,10 @@ export async function GET(request: Request) {
 
   if (!isSupabaseConfigured()) {
     return NextResponse.json({ error: "Persistence not configured" }, { status: 503 });
+  }
+
+  if (g.__vpStats && Date.now() - g.__vpStats.at < STATS_TTL_MS) {
+    return NextResponse.json(g.__vpStats.payload);
   }
 
   const [
@@ -53,7 +64,7 @@ export async function GET(request: Request) {
   const buyOrders = orders.filter((o) => o.side === "buy").length;
   const sellOrders = orders.filter((o) => o.side === "sell").length;
 
-  return NextResponse.json({
+  const payload = {
     uniqueWallets: usersCount.count ?? 0,
     walletConnects24h: connects24h.count ?? 0,
     totalTrades: trades.length,
@@ -66,5 +77,8 @@ export async function GET(request: Request) {
     totalExchangeVolumeNgn: totalOrderNgn,
     totalChatMessages: messagesCount.count ?? 0,
     pageViews7d: pageViews7d.count ?? 0,
-  });
+  };
+
+  g.__vpStats = { at: Date.now(), payload };
+  return NextResponse.json(payload);
 }

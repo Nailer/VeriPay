@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { usePolling } from "@/lib/usePolling";
 import Link from "next/link";
 import { ArrowDownToLine, ArrowUpFromLine, ShieldCheck, ArrowRight } from "lucide-react";
 import Logo from "@/components/Logo";
@@ -10,30 +11,24 @@ type Coin = { symbol: string; name: string; ngn: number };
 export default function ExchangeHome() {
   const [coins, setCoins] = useState<Coin[]>([]);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch("/api/exchange/rates");
-        if (res.ok) {
-          const data = await res.json();
-          setCoins(data.coins ?? []);
-        }
-      } catch { /* silent */ }
-    };
-    load();
-    const interval = setInterval(load, 60_000);
-    return () => clearInterval(interval);
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/exchange/rates");
+      if (res.ok) {
+        const data = await res.json();
+        setCoins(data.coins ?? []);
+      }
+    } catch { /* silent */ }
   }, []);
+
+  usePolling(load, 30_000);
 
   const mon = coins.find((c) => c.symbol === "MON");
 
   return (
     <div className="flex-1 flex flex-col relative overflow-hidden transition-colors duration-300">
       {/* Background gradients (same family as the escrow home) */}
-      <div className="absolute top-0 inset-x-0 h-full overflow-hidden pointer-events-none -z-10">
-        <div className="absolute -top-[30%] -right-[10%] w-[70%] h-[70%] rounded-full bg-zinc-200/60 dark:bg-zinc-800/40 blur-[120px] mix-blend-multiply dark:mix-blend-screen" />
-        <div className="absolute top-[30%] -left-[10%] w-[50%] h-[50%] rounded-full bg-zinc-300/50 dark:bg-zinc-900/40 blur-[100px] mix-blend-multiply dark:mix-blend-screen" />
-      </div>
+      <div className="bg-ambient absolute top-0 inset-x-0 h-full overflow-hidden pointer-events-none -z-10" />
 
       <main className="flex-1 flex flex-col items-center justify-center text-center px-5 py-14 sm:py-24 w-full max-w-3xl mx-auto z-10">
         {/* Affiliation badge */}

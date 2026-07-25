@@ -9,6 +9,7 @@ import {
   ArrowLeft, CheckCircle2, Copy, Check, Loader2, Landmark, CreditCard,
   MessageSquare, Send, ExternalLink, XCircle, Clock, ShieldCheck, AlertCircle,
 } from "lucide-react";
+import { usePolling } from "@/lib/usePolling";
 
 type OrderStatus =
   | "awaiting_payment" | "payment_review" | "verified"
@@ -108,16 +109,31 @@ export default function OrderPage() {
     } catch { /* silent */ }
   }, [orderId]);
 
-  useEffect(() => {
-    fetchOrder();
-    const interval = setInterval(fetchOrder, 5000);
-    return () => clearInterval(interval);
-  }, [fetchOrder]);
+  // Once an order is finished there is nothing left to poll for, so stop.
+  const settled =
+    order?.status === "completed" || order?.status === "rejected" ||
+    order?.status === "cancelled" || order?.status === "expired";
+
+  usePolling(fetchOrder, 5000, !settled);
+
+  // The 1s clock only exists to drive the countdown, so only run it while a
+  // countdown is actually on screen — otherwise it re-rendered this whole
+  // page (stepper, bank panel, chat) once a second for no reason.
+  const needsClock = order?.status === "awaiting_payment" && !!order?.quoteExpiresAt;
 
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
+    if (!needsClock) return;
+    let t: ReturnType<typeof setInterval> | undefined;
+    const start = () => { t ??= setInterval(() => setNow(Date.now()), 1000); };
+    const stop = () => { if (t) { clearInterval(t); t = undefined; } };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") { setNow(Date.now()); start(); } else stop();
+    };
+
+    if (document.visibilityState === "visible") start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => { stop(); document.removeEventListener("visibilitychange", onVisibility); };
+  }, [needsClock]);
 
   // Load Paystack inline checkout once, for card orders.
   useEffect(() => {
@@ -136,12 +152,7 @@ export default function OrderPage() {
     } catch { /* silent */ }
   }, [orderId, threadId]);
 
-  useEffect(() => {
-    if (!chatOpen) return;
-    fetchChat();
-    const interval = setInterval(fetchChat, 3000);
-    return () => clearInterval(interval);
-  }, [chatOpen, fetchChat]);
+  usePolling(fetchChat, 4000, chatOpen);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
@@ -368,7 +379,7 @@ export default function OrderPage() {
         <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Order {order.id}</span>
       </div>
 
-      <div className="anim-fade-up w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-5 sm:p-8 backdrop-blur-xl shadow-2xl">
+      <div className="anim-fade-up w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-5 sm:p-8 shadow-2xl">
 
         {/* Amount summary */}
         <div className="text-center mb-6">

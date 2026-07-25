@@ -42,9 +42,11 @@ body {
   50%      { transform: translateY(-10px); }
 }
 
+/* Animating background-position repaints the element every frame. Sliding a
+   pseudo-element with transform instead keeps the whole effect on the GPU. */
 @keyframes mp-shimmer {
-  from { background-position: -200% 0; }
-  to   { background-position: 200% 0; }
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
 }
 
 @keyframes mp-progress {
@@ -55,6 +57,24 @@ body {
 .anim-scale-in { animation: mp-scale-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .anim-float    { animation: mp-float 5s ease-in-out infinite; }
 
+/* Ambient page glow.
+   This used to be two huge divs carrying blur-[120px] + mix-blend-* (one of
+   them also animate-pulse). A 120px blur over 70% of the viewport has to be
+   re-rasterised whenever anything on that layer changes, and the blend mode
+   stops the compositor caching it — it was the single most expensive thing
+   on the page. Radial gradients give the same soft wash for free. */
+.bg-ambient {
+  background-image:
+    radial-gradient(60% 50% at 85% 0%, rgba(0, 0, 0, 0.07), transparent 70%),
+    radial-gradient(45% 40% at 5% 40%, rgba(0, 0, 0, 0.05), transparent 70%);
+}
+
+.dark .bg-ambient {
+  background-image:
+    radial-gradient(60% 50% at 85% 0%, rgba(255, 255, 255, 0.08), transparent 70%),
+    radial-gradient(45% 40% at 5% 40%, rgba(255, 255, 255, 0.05), transparent 70%);
+}
+
 .anim-delay-1 { animation-delay: 0.1s; }
 .anim-delay-2 { animation-delay: 0.2s; }
 .anim-delay-3 { animation-delay: 0.3s; }
@@ -62,24 +82,41 @@ body {
 .anim-delay-5 { animation-delay: 0.6s; }
 
 .anim-shimmer {
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.anim-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
   background: linear-gradient(
     100deg,
     transparent 30%,
     rgba(0, 0, 0, 0.05) 50%,
     transparent 70%
   );
-  background-size: 200% 100%;
   animation: mp-shimmer 2.4s ease-in-out infinite;
+  will-change: transform;
 }
 
-.dark .anim-shimmer {
+.dark .anim-shimmer::after {
   background: linear-gradient(
     100deg,
     transparent 30%,
     rgba(255, 255, 255, 0.06) 50%,
     transparent 70%
   );
-  background-size: 200% 100%;
+}
+
+/* Respect users who ask the OS to reduce motion — and cut the paint cost to
+   zero for them at the same time. */
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade-up,
+  .anim-scale-in,
+  .anim-float,
+  .anim-progress { animation: none !important; }
+  .anim-shimmer::after { animation: none !important; opacity: 0; }
 }
 
 .anim-progress { animation: mp-progress 1.2s cubic-bezier(0.22, 1, 0.36, 1) both; }

@@ -120,15 +120,22 @@ export type ThreadSummary = {
 export async function listThreads(): Promise<ThreadSummary[]> {
   if (!isSupabaseConfigured()) return [];
 
+  // Newest-first with a ceiling: this runs on every admin poll, and pulling
+  // the entire message history each time gets slower with every message sent.
+  // 500 rows is far more than the thread list ever displays.
   const { data, error } = await supabaseAdmin
     .from("chat_messages")
     .select("id, thread_id, sender, address, message, is_admin, created_at")
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false })
+    .limit(500);
 
   if (error || !data) {
     console.error("listThreads error:", error?.message);
     return [];
   }
+
+  // Restore chronological order within each thread.
+  data.reverse();
 
   const byThread = new Map<string, typeof data>();
   for (const row of data) {

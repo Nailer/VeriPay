@@ -6,6 +6,7 @@ import {
   Loader2, Lock, Eye, BarChart3, Users, Wallet, Coins, Inbox,
 } from "lucide-react";
 import AdminOrderCard, { type AdminOrder } from "@/components/AdminOrderCard";
+import { usePolling } from "@/lib/usePolling";
 
 type ChatMessage = {
   id: number;
@@ -127,21 +128,18 @@ export default function AdminPage() {
     } catch { /* silent */ }
   }, [activeThread, headers]);
 
-  useEffect(() => {
-    if (!authed) return;
-    fetchThreads();
-    fetchOrders();
-    fetchStats();
-    const interval = setInterval(() => { fetchThreads(); fetchOrders(); fetchStats(); }, 5000);
-    return () => clearInterval(interval);
-  }, [authed, fetchThreads, fetchOrders, fetchStats]);
+  // Only refresh what the visible tab actually shows. Previously all three
+  // endpoints were hit every 5s regardless — and stats is the heaviest query
+  // in the app, so it was doing full table scans every 5 seconds forever.
+  const refreshVisibleTab = useCallback(async () => {
+    if (tab === "orders") await fetchOrders();
+    else if (tab === "chats") await fetchThreads();
+    else await fetchStats();
+  }, [tab, fetchOrders, fetchThreads, fetchStats]);
 
-  useEffect(() => {
-    if (!authed || !activeThread) return;
-    fetchMessages();
-    const interval = setInterval(fetchMessages, 3000);
-    return () => clearInterval(interval);
-  }, [authed, activeThread, fetchMessages]);
+  usePolling(refreshVisibleTab, 8000, authed && !activeThread);
+
+  usePolling(fetchMessages, 4000, authed && !!activeThread);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });

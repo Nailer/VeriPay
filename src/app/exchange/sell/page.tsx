@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActiveAccount } from "thirdweb/react";
 import { ArrowLeft, ArrowUpFromLine, Loader2, Landmark } from "lucide-react";
+import { usePolling } from "@/lib/usePolling";
 
 type Coin = { symbol: string; name: string; ngn: number; buyNgn: number; sellNgn: number };
 type Rates = { coins: Coin[]; spreadPercent: number; minNgn: number; at: number };
@@ -37,15 +38,18 @@ export default function SellPage() {
     } catch { /* keep last good snapshot */ }
   }, []);
 
-  useEffect(() => {
-    loadRates();
-    const interval = setInterval(loadRates, 10_000);
-    return () => clearInterval(interval);
-  }, [loadRates]);
+  usePolling(loadRates, 10_000);
 
+  // See buy page: 5s cadence, paused in the background.
   useEffect(() => {
-    const t = setInterval(() => setTick((n) => n + 1), 1000);
-    return () => clearInterval(t);
+    let t: ReturnType<typeof setInterval> | undefined;
+    const start = () => { t ??= setInterval(() => setTick((n) => n + 1), 5000); };
+    const stop = () => { if (t) { clearInterval(t); t = undefined; } };
+    const onVisibility = () => (document.visibilityState === "visible" ? start() : stop());
+
+    if (document.visibilityState === "visible") start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => { stop(); document.removeEventListener("visibilitychange", onVisibility); };
   }, []);
 
   const mon = rates?.coins.find((c) => c.symbol === "MON");
@@ -97,7 +101,7 @@ export default function SellPage() {
         Exchange
       </Link>
 
-      <div className="anim-fade-up anim-delay-1 w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-5 sm:p-8 backdrop-blur-xl shadow-2xl">
+      <div className="anim-fade-up anim-delay-1 w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-5 sm:p-8 shadow-2xl">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 bg-zinc-100 dark:bg-white/10 rounded-xl flex items-center justify-center">
             <ArrowUpFromLine className="w-5 h-5 text-zinc-900 dark:text-white" />
