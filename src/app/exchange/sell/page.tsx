@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActiveAccount } from "thirdweb/react";
 import { ArrowLeft, ArrowUpFromLine, Loader2, Landmark } from "lucide-react";
 
-type Coin = { symbol: string; name: string; ngn: number };
+type Coin = { symbol: string; name: string; ngn: number; buyNgn: number; sellNgn: number };
+type Rates = { coins: Coin[]; spreadPercent: number; minNgn: number; at: number };
 
-const FEE_RATE = 0.005; // 0.5% platform fee
 const MIN_MON = 0.01;
 
 const NIGERIAN_BANKS = [
@@ -21,26 +21,38 @@ export default function SellPage() {
   const router = useRouter();
   const account = useActiveAccount();
 
-  const [coins, setCoins] = useState<Coin[]>([]);
+  const [rates, setRates] = useState<Rates | null>(null);
   const [monInput, setMonInput] = useState("");
   const [bankName, setBankName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [accountName, setAccountName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [tick, setTick] = useState(0);
 
-  useEffect(() => {
-    fetch("/api/exchange/rates")
-      .then((r) => r.json())
-      .then((d) => setCoins(d.coins ?? []))
-      .catch(() => {});
+  const loadRates = useCallback(async () => {
+    try {
+      const res = await fetch("/api/exchange/rates");
+      if (res.ok) setRates(await res.json());
+    } catch { /* keep last good snapshot */ }
   }, []);
 
-  const mon = coins.find((c) => c.symbol === "MON");
+  useEffect(() => {
+    loadRates();
+    const interval = setInterval(loadRates, 10_000);
+    return () => clearInterval(interval);
+  }, [loadRates]);
+
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const mon = rates?.coins.find((c) => c.symbol === "MON");
   const amount = parseFloat(monInput) || 0;
-  const gross = mon ? amount * mon.ngn : 0;
-  const fee = gross > 0 ? gross * FEE_RATE : 0;
-  const payout = useMemo(() => Math.max(gross - fee, 0), [gross, fee]);
+  const payout = useMemo(() => (mon ? amount * mon.sellNgn : 0), [mon, amount]);
+  const secondsAgo = rates ? Math.max(0, Math.round((Date.now() - rates.at) / 1000)) : 0;
+  void tick;
 
   const canSubmit =
     !!account &&
@@ -51,7 +63,7 @@ export default function SellPage() {
     accountName.trim().length > 2;
 
   const handleSell = async () => {
-    if (!canSubmit || !mon || !account) return;
+    if (!canSubmit || !account) return;
     setLoading(true);
     setError("");
     try {
@@ -61,11 +73,7 @@ export default function SellPage() {
         body: JSON.stringify({
           side: "sell",
           coin: "MON",
-          coinName: "Monad",
           amountCrypto: amount,
-          amountNgn: payout,
-          rate: mon.ngn,
-          feeNgn: fee,
           walletAddress: account.address,
           bank: { bankName, accountNumber, accountName },
         }),
@@ -96,9 +104,25 @@ export default function SellPage() {
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">Sell MON</h1>
         </div>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-7 font-medium">
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6 font-medium">
           Send MON from your wallet. Naira lands in your bank account.
         </p>
+
+        {/* Live rate strip */}
+        <div className="flex items-center justify-between gap-3 mb-6 px-4 py-2.5 rounded-2xl bg-white dark:bg-black/50 border border-zinc-200 dark:border-zinc-800">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="relative flex h-2 w-2 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-zinc-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-zinc-900 dark:bg-white" />
+            </span>
+            <span className="text-xs font-bold text-zinc-900 dark:text-white truncate">
+              {mon ? `1 MON = ₦${mon.sellNgn.toLocaleString("en-NG", { maximumFractionDigits: 2 })}` : "Fetching live price…"}
+            </span>
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 shrink-0">
+            {rates ? (secondsAgo < 2 ? "Just now" : `${secondsAgo}s ago`) : "—"}
+          </span>
+        </div>
 
         {/* You sell */}
         <div className="rounded-3xl bg-white dark:bg-black/50 border border-zinc-200 dark:border-zinc-800 p-4 sm:p-5 mb-2 focus-within:border-zinc-500 dark:focus-within:border-zinc-400 transition-colors duration-300">
@@ -123,15 +147,14 @@ export default function SellPage() {
           {amount > 0 && <div className="absolute inset-0 anim-shimmer pointer-events-none" />}
           <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1.5">You receive</p>
           <div className="flex items-end justify-between gap-3">
-            <p className="text-3xl font-black text-zinc-900 dark:text-white transition-all duration-500 truncate">
-              ₦{payout > 0 ? payout.toLocaleString("en-NG", { maximumFractionDigits: 0 }) : "0"}
+            <p className="text-3xl font-black text-zinc-900 dark:text-white truncate">
+              ₦{payout > 0 ? payout.toLocaleString("en-NG", { maximumFractionDigits: 2 }) : "0"}
             </p>
             <span className="text-xs font-black uppercase tracking-widest text-zinc-400 shrink-0 mb-1.5">NGN</span>
           </div>
           {mon && amount > 0 && (
             <p className="text-[11px] text-zinc-400 mt-2 font-medium">
-              Rate ₦{mon.ngn.toLocaleString("en-NG", { maximumFractionDigits: 2 })}/MON · Fee ₦
-              {fee.toLocaleString("en-NG", { maximumFractionDigits: 0 })}
+              Rate ₦{mon.sellNgn.toLocaleString("en-NG", { maximumFractionDigits: 2 })}/MON · incl. {rates?.spreadPercent}% spread
             </p>
           )}
         </div>
@@ -184,21 +207,20 @@ export default function SellPage() {
           </div>
         )}
 
-        {/* The one button */}
         <button
           onClick={handleSell}
           disabled={!canSubmit || loading}
           className="w-full py-5 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest text-sm hover:scale-[1.02] active:scale-[0.97] transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-xl flex items-center justify-center gap-2.5"
         >
           {loading ? (
-            <><Loader2 className="w-5 h-5 animate-spin" /> Creating order…</>
+            <><Loader2 className="w-5 h-5 animate-spin" /> Locking your rate…</>
           ) : (
             <>Sell MON now</>
           )}
         </button>
 
         <p className="mt-5 text-center text-[10px] text-zinc-400 uppercase tracking-widest font-bold">
-          Minimum {MIN_MON} MON · Powered by VeriPay
+          Minimum {MIN_MON} MON · Rate locked for 15 min at checkout
         </p>
       </div>
     </div>

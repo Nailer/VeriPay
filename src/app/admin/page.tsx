@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ShieldCheck, MessageSquare, ArrowLeftRight, Send, ArrowLeft,
-  Loader2, Lock, Eye, BarChart3, Users, Wallet, Coins,
+  Loader2, Lock, Eye, BarChart3, Users, Wallet, Coins, Inbox,
 } from "lucide-react";
+import AdminOrderCard, { type AdminOrder } from "@/components/AdminOrderCard";
 
 type ChatMessage = {
   id: number;
@@ -23,16 +24,11 @@ type ThreadSummary = {
   participants: string[];
 };
 
-type Order = {
-  id: string;
-  side: "buy" | "sell";
-  coin: string;
-  amountCrypto: number;
-  amountNgn: number;
-  walletAddress: string;
-  status: string;
-  createdAt: number;
-  settlementRef: string;
+type Queue = {
+  actionable: number;
+  awaitingBuyerFunds: number;
+  ngnToCollect: number;
+  ngnToPayOut: number;
 };
 
 type Stats = {
@@ -50,22 +46,17 @@ type Stats = {
   pageViews7d: number;
 };
 
-const STATUS_STYLES: Record<string, string> = {
-  awaiting_payment: "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-600",
-  confirming: "bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-white",
-  completed: "bg-zinc-900 dark:bg-white text-white dark:text-black",
-  cancelled: "bg-zinc-100 dark:bg-zinc-800 text-zinc-500",
-};
-
 export default function AdminPage() {
   const [passcode, setPasscode] = useState("");
   const [authed, setAuthed] = useState(false);
   const [authError, setAuthError] = useState("");
   const [checking, setChecking] = useState(false);
 
-  const [tab, setTab] = useState<"stats" | "chats" | "orders">("stats");
+  const [tab, setTab] = useState<"orders" | "stats" | "chats">("orders");
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [queue, setQueue] = useState<Queue | null>(null);
+  const [hotWallet, setHotWallet] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
   const [activeThread, setActiveThread] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -97,9 +88,29 @@ export default function AdminPage() {
   const fetchOrders = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/orders", { headers: headers() });
-      if (res.ok) setOrders((await res.json()).orders ?? []);
+      if (res.ok) {
+        const data = await res.json();
+        setOrders(data.orders ?? []);
+        setQueue(data.queue ?? null);
+        setHotWallet(Boolean(data.hotWallet));
+      }
     } catch { /* silent */ }
   }, [headers]);
+
+  /** Fulfilment actions. Errors surface inside the order card. */
+  const handleOrderAction = useCallback(
+    async (id: string, action: string, extra: Record<string, unknown> = {}) => {
+      const res = await fetch("/api/admin/orders", {
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify({ id, action, ...extra }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Action failed");
+      await fetchOrders();
+    },
+    [headers, fetchOrders]
+  );
 
   const fetchStats = useCallback(async () => {
     try {
@@ -145,11 +156,19 @@ export default function AdminPage() {
       if (res.ok) {
         sessionStorage.setItem("mp-admin-code", passcode);
         setAuthed(true);
-      } else {
+      } else if (res.status === 401) {
         setAuthError("Wrong passcode.");
+      } else if (res.status === 404) {
+        // Only 401 means the passcode is wrong. A 404 means the admin API isn't
+        // being served at all — usually a stale .next cache after switching
+        // between `next build` and `next dev`. Saying "wrong passcode" here
+        // sends you hunting for the wrong problem.
+        setAuthError("Admin API not found (404). Stop the server, delete .next, and restart.");
+      } else {
+        setAuthError(`Server error (${res.status}). Check the server logs.`);
       }
     } catch {
-      setAuthError("Could not reach the server.");
+      setAuthError("Could not reach the server. Is it still running?");
     } finally {
       setChecking(false);
     }
@@ -284,16 +303,18 @@ export default function AdminPage() {
         </div>
         <div>
           <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Admin Console</h1>
-          <p className="text-xs text-zinc-500 font-medium">Every conversation and exchange order, live.</p>
+          <p className="text-xs text-zinc-500 font-medium">
+            {queue?.actionable ? `${queue.actionable} order${queue.actionable === 1 ? "" : "s"} waiting on you` : "Fulfilment, chats and usage — live."}
+          </p>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="anim-fade-up anim-delay-1 flex gap-2 mb-5 flex-wrap">
         {([
-          { key: "stats", label: "Stats", icon: <BarChart3 className="w-3.5 h-3.5" /> },
+          { key: "orders", label: "Fulfilment", icon: <ArrowLeftRight className="w-3.5 h-3.5" /> },
           { key: "chats", label: "Chats", icon: <MessageSquare className="w-3.5 h-3.5" /> },
-          { key: "orders", label: "Exchange Orders", icon: <ArrowLeftRight className="w-3.5 h-3.5" /> },
+          { key: "stats", label: "Stats", icon: <BarChart3 className="w-3.5 h-3.5" /> },
         ] as const).map((t) => (
           <button
             key={t.key}
@@ -380,40 +401,57 @@ export default function AdminPage() {
       )}
 
       {tab === "orders" && (
-        <div className="anim-fade-up anim-delay-2 space-y-2.5">
-          {orders.length === 0 && (
-            <div className="text-center py-16 text-sm text-zinc-400 font-medium">
-              No exchange orders yet.
+        <div className="anim-fade-up anim-delay-2">
+          {/* Queue summary */}
+          {queue && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-5">
+              {[
+                { label: "Needs action", value: String(queue.actionable), highlight: queue.actionable > 0 },
+                { label: "Awaiting funds", value: String(queue.awaitingBuyerFunds), highlight: false },
+                { label: "To collect", value: `₦${queue.ngnToCollect.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`, highlight: false },
+                { label: "To pay out", value: `₦${queue.ngnToPayOut.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`, highlight: false },
+              ].map((s) => (
+                <div key={s.label} className={`p-3 rounded-2xl border ${
+                  s.highlight
+                    ? "bg-zinc-900 dark:bg-white border-zinc-900 dark:border-white text-white dark:text-black"
+                    : "bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800"
+                }`}>
+                  <p className={`text-[9px] font-black uppercase tracking-widest ${s.highlight ? "opacity-70" : "text-zinc-400"}`}>
+                    {s.label}
+                  </p>
+                  <p className={`text-lg font-black mt-0.5 ${s.highlight ? "" : "text-zinc-900 dark:text-white"}`}>
+                    {s.value}
+                  </p>
+                </div>
+              ))}
             </div>
           )}
-          {orders.map((o) => (
-            <div
-              key={o.id}
-              className="p-4 rounded-2xl bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800"
-            >
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2.5">
-                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                    o.side === "buy"
-                      ? "bg-zinc-900 dark:bg-white text-white dark:text-black"
-                      : "bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-white"
-                  }`}>
-                    {o.side}
-                  </span>
-                  <span className="text-sm font-black text-zinc-900 dark:text-white">{o.id}</span>
-                  <span className="text-xs font-bold text-zinc-500">
-                    {o.amountCrypto.toLocaleString("en-US", { maximumFractionDigits: 6 })} {o.coin} · ₦{o.amountNgn.toLocaleString("en-NG", { maximumFractionDigits: 0 })}
-                  </span>
-                </div>
-                <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${STATUS_STYLES[o.status] ?? ""}`}>
-                  {o.status.replace("_", " ")}
-                </span>
-              </div>
-              <p className="text-[10px] font-mono text-zinc-400 mt-2">
-                {o.walletAddress.slice(0, 10)}…{o.walletAddress.slice(-8)} · {new Date(o.createdAt).toLocaleString()}
+
+          {!hotWallet && (
+            <div className="mb-5 px-4 py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700">
+              <p className="text-[11px] font-bold text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                No payout wallet configured — after confirming a payment you&apos;ll send the crypto yourself and paste
+                the transaction hash. Set <span className="font-mono">EXCHANGE_PAYOUT_PRIVATE_KEY</span> to automate it.
               </p>
             </div>
-          ))}
+          )}
+
+          <div className="space-y-2.5">
+            {orders.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+                <Inbox className="w-8 h-8 text-zinc-300 dark:text-zinc-700" />
+                <p className="text-sm text-zinc-400 font-medium">No exchange orders yet.</p>
+              </div>
+            )}
+            {orders.map((o) => (
+              <AdminOrderCard
+                key={o.id}
+                order={o}
+                hotWallet={hotWallet}
+                onAction={(action, extra) => handleOrderAction(o.id, action, extra)}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
