@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ShieldCheck, MessageSquare, ArrowLeftRight, Send, ArrowLeft,
-  Loader2, Lock, Eye, BarChart3, Users, Wallet, Coins, Inbox,
+  Loader2, Lock, Eye, BarChart3, Users, Wallet, Coins, Inbox, Scale,
 } from "lucide-react";
 import AdminOrderCard, { type AdminOrder } from "@/components/AdminOrderCard";
+import ArbitrationPanel from "@/components/ArbitrationPanel";
 import { usePolling } from "@/lib/usePolling";
 
 type ChatMessage = {
@@ -53,7 +54,7 @@ export default function AdminPage() {
   const [authError, setAuthError] = useState("");
   const [checking, setChecking] = useState(false);
 
-  const [tab, setTab] = useState<"orders" | "stats" | "chats">("orders");
+  const [tab, setTab] = useState<"orders" | "disputes" | "stats" | "chats">("orders");
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [queue, setQueue] = useState<Queue | null>(null);
@@ -311,6 +312,7 @@ export default function AdminPage() {
       <div className="anim-fade-up anim-delay-1 flex gap-2 mb-5 flex-wrap">
         {([
           { key: "orders", label: "Fulfilment", icon: <ArrowLeftRight className="w-3.5 h-3.5" /> },
+          { key: "disputes", label: "Disputes", icon: <Scale className="w-3.5 h-3.5" /> },
           { key: "chats", label: "Chats", icon: <MessageSquare className="w-3.5 h-3.5" /> },
           { key: "stats", label: "Stats", icon: <BarChart3 className="w-3.5 h-3.5" /> },
         ] as const).map((t) => (
@@ -359,6 +361,8 @@ export default function AdminPage() {
           )}
         </div>
       )}
+
+      {tab === "disputes" && <ArbitrationPanel />}
 
       {tab === "chats" && (
         <div className="anim-fade-up anim-delay-2 space-y-2.5">

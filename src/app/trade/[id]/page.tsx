@@ -5,7 +5,11 @@ import { useParams } from "next/navigation";
 import { useActiveAccount } from "thirdweb/react";
 import { createPublicClient, createWalletClient, http, custom, formatEther } from "viem";
 import { CONTRACT_ADDRESS, escrowAbi } from "@/lib/abi";
-import { Loader2, ShieldAlert, CheckCircle2, ArrowLeft, Info, HelpCircle } from "lucide-react";
+import { readTrade, type EscrowTrade } from "@/lib/escrow";
+import {
+  Loader2, ShieldAlert, CheckCircle2, ArrowLeft, Info, HelpCircle,
+  AlertTriangle, Clock, Scale, RotateCcw,
+} from "lucide-react";
 import Link from "next/link";
 
 const MONAD_CHAIN = {
@@ -18,14 +22,14 @@ const MONAD_CHAIN = {
   },
 };
 
-type TradeData = {
-  buyer: string;
-  seller: string;
-  amount: bigint;
-  released: boolean;
-  sellerApprovedRefund: boolean;
-  metadata: string;
-};
+type TradeData = EscrowTrade;
+
+type Action =
+  | "releaseToSeller"
+  | "sellerApproveRefund"
+  | "buyerClaimRefund"
+  | "raiseDispute"
+  | "autoRelease";
 
 export default function TradeDetail() {
   const params = useParams();
@@ -35,8 +39,10 @@ export default function TradeDetail() {
   const account = useActiveAccount();
   const [trade, setTrade] = useState<TradeData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<Action | "">("");
   const [error, setError] = useState("");
+  const [confirmDispute, setConfirmDispute] = useState(false);
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
   const fetchTrade = useCallback(async () => {
     if (!idStr) return;
@@ -46,21 +52,8 @@ export default function TradeDetail() {
         transport: http("https://testnet-rpc.monad.xyz"),
       });
 
-      const res = await publicClient.readContract({
-        address: CONTRACT_ADDRESS,
-        abi: escrowAbi,
-        functionName: "trades",
-        args: [tradeId],
-      }) as any;
-
-      setTrade({
-        buyer: res[0],
-        seller: res[1],
-        amount: res[2],
-        released: res[3],
-        sellerApprovedRefund: res[4],
-        metadata: res[5],
-      });
+      // Handles both the old and new contract shapes.
+      setTrade(await readTrade(publicClient as any, tradeId));
     } catch (err) {
       console.error(err);
       setError("Failed to fetch trade details from Monad.");
@@ -69,30 +62,24 @@ export default function TradeDetail() {
     }
   }, [idStr, tradeId]);
 
-  useEffect(() => {
-    fetchTrade();
-  }, [fetchTrade]);
+  useEffect(() => { fetchTrade(); }, [fetchTrade]);
 
-  const executeAction = async (functionName: "releaseToSeller" | "sellerApproveRefund" | "buyerClaimRefund") => {
+  // Drives the auto-release countdown.
+  useEffect(() => {
+    const t = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const executeAction = async (functionName: Action) => {
     if (!account || !window.ethereum) {
-      setError("Please connect MetaMask first.");
+      setError("Please connect your wallet first.");
       return;
     }
 
-    setActionLoading(true);
+    setActionLoading(functionName);
     setError("");
 
     try {
-      const MONAD_CHAIN = {
-        id: 10143,
-        name: "Monad Testnet",
-        nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
-        rpcUrls: {
-          default: { http: ["https://testnet-rpc.monad.xyz"] },
-          public: { http: ["https://testnet-rpc.monad.xyz"] },
-        },
-      };
-
       try {
         await window.ethereum.request({
           method: "wallet_switchEthereumChain",
@@ -112,12 +99,12 @@ export default function TradeDetail() {
             });
           } catch {
             setError("Failed to add Monad Testnet to wallet.");
-            setActionLoading(false);
+            setActionLoading("");
             return;
           }
         } else {
           setError("Please switch to Monad Testnet in your wallet.");
-          setActionLoading(false);
+          setActionLoading("");
           return;
         }
       }
@@ -136,29 +123,42 @@ export default function TradeDetail() {
 
       await publicClient.waitForTransactionReceipt({ hash });
 
-      const actionMap = {
+      const actionMap: Partial<Record<Action, string>> = {
         releaseToSeller: "released",
         sellerApproveRefund: "refund_approved",
         buyerClaimRefund: "refund_claimed",
-      } as const;
+        autoRelease: "released",
+      };
+      const logged = actionMap[functionName];
+      if (logged) {
+        fetch("/api/trades/log", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tradeId: idStr, action: logged, actorAddress: account.address, txHash: hash }),
+        }).catch(() => {});
+      }
 
-      fetch("/api/trades/log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tradeId: idStr,
-          action: actionMap[functionName],
-          actorAddress: account.address,
-          txHash: hash,
-        }),
-      }).catch(() => {});
+      // Tell an agent a dispute was opened so it shows up in the console.
+      if (functionName === "raiseDispute") {
+        fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tradeId: idStr,
+            sender: "System",
+            address: account.address,
+            text: `A dispute was opened on this trade by ${account.address}. Funds are frozen until an agent reviews it.`,
+          }),
+        }).catch(() => {});
+        setConfirmDispute(false);
+      }
 
       await fetchTrade();
     } catch (err: any) {
       console.error(err);
-      setError(err.shortMessage || "Transaction failed.");
+      setError(err.shortMessage || err.message || "Transaction failed.");
     } finally {
-      setActionLoading(false);
+      setActionLoading("");
     }
   };
 
@@ -179,9 +179,38 @@ export default function TradeDetail() {
 
   const isBuyer = account?.address.toLowerCase() === trade.buyer.toLowerCase();
   const isSeller = account?.address.toLowerCase() === trade.seller.toLowerCase();
+  const isParty = isBuyer || isSeller;
+  const settled = trade.released || trade.refunded;
 
-  // Helper: truncate address responsively
   const truncAddr = (addr: string) => `${addr.slice(0, 8)}...${addr.slice(-6)}`;
+
+  // What the seller actually walks away with, after the platform fee.
+  const feePct = trade.feeBps / 100;
+  const feeWei = (trade.amount * BigInt(trade.feeBps)) / BigInt(10000);
+  const sellerNet = trade.amount - feeWei;
+
+  const secondsLeft = Number(trade.autoReleaseAt) - now;
+  const windowPassed = secondsLeft <= 0;
+  const countdown = (() => {
+    if (windowPassed) return "elapsed";
+    const d = Math.floor(secondsLeft / 86400);
+    const h = Math.floor((secondsLeft % 86400) / 3600);
+    if (d > 0) return `${d}d ${h}h`;
+    const m = Math.floor((secondsLeft % 3600) / 60);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  })();
+
+  const statusLabel = trade.refunded
+    ? "Refunded"
+    : trade.released
+      ? "Settled"
+      : trade.disputed
+        ? "In Dispute"
+        : trade.sellerApprovedRefund
+          ? "Refund Ready"
+          : "Funds Escrowed";
+
+  const busy = actionLoading !== "";
 
   return (
     <div className="flex-1 flex flex-col items-center py-6 sm:py-8 md:py-16 px-4 sm:px-6 relative z-10 w-full max-w-3xl mx-auto transition-colors duration-300">
@@ -192,7 +221,7 @@ export default function TradeDetail() {
           <ArrowLeft className="w-4 h-4" /> Back to Ledger
         </Link>
         <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full animate-pulse ${trade.released ? "bg-zinc-400 dark:bg-zinc-500" : "bg-zinc-900 dark:bg-white"}`} />
+          <div className={`w-2 h-2 rounded-full ${settled ? "bg-zinc-400 dark:bg-zinc-500" : "bg-zinc-900 dark:bg-white animate-pulse"}`} />
           <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest hidden xs:block">Monad Live Status</span>
         </div>
       </div>
@@ -209,19 +238,36 @@ export default function TradeDetail() {
             </div>
           </div>
           <div className={`self-start sm:self-auto px-4 sm:px-6 py-1.5 sm:py-2 rounded-2xl font-black text-[10px] uppercase tracking-widest border whitespace-nowrap ${
-            trade.released
+            trade.disputed && !settled
               ? "bg-zinc-900 dark:bg-white text-white dark:text-black border-zinc-900 dark:border-white"
-              : trade.sellerApprovedRefund
-                ? "bg-white dark:bg-black text-zinc-900 dark:text-white border-zinc-400 dark:border-zinc-500"
-                : "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600"
+              : settled
+                ? "bg-zinc-900 dark:bg-white text-white dark:text-black border-zinc-900 dark:border-white"
+                : trade.sellerApprovedRefund
+                  ? "bg-white dark:bg-black text-zinc-900 dark:text-white border-zinc-400 dark:border-zinc-500"
+                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600"
           }`}>
-            {trade.released ? "Settled" : trade.sellerApprovedRefund ? "Refund Ready" : "Funds Escrowed"}
+            {statusLabel}
           </div>
         </div>
 
         {error && (
           <div className="p-4 mb-6 sm:mb-8 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-white text-sm font-medium">
             ⚠️ {error}
+          </div>
+        )}
+
+        {/* Dispute banner */}
+        {trade.disputed && !settled && (
+          <div className="mb-6 sm:mb-8 p-5 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-black flex items-start gap-3">
+            <Scale className="w-5 h-5 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-black uppercase tracking-wide">Under review</p>
+              <p className="text-xs mt-1 leading-relaxed opacity-80">
+                This trade is disputed, so the funds are frozen — nobody can move them until an
+                agent decides. Explain what happened in the chat below; that&apos;s what the
+                decision is based on.
+              </p>
+            </div>
           </div>
         )}
 
@@ -234,21 +280,62 @@ export default function TradeDetail() {
                 {formatEther(trade.amount)}{" "}
                 <span className="text-xs sm:text-sm font-normal text-zinc-500">MON</span>
               </span>
+              {trade.feeBps > 0 && !settled && (
+                <span className="text-[10px] text-zinc-500 mt-2 leading-relaxed">
+                  Seller receives {formatEther(sellerNet)} MON after the {feePct}% fee.
+                  Refunds are returned in full.
+                </span>
+              )}
+              {trade.legacy && !settled && (
+                <span className="text-[10px] text-zinc-500 mt-2 leading-relaxed">
+                  This trade is on the original contract — no fee, and disputes
+                  aren&apos;t available on it.
+                </span>
+              )}
             </div>
 
             <div className="p-4 sm:p-6 md:p-8 rounded-[1.5rem] sm:rounded-[2rem] bg-white dark:bg-black/40 border border-zinc-200 dark:border-zinc-800 flex flex-col justify-center transition-colors">
               <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest mb-1.5 transition-colors">Status</span>
-              {trade.released ? (
-                <div className="flex items-center gap-2 text-zinc-900 dark:text-white font-black uppercase tracking-widest text-[10px] sm:text-xs transition-colors">
+              {trade.refunded ? (
+                <div className="flex items-center gap-2 text-zinc-900 dark:text-white font-black uppercase tracking-widest text-[10px] sm:text-xs">
+                  <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" /> Returned
+                </div>
+              ) : trade.released ? (
+                <div className="flex items-center gap-2 text-zinc-900 dark:text-white font-black uppercase tracking-widest text-[10px] sm:text-xs">
                   <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" /> Concluded
                 </div>
+              ) : trade.disputed ? (
+                <div className="flex items-center gap-2 text-zinc-900 dark:text-white font-black uppercase tracking-widest text-[10px] sm:text-xs">
+                  <Scale className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" /> Frozen
+                </div>
               ) : (
-                <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300 font-black uppercase tracking-widest text-[10px] sm:text-xs transition-colors">
+                <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300 font-black uppercase tracking-widest text-[10px] sm:text-xs">
                   <ShieldAlert className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse shrink-0" /> Protected
                 </div>
               )}
             </div>
           </div>
+
+          {/* Auto-release window (v2 contract only) */}
+          {!settled && !trade.disputed && !trade.legacy && trade.autoReleaseAt > BigInt(0) && (
+            <div className="flex items-start gap-3 p-4 rounded-2xl bg-white dark:bg-black/40 border border-zinc-200 dark:border-zinc-800">
+              <Clock className="w-4 h-4 text-zinc-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                {windowPassed ? (
+                  <>
+                    The buyer&apos;s confirmation window has passed. The seller can now claim the
+                    funds, unless someone opens a dispute first.
+                  </>
+                ) : (
+                  <>
+                    <span className="font-bold text-zinc-900 dark:text-white">{countdown} left</span> for
+                    the buyer to confirm delivery. After that the seller can claim the funds, so a
+                    buyer who is unhappy should open a dispute before then.
+                  </>
+                )}
+              </p>
+            </div>
+          )}
 
           {/* Parties */}
           <div className="grid grid-cols-1 gap-3 sm:gap-4">
@@ -270,7 +357,7 @@ export default function TradeDetail() {
         </div>
 
         {/* Action Panel */}
-        {!trade.released && (isBuyer || isSeller) && (
+        {!settled && isParty && (
           <div className="mt-8 sm:mt-12 p-5 sm:p-6 md:p-8 rounded-[2rem] sm:rounded-[2.5rem] bg-gradient-to-b from-zinc-100/50 dark:from-zinc-800/20 to-transparent border border-zinc-200 dark:border-zinc-800 transition-colors">
             <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-[0.3em] mb-5 sm:mb-6 text-center transition-colors">Settlement Actions</h3>
             <div className="flex flex-col gap-3 sm:gap-4">
@@ -278,21 +365,21 @@ export default function TradeDetail() {
               {isBuyer && !trade.sellerApprovedRefund && (
                 <button
                   onClick={() => executeAction("releaseToSeller")}
-                  disabled={actionLoading}
+                  disabled={busy}
                   className="w-full flex items-center justify-center px-6 sm:px-8 py-4 sm:py-5 bg-zinc-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest rounded-xl sm:rounded-2xl hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all disabled:opacity-50 active:scale-[0.98] text-sm"
                 >
-                  {actionLoading ? <Loader2 className="w-5 h-5 animate-spin mr-3" /> : null}
-                  Confirm Delivery & Release MON
+                  {actionLoading === "releaseToSeller" && <Loader2 className="w-5 h-5 animate-spin mr-3" />}
+                  Confirm Delivery &amp; Release MON
                 </button>
               )}
 
               {isSeller && !trade.sellerApprovedRefund && (
                 <button
                   onClick={() => executeAction("sellerApproveRefund")}
-                  disabled={actionLoading}
+                  disabled={busy}
                   className="w-full flex items-center justify-center px-6 sm:px-8 py-4 sm:py-5 bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white font-black uppercase tracking-widest rounded-xl sm:rounded-2xl hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-all disabled:opacity-50 active:scale-[0.98] text-sm"
                 >
-                  {actionLoading ? <Loader2 className="w-5 h-5 animate-spin mr-3" /> : null}
+                  {actionLoading === "sellerApproveRefund" && <Loader2 className="w-5 h-5 animate-spin mr-3" />}
                   Authorize Return of Funds
                 </button>
               )}
@@ -300,11 +387,23 @@ export default function TradeDetail() {
               {isBuyer && trade.sellerApprovedRefund && (
                 <button
                   onClick={() => executeAction("buyerClaimRefund")}
-                  disabled={actionLoading}
+                  disabled={busy}
                   className="w-full flex items-center justify-center px-6 sm:px-8 py-4 sm:py-5 bg-zinc-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest rounded-xl sm:rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 shadow-xl text-sm"
                 >
-                  {actionLoading ? <Loader2 className="w-5 h-5 animate-spin mr-3" /> : null}
+                  {actionLoading === "buyerClaimRefund" && <Loader2 className="w-5 h-5 animate-spin mr-3" />}
                   Withdraw Refund
+                </button>
+              )}
+
+              {/* Seller claims funds once the buyer's window lapses */}
+              {isSeller && !trade.legacy && windowPassed && !trade.disputed && (
+                <button
+                  onClick={() => executeAction("autoRelease")}
+                  disabled={busy}
+                  className="w-full flex items-center justify-center px-6 sm:px-8 py-4 sm:py-5 bg-zinc-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest rounded-xl sm:rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 shadow-xl text-sm"
+                >
+                  {actionLoading === "autoRelease" && <Loader2 className="w-5 h-5 animate-spin mr-3" />}
+                  Claim Funds (window elapsed)
                 </button>
               )}
 
@@ -312,14 +411,58 @@ export default function TradeDetail() {
                 href={`/trade/${idStr}/chat`}
                 className="w-full flex items-center justify-center px-6 sm:px-8 py-4 sm:py-5 bg-transparent border-2 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 font-black uppercase tracking-widest rounded-xl sm:rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-all text-sm"
               >
-                Resolve Issues
+                Message the other party
               </Link>
 
-              {!isBuyer && !isSeller && (
-                <p className="text-center text-zinc-500 dark:text-zinc-600 text-xs italic">You are viewing this trade as an observer.</p>
+              {/* Dispute (v2 contract only) */}
+              {!trade.disputed && !trade.legacy && (
+                confirmDispute ? (
+                  <div className="p-5 rounded-2xl bg-white dark:bg-black/40 border-2 border-zinc-900 dark:border-white">
+                    <div className="flex items-start gap-2.5 mb-4">
+                      <AlertTriangle className="w-4 h-4 text-zinc-900 dark:text-white shrink-0 mt-0.5" />
+                      <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                        This freezes the funds. Neither of you can release or refund until an
+                        agent reviews the trade and decides how to split it. Use this when talking
+                        it out hasn&apos;t worked.
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => executeAction("raiseDispute")}
+                        disabled={busy}
+                        className="flex-1 py-3.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest text-[11px] disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {actionLoading === "raiseDispute" && <Loader2 className="w-4 h-4 animate-spin" />}
+                        Freeze &amp; request review
+                      </button>
+                      <button
+                        onClick={() => setConfirmDispute(false)}
+                        disabled={busy}
+                        className="flex-1 py-3.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-black uppercase tracking-widest text-[11px]"
+                      >
+                        Never mind
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDispute(true)}
+                    disabled={busy}
+                    className="w-full py-3 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-white underline underline-offset-4 transition-colors"
+                  >
+                    Report a problem with this trade
+                  </button>
+                )
               )}
             </div>
           </div>
+        )}
+
+        {/* Observer note */}
+        {!isParty && (
+          <p className="mt-8 text-center text-zinc-500 dark:text-zinc-600 text-xs italic">
+            You are viewing this trade as an observer.
+          </p>
         )}
       </div>
     </div>

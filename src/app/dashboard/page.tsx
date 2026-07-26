@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useActiveWalletChain } from "thirdweb/react";
 import { createPublicClient, http, formatEther } from "viem";
-import { CONTRACT_ADDRESS, escrowAbi } from "@/lib/abi";
+import { readNextTradeId, readTrade } from "@/lib/escrow";
 import Link from "next/link";
 import { Loader2, ArrowRight, AlertCircle } from "lucide-react";
 
@@ -24,6 +24,8 @@ type TradeData = {
   amount: bigint;
   released: boolean;
   sellerApprovedRefund: boolean;
+  disputed: boolean;
+  refunded: boolean;
   metadata: string;
 };
 
@@ -43,13 +45,8 @@ export default function Dashboard() {
         transport: http("https://testnet-rpc.monad.xyz"),
       });
 
-      const nextTradeIdBigInt = await publicClient.readContract({
-        address: CONTRACT_ADDRESS,
-        abi: escrowAbi,
-        functionName: "nextTradeId",
-      }) as bigint;
-
-      const nextTradeId = Number(nextTradeIdBigInt);
+      // readTrade handles both the old and new contract shapes.
+      const nextTradeId = await readNextTradeId(publicClient as any);
 
       if (nextTradeId === 0) {
         setTrades([]);
@@ -58,25 +55,12 @@ export default function Dashboard() {
       }
 
       const startId = Math.max(0, nextTradeId - 10);
-      const fetchedTrades = [];
+      const fetchedTrades: TradeData[] = [];
 
       for (let i = nextTradeId - 1; i >= startId; i--) {
         try {
-          const res: any = await publicClient.readContract({
-            address: CONTRACT_ADDRESS,
-            abi: escrowAbi,
-            functionName: "trades",
-            args: [BigInt(i)],
-          });
-          fetchedTrades.push({
-            id: i,
-            buyer: res[0],
-            seller: res[1],
-            amount: res[2],
-            released: res[3],
-            sellerApprovedRefund: res[4],
-            metadata: res[5],
-          });
+          const t = await readTrade(publicClient as any, i);
+          fetchedTrades.push({ id: i, ...t });
         } catch (err) {
           console.error(`Failed to fetch trade ${i}:`, err);
         }
@@ -154,13 +138,21 @@ export default function Dashboard() {
                   <span className="text-zinc-900 dark:text-white font-mono font-bold transition-colors text-sm">#00{trade.id}</span>
                 </div>
                 <div className={`px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-black border ${
-                  trade.released
+                  trade.released || trade.refunded || (trade.disputed && !trade.released)
                     ? "bg-zinc-900 dark:bg-white text-white dark:text-black border-zinc-900 dark:border-white"
                     : trade.sellerApprovedRefund
                       ? "bg-white dark:bg-black text-zinc-900 dark:text-white border-zinc-400 dark:border-zinc-500"
                       : "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600"
                 }`}>
-                  {trade.released ? "Finalized" : trade.sellerApprovedRefund ? "Refund Ready" : "Funds Locked"}
+                  {trade.refunded
+                    ? "Refunded"
+                    : trade.released
+                      ? "Finalized"
+                      : trade.disputed
+                        ? "In Dispute"
+                        : trade.sellerApprovedRefund
+                          ? "Refund Ready"
+                          : "Funds Locked"}
                 </div>
               </div>
 
