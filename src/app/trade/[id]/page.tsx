@@ -3,8 +3,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useActiveAccount } from "thirdweb/react";
-import { createPublicClient, createWalletClient, http, custom, formatEther } from "viem";
-import { CONTRACT_ADDRESS, escrowAbi } from "@/lib/abi";
+import { createPublicClient, http, formatEther } from "viem";
+import { prepareContractCall, sendTransaction, waitForReceipt } from "thirdweb";
+import { escrowContract, friendlyTxError } from "@/lib/monad";
 import { readTrade, type EscrowTrade } from "@/lib/escrow";
 import {
   Loader2, ShieldAlert, CheckCircle2, ArrowLeft, Info, HelpCircle,
@@ -71,7 +72,7 @@ export default function TradeDetail() {
   }, []);
 
   const executeAction = async (functionName: Action) => {
-    if (!account || !window.ethereum) {
+    if (!account) {
       setError("Please connect your wallet first.");
       return;
     }
@@ -80,48 +81,17 @@ export default function TradeDetail() {
     setError("");
 
     try {
-      try {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0x279f" }],
-        });
-      } catch (switchError: any) {
-        if (switchError.code === 4902) {
-          try {
-            await window.ethereum.request({
-              method: "wallet_addEthereumChain",
-              params: [{
-                chainId: "0x279f",
-                chainName: "Monad Testnet",
-                nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
-                rpcUrls: ["https://testnet-rpc.monad.xyz"],
-              }],
-            });
-          } catch {
-            setError("Failed to add Monad Testnet to wallet.");
-            setActionLoading("");
-            return;
-          }
-        } else {
-          setError("Please switch to Monad Testnet in your wallet.");
-          setActionLoading("");
-          return;
-        }
-      }
-
-      const walletClient = createWalletClient({ chain: MONAD_CHAIN as any, transport: custom(window.ethereum) });
-      const publicClient = createPublicClient({ chain: MONAD_CHAIN as any, transport: http("https://testnet-rpc.monad.xyz") });
-
-      const hash = await walletClient.writeContract({
-        address: CONTRACT_ADDRESS,
-        abi: escrowAbi,
-        functionName,
-        args: [tradeId],
-        account: account.address as `0x${string}`,
-        chain: MONAD_CHAIN as any,
+      // Sent through thirdweb's own pipeline — works for browser-extension
+      // wallets, thirdweb's in-app (email/social) wallet, and mobile wallets
+      // over WalletConnect alike. No window.ethereum needed.
+      const transaction = prepareContractCall({
+        contract: escrowContract,
+        method: functionName,
+        params: [tradeId],
       });
 
-      await publicClient.waitForTransactionReceipt({ hash });
+      const result = await sendTransaction({ account, transaction });
+      await waitForReceipt(result);
 
       const actionMap: Partial<Record<Action, string>> = {
         releaseToSeller: "released",
@@ -134,7 +104,9 @@ export default function TradeDetail() {
         fetch("/api/trades/log", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tradeId: idStr, action: logged, actorAddress: account.address, txHash: hash }),
+          body: JSON.stringify({
+            tradeId: idStr, action: logged, actorAddress: account.address, txHash: result.transactionHash,
+          }),
         }).catch(() => {});
       }
 
@@ -154,9 +126,9 @@ export default function TradeDetail() {
       }
 
       await fetchTrade();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.shortMessage || err.message || "Transaction failed.");
+      setError(friendlyTxError(err));
     } finally {
       setActionLoading("");
     }

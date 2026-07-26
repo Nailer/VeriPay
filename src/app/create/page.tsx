@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { parseEther, createWalletClient, custom, http, createPublicClient } from "viem";
+import { parseEther, createPublicClient, http } from "viem";
 import { useActiveAccount } from "thirdweb/react";
+import { prepareContractCall, sendTransaction, waitForReceipt } from "thirdweb";
+import { escrowContract, friendlyTxError } from "@/lib/monad";
 import { CONTRACT_ADDRESS, escrowAbi } from "@/lib/abi";
 import { useRouter } from "next/navigation";
 import { Loader2, ShieldCheck, ArrowLeft, CheckCircle2 } from "lucide-react";
@@ -34,61 +36,31 @@ export default function CreateTrade() {
     setError("");
 
     if (!account) { setError("Please connect your wallet first."); return; }
-    if (typeof window === "undefined" || !window.ethereum) {
-      setError("No browser wallet detected. Please install MetaMask.");
-      return;
-    }
 
     setLoading(true);
 
     try {
-      try {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0x279f" }],
-        });
-      } catch (switchError: any) {
-        if (switchError.code === 4902) {
-          try {
-            await window.ethereum.request({
-              method: "wallet_addEthereumChain",
-              params: [{
-                chainId: "0x279f",
-                chainName: "Monad Testnet",
-                nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
-                rpcUrls: ["https://testnet-rpc.monad.xyz"],
-              }],
-            });
-          } catch {
-            setError("Failed to add Monad Testnet to wallet.");
-            setLoading(false);
-            return;
-          }
-        } else {
-          setError("Please switch to Monad Testnet in your wallet.");
-          setLoading(false);
-          return;
-        }
-      }
-
-      const walletClient = createWalletClient({ chain: MONAD_CHAIN as any, transport: custom(window.ethereum) });
-      const publicClient = createPublicClient({ chain: MONAD_CHAIN as any, transport: http("https://testnet-rpc.monad.xyz") });
-
-      const hash = await walletClient.writeContract({
-        address: CONTRACT_ADDRESS,
-        abi: escrowAbi,
-        functionName: "createTrade",
-        args: [seller as `0x${string}`, metadata],
+      // Sent through thirdweb's own pipeline, not window.ethereum — this
+      // works whether the connected wallet is a browser extension, an
+      // email/social in-app wallet, or a mobile wallet over WalletConnect.
+      // Thirdweb switches or adds Monad Testnet on the wallet automatically.
+      const transaction = prepareContractCall({
+        contract: escrowContract,
+        method: "createTrade",
+        params: [seller as `0x${string}`, metadata],
         value: parseEther(amount),
-        account: account.address as `0x${string}`,
-        chain: MONAD_CHAIN as any,
       });
 
-      const receipt = await publicClient.waitForTransactionReceipt({ hash, confirmations: 1 });
+      const result = await sendTransaction({ account, transaction });
+      const receipt = await waitForReceipt(result);
 
       if (receipt.status === "success") {
         // Resolve the just-created trade ID (nextTradeId - 1)
         try {
+          const publicClient = createPublicClient({
+            chain: MONAD_CHAIN as any,
+            transport: http("https://testnet-rpc.monad.xyz"),
+          });
           const nextIdBig = await publicClient.readContract({
             address: CONTRACT_ADDRESS,
             abi: escrowAbi,
@@ -104,7 +76,7 @@ export default function CreateTrade() {
               tradeId: newTradeId,
               action: "created",
               actorAddress: account.address,
-              txHash: hash,
+              txHash: result.transactionHash,
               buyerAddress: account.address,
               sellerAddress: seller,
               amountWei: parseEther(amount).toString(),
@@ -132,10 +104,9 @@ export default function CreateTrade() {
       } else {
         setError("Transaction failed on-chain. Check explorer for details.");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Create Trade Error:", err);
-      const message = err.shortMessage || err.message || "Transaction failed";
-      setError(message.includes("User rejected") ? "Transaction cancelled by user." : message);
+      setError(friendlyTxError(err));
     } finally {
       setLoading(false);
     }

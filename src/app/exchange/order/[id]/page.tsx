@@ -4,7 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useActiveAccount } from "thirdweb/react";
-import { createWalletClient, createPublicClient, custom, http, parseEther } from "viem";
+import { parseEther } from "viem";
+import { prepareTransaction, sendTransaction, waitForReceipt } from "thirdweb";
+import { client } from "@/app/client";
+import { monadTestnet, friendlyTxError } from "@/lib/monad";
 import {
   ArrowLeft, CheckCircle2, Copy, Check, Loader2, Landmark, CreditCard,
   MessageSquare, Send, ExternalLink, XCircle, Clock, ShieldCheck, AlertCircle,
@@ -51,16 +54,6 @@ declare global {
     PaystackPop?: { setup(opts: Record<string, unknown>): { openIframe(): void } };
   }
 }
-
-const MONAD_CHAIN = {
-  id: 10143,
-  name: "Monad Testnet",
-  nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
-  rpcUrls: {
-    default: { http: ["https://testnet-rpc.monad.xyz"] },
-    public: { http: ["https://testnet-rpc.monad.xyz"] },
-  },
-};
 
 const ngn = (n: number, dp = 2) =>
   `₦${n.toLocaleString("en-NG", { minimumFractionDigits: dp, maximumFractionDigits: dp })}`;
@@ -249,50 +242,27 @@ export default function OrderPage() {
   };
 
   // Sell: send MON on-chain, then have the server verify it independently.
+  // Sent through thirdweb's own pipeline (not window.ethereum), so this works
+  // whether the connected wallet is a browser extension, an email/social
+  // in-app wallet, or a mobile wallet over WalletConnect.
   const handleSendCrypto = async () => {
     if (!order || !account) return;
-    if (typeof window === "undefined" || !window.ethereum) {
-      setError("No browser wallet detected. Please use MetaMask or a similar wallet.");
-      return;
-    }
     setActing(true); setError("");
     try {
-      try {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0x279f" }],
-        });
-      } catch (switchError) {
-        if ((switchError as { code?: number }).code === 4902) {
-          await window.ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: "0x279f",
-              chainName: "Monad Testnet",
-              nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
-              rpcUrls: ["https://testnet-rpc.monad.xyz"],
-            }],
-          });
-        } else {
-          throw new Error("Please switch to Monad Testnet in your wallet.");
-        }
-      }
-
-      const walletClient = createWalletClient({ chain: MONAD_CHAIN as any, transport: custom(window.ethereum) });
-      const publicClient = createPublicClient({ chain: MONAD_CHAIN as any, transport: http("https://testnet-rpc.monad.xyz") });
-
-      const hash = await walletClient.sendTransaction({
-        account: account.address as `0x${string}`,
+      const transaction = prepareTransaction({
         to: merchantAddress as `0x${string}`,
+        chain: monadTestnet,
+        client,
         value: parseEther(String(order.amountCrypto)),
-        chain: MONAD_CHAIN as any,
       });
-      await publicClient.waitForTransactionReceipt({ hash, confirmations: 1 });
+
+      const result = await sendTransaction({ account, transaction });
+      await waitForReceipt(result);
 
       // Retry verification briefly — RPC nodes can lag behind the receipt.
       for (let attempt = 0; attempt < 4; attempt++) {
         try {
-          await patchOrder("submit_tx", { txHash: hash });
+          await patchOrder("submit_tx", { txHash: result.transactionHash });
           break;
         } catch (e) {
           if (attempt === 3) throw e;
@@ -300,9 +270,7 @@ export default function OrderPage() {
         }
       }
     } catch (err) {
-      const e = err as { shortMessage?: string; message?: string };
-      const msg = e.shortMessage || e.message || "Transaction failed";
-      setError(msg.includes("User rejected") ? "Transaction cancelled." : msg);
+      setError(friendlyTxError(err));
     } finally { setActing(false); }
   };
 

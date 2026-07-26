@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useActiveAccount } from "thirdweb/react";
-import { createPublicClient, createWalletClient, http, custom, formatEther } from "viem";
+import { createPublicClient, http, formatEther } from "viem";
+import { prepareContractCall, sendTransaction, waitForReceipt } from "thirdweb";
 import { CONTRACT_ADDRESS, escrowAbi } from "@/lib/abi";
 import { isLegacyContract } from "@/lib/escrow";
+import { escrowContract, friendlyTxError } from "@/lib/monad";
 import {
   Loader2, Scale, ExternalLink, AlertTriangle, RefreshCw, Inbox, MessageSquare,
 } from "lucide-react";
@@ -106,8 +108,11 @@ export default function ArbitrationPanel() {
     !!account?.address && !!arbitrator &&
     account.address.toLowerCase() === arbitrator.toLowerCase();
 
+  // Sent through thirdweb's own pipeline — works for the arbitrator's wallet
+  // whether it's a browser extension, an in-app wallet, or connected over
+  // WalletConnect. No manual chain-switch plumbing needed.
   const resolve = async (trade: Disputed) => {
-    if (!account || !window.ethereum) {
+    if (!account) {
       setError("Connect the arbitrator wallet first.");
       return;
     }
@@ -116,39 +121,14 @@ export default function ArbitrationPanel() {
     setBusyId(trade.id);
     setError("");
     try {
-      try {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0x279f" }],
-        });
-      } catch (e) {
-        if ((e as { code?: number }).code === 4902) {
-          await window.ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: "0x279f",
-              chainName: "Monad Testnet",
-              nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
-              rpcUrls: [RPC],
-            }],
-          });
-        } else {
-          throw new Error("Switch your wallet to Monad Testnet.");
-        }
-      }
-
-      const walletClient = createWalletClient({ chain: MONAD_CHAIN as any, transport: custom(window.ethereum) });
-      const pub = createPublicClient({ chain: MONAD_CHAIN as any, transport: http(RPC) });
-
-      const hash = await walletClient.writeContract({
-        address: CONTRACT_ADDRESS,
-        abi: escrowAbi,
-        functionName: "resolveDispute",
-        args: [BigInt(trade.id), buyerPct * 100], // percent → basis points
-        account: account.address as `0x${string}`,
-        chain: MONAD_CHAIN as any,
+      const transaction = prepareContractCall({
+        contract: escrowContract,
+        method: "resolveDispute",
+        params: [BigInt(trade.id), buyerPct * 100], // percent → basis points
       });
-      await pub.waitForTransactionReceipt({ hash });
+
+      const result = await sendTransaction({ account, transaction });
+      await waitForReceipt(result);
 
       // Leave a record in the trade's chat so both parties see the outcome.
       fetch("/api/chat", {
@@ -168,8 +148,7 @@ export default function ArbitrationPanel() {
 
       await load();
     } catch (err) {
-      const e = err as { shortMessage?: string; message?: string };
-      setError(e.shortMessage || e.message || "Transaction failed.");
+      setError(friendlyTxError(err));
     } finally {
       setBusyId(null);
     }
