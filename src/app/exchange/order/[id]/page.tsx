@@ -91,6 +91,7 @@ export default function OrderPage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
+  const [chatError, setChatError] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
   const threadId = `ex-${orderId?.toLowerCase()}`;
 
@@ -310,8 +311,9 @@ export default function OrderPage() {
     if (!chatInput.trim()) return;
     const text = chatInput;
     setChatInput("");
+    setChatError("");
     try {
-      await fetch("/api/chat", {
+      const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -319,8 +321,17 @@ export default function OrderPage() {
           address: account?.address || order?.walletAddress || "guest", text,
         }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setChatError(data.error || `Message failed to send (HTTP ${res.status}).`);
+        setChatInput(text); // give them their text back
+        return;
+      }
       fetchChat();
-    } catch { /* silent */ }
+    } catch {
+      setChatError("Couldn't reach the server. Check your connection and try again.");
+      setChatInput(text);
+    }
   };
 
   const copy = (value: string, key: string) => {
@@ -759,6 +770,11 @@ export default function OrderPage() {
               })}
               <div ref={chatEndRef} />
             </div>
+            {chatError && (
+              <div className="mx-3 mb-1 px-3.5 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 text-xs font-bold text-zinc-900 dark:text-white">
+                ⚠️ {chatError}
+              </div>
+            )}
             <form onSubmit={handleSendChat} className="p-3 border-t border-zinc-200 dark:border-zinc-800 flex gap-2">
               <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)}
                 placeholder="Describe your issue…"

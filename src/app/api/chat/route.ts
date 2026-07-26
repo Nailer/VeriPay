@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getThread, appendMessage } from "@/lib/chatStore";
+import { isSupabaseConfigured } from "@/lib/supabase";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -20,6 +21,16 @@ export async function POST(request: Request) {
 
     if (!tradeId || !text || !address) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    // Without storage the message would be accepted, saved nowhere, and vanish
+    // on the next poll — which looks like "chat is broken" and is miserable to
+    // debug. Fail loudly instead.
+    if (!isSupabaseConfigured()) {
+      return NextResponse.json(
+        { error: "Chat storage is not configured on this server (SUPABASE_SERVICE_ROLE_KEY is missing)." },
+        { status: 503 }
+      );
     }
 
     const newMessage = await appendMessage(tradeId, {

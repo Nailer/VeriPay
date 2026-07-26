@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { ArrowLeft, ShieldCheck, Send, Lock, CheckCheck } from "lucide-react";
 import { useActiveAccount } from "thirdweb/react";
 import { createPublicClient, http } from "viem";
-import { CONTRACT_ADDRESS, escrowAbi } from "@/lib/abi";
+import { readTrade } from "@/lib/escrow";
 import { usePolling } from "@/lib/usePolling";
 
 export default function ChatPage() {
@@ -17,6 +17,7 @@ export default function ChatPage() {
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<any[]>([]);
   const [trade, setTrade] = useState<any>(null);
+  const [sendError, setSendError] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to newest message
@@ -36,14 +37,11 @@ export default function ChatPage() {
         transport: http("https://testnet-rpc.monad.xyz"),
       });
 
-      const res = await publicClient.readContract({
-        address: CONTRACT_ADDRESS,
-        abi: escrowAbi,
-        functionName: "trades",
-        args: [BigInt(idStr)],
-      }) as any;
-
-      setTrade({ buyer: res[0], seller: res[1] });
+      // readTrade copes with both contract versions; decoding v1 data with the
+      // v2 ABI throws, which used to leave `trade` null and silently disable
+      // sending.
+      const t = await readTrade(publicClient as any, BigInt(idStr));
+      setTrade({ buyer: t.buyer, seller: t.seller });
     } catch (err) {
       console.error("Fetch trade error:", err);
     }
@@ -73,22 +71,33 @@ export default function ChatPage() {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim() || !account || !trade) return;
+    // Don't require the on-chain lookup to have succeeded — a chat that can't
+    // send because an RPC read failed just looks broken.
+    if (!inputValue.trim() || !account) return;
 
     const userAddress = account.address;
-    let senderRole = "Observer";
-    if (userAddress.toLowerCase() === trade.buyer.toLowerCase()) senderRole = "Buyer";
-    else if (userAddress.toLowerCase() === trade.seller.toLowerCase()) senderRole = "Seller";
+    let senderRole = "User";
+    if (trade) {
+      if (userAddress.toLowerCase() === trade.buyer.toLowerCase()) senderRole = "Buyer";
+      else if (userAddress.toLowerCase() === trade.seller.toLowerCase()) senderRole = "Seller";
+    }
 
     const textToSend = inputValue;
     setInputValue("");
+    setSendError("");
 
     try {
-      await fetch("/api/chat", {
+      const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tradeId: idStr, sender: senderRole, address: userAddress, text: textToSend }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setSendError(data.error || `Message failed to send (HTTP ${res.status}).`);
+        setInputValue(textToSend); // give them their text back
+        return;
+      }
       fetchMessages();
 
       // Notify the other party
@@ -112,6 +121,8 @@ export default function ChatPage() {
       }
     } catch (err) {
       console.error("Send message error:", err);
+      setSendError("Couldn't reach the server. Check your connection and try again.");
+      setInputValue(textToSend);
     }
   };
 
@@ -202,6 +213,11 @@ export default function ChatPage() {
 
         {/* Chat Input — always visible above keyboard */}
         <div className="p-3 sm:p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex-shrink-0">
+          {sendError && (
+            <div className="mb-2.5 px-3.5 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 text-xs font-bold text-zinc-900 dark:text-white">
+              ⚠️ {sendError}
+            </div>
+          )}
           <form onSubmit={handleSend} className="flex items-center gap-2 sm:gap-3">
             <input
               type="text"

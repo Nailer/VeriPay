@@ -233,7 +233,9 @@ export type CreateOrderInput = {
 
 export async function createOrder(input: CreateOrderInput): Promise<ExchangeOrder> {
   if (!isSupabaseConfigured()) {
-    throw new Error("Storage is not configured, so orders cannot be created.");
+    throw new Error(
+      "Order storage is not configured on this server — SUPABASE_SERVICE_ROLE_KEY is missing from the environment."
+    );
   }
 
   const id = makeId();
