@@ -125,7 +125,7 @@ Only `NEXT_PUBLIC_*` reaches the browser. Setting `CONTRACT_ADDRESS` instead of 
 | `EXCHANGE_NGN_USD_RATE` | no | pin true cost of funds |
 | `EXCHANGE_QUOTE_TTL_MINUTES` | no (15) | quote lock |
 | `EXCHANGE_MIN_NGN` / `EXCHANGE_MAX_NGN` | no | order limits |
-| `EXCHANGE_MERCHANT_BANK_NAME` / `_ACCOUNT_NUMBER` / `_ACCOUNT_NAME` | no | account buyers pay into |
+| `EXCHANGE_MERCHANT_BANK_NAME`, `EXCHANGE_MERCHANT_ACCOUNT_NUMBER`, `EXCHANGE_MERCHANT_ACCOUNT_NAME` | no | account buyers pay into |
 | `EXCHANGE_MERCHANT_ADDRESS` | no | where sellers send crypto |
 | `EXCHANGE_PAYOUT_PRIVATE_KEY` | no | hot wallet; enables automatic crypto delivery |
 | `PAYSTACK_SECRET_KEY` / `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | no | live card payments |

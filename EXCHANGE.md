@@ -93,7 +93,7 @@ A real, confirmed Monad transaction that simply wasn't sent to us is rejected.
 | `EXCHANGE_NGN_USD_RATE` | no | pin your true cost of funds, overrides the live P2P rate |
 | `EXCHANGE_QUOTE_TTL_MINUTES` | no (15) | how long a quote is honoured |
 | `EXCHANGE_MIN_NGN` / `EXCHANGE_MAX_NGN` | no | order limits |
-| `EXCHANGE_MERCHANT_BANK_NAME` / `_ACCOUNT_NUMBER` / `_ACCOUNT_NAME` | no | the account buyers pay into |
+| `EXCHANGE_MERCHANT_BANK_NAME`, `EXCHANGE_MERCHANT_ACCOUNT_NUMBER`, `EXCHANGE_MERCHANT_ACCOUNT_NAME` | no | the account buyers pay into |
 | `EXCHANGE_MERCHANT_ADDRESS` | no | where sellers send crypto |
 | `EXCHANGE_PAYOUT_PRIVATE_KEY` | no | funded hot wallet; enables automatic crypto delivery |
 | `PAYSTACK_SECRET_KEY` | no | live card payments (server-side verification) |
