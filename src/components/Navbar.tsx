@@ -165,7 +165,7 @@ export default function Navbar() {
           <div className="flex items-center gap-2">
             <ConnectButton
               client={client} wallets={wallets}
-              appMetadata={{ name: "VeriPay", url: "https://monad-pay-lagos.vercel.app" }}
+              appMetadata={{ name: "VeriPay", url: "https://veripay.store" }}
               theme={mounted && isDark ? "dark" : "light"}
               connectModal={{ size: "wide" }}
               chain={defineChain(10143)}
@@ -183,7 +183,7 @@ export default function Navbar() {
         <div className="flex sm:hidden items-center gap-1.5 shrink-0">
           <ConnectButton
             client={client} wallets={wallets}
-            appMetadata={{ name: "VeriPay", url: "https://monad-pay-lagos.vercel.app" }}
+            appMetadata={{ name: "VeriPay", url: "https://veripay.store" }}
             theme={mounted && isDark ? "dark" : "light"}
             connectModal={{ size: "compact" }}
             chain={defineChain(10143)}

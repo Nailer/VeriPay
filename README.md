@@ -2,7 +2,7 @@
 
 **Escrow that makes buying from strangers safe.** Built on Monad, for Nigeria.
 
-**Live demo:** <https://monad-pay-lagos.vercel.app> · Monad testnet — no real money moves.
+**Live demo:** <https://veripay.store> · Monad testnet — no real money moves.
 
 ---
 
