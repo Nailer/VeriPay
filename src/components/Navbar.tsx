@@ -7,13 +7,14 @@ import { createWallet, inAppWallet } from "thirdweb/wallets";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import {
-  Sun, Moon, Monitor, Bell, ShieldCheck, MessageSquare,
+  Sun, Moon, Monitor, Bell, BellOff, BellRing, ShieldCheck, MessageSquare,
   X, Check, Menu,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useActiveAccount } from "thirdweb/react";
 import Logo from "@/components/Logo";
 import { usePolling } from "@/lib/usePolling";
+import { isPushSupported, getExistingSubscription, subscribeToPush, unsubscribeFromPush } from "@/lib/pushClient";
 
 type Notification = {
   id: number;
@@ -62,6 +63,29 @@ export default function Navbar() {
   const bellRef = useRef<HTMLButtonElement>(null);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+
+  // ─── Push notification opt-in ────────────────────────────────────────────
+  // "on" | "off" | "denied" | "unsupported" | "checking"
+  const [pushState, setPushState] = useState<"on" | "off" | "denied" | "unsupported" | "checking">("checking");
+
+  useEffect(() => {
+    if (!isPushSupported()) { setPushState("unsupported"); return; }
+    if (Notification.permission === "denied") { setPushState("denied"); return; }
+    getExistingSubscription()
+      .then((sub) => setPushState(sub ? "on" : "off"))
+      .catch(() => setPushState("off"));
+  }, []);
+
+  const togglePush = useCallback(async () => {
+    if (pushState === "on") {
+      await unsubscribeFromPush();
+      setPushState("off");
+      return;
+    }
+    if (!account?.address) return;
+    const result = await subscribeToPush(account.address);
+    setPushState(result === "subscribed" ? "on" : result === "denied" ? "denied" : "unsupported");
+  }, [pushState, account?.address]);
 
   const fetchNotifications = useCallback(async () => {
     if (!account?.address) return;
@@ -175,6 +199,7 @@ export default function Navbar() {
               panelOpen={panelOpen} setPanelOpen={setPanelOpen}
               unreadCount={unreadCount} notifications={notifications}
               markAllRead={markAllRead}
+              hasAccount={Boolean(account?.address)} pushState={pushState} togglePush={togglePush}
             />
           </div>
         </div>
@@ -195,6 +220,7 @@ export default function Navbar() {
             panelOpen={panelOpen} setPanelOpen={setPanelOpen}
             unreadCount={unreadCount} notifications={notifications}
             markAllRead={markAllRead}
+            hasAccount={Boolean(account?.address)} pushState={pushState} togglePush={togglePush}
             isMobile
           />
           <button
@@ -252,6 +278,7 @@ export default function Navbar() {
 function NotificationBell({
   bellRef, panelRef, panelOpen, setPanelOpen,
   unreadCount, notifications, markAllRead, isMobile = false,
+  hasAccount, pushState, togglePush,
 }: {
   bellRef: React.RefObject<HTMLButtonElement | null>;
   panelRef: React.RefObject<HTMLDivElement | null>;
@@ -261,6 +288,9 @@ function NotificationBell({
   notifications: Notification[];
   markAllRead: () => void;
   isMobile?: boolean;
+  hasAccount: boolean;
+  pushState: "on" | "off" | "denied" | "unsupported" | "checking";
+  togglePush: () => void;
 }) {
   return (
     <div className={isMobile ? "static" : "relative"}>
@@ -357,8 +387,28 @@ function NotificationBell({
             )}
           </div>
 
-          {notifications.length > 0 && (
+          {hasAccount && pushState !== "unsupported" && (
             <div className="px-4 py-2.5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/80">
+              <button
+                onClick={togglePush}
+                disabled={pushState === "checking" || pushState === "denied"}
+                className={`w-full flex items-center justify-center gap-2 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-colors
+                  ${pushState === "on"
+                    ? "bg-zinc-900 dark:bg-white text-white dark:text-black"
+                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"}
+                  ${pushState === "denied" ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                {pushState === "on"
+                  ? <><BellRing className="w-3.5 h-3.5" /> Device Alerts On</>
+                  : pushState === "denied"
+                  ? <><BellOff className="w-3.5 h-3.5" /> Blocked in Browser Settings</>
+                  : <><Bell className="w-3.5 h-3.5" /> Enable Device Alerts</>}
+              </button>
+            </div>
+          )}
+
+          {notifications.length > 0 && (
+            <div className="px-4 py-2 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/80">
               <p className="text-[10px] text-zinc-400 text-center font-medium uppercase tracking-widest">VeriPay · Address-targeted alerts</p>
             </div>
           )}

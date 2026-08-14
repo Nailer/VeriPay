@@ -40,11 +40,14 @@ src/app/
   exchange/buy|sell/           order entry
   exchange/order/[id]/         order status, payment, support chat
   admin/                       passcode-gated console
+  install/                     PWA install walkthrough (iOS / Android / desktop)
+  manifest.ts                  web app manifest (Next native route → /manifest.webmanifest)
   api/
     exchange/rates             live pricing
     exchange/orders            create + user actions (server-priced)
     exchange/card/{init,verify,webhook}   Paystack
     admin/{orders,chats,stats} admin data + fulfilment actions
+    push/{subscribe,unsubscribe,resubscribe}   web push subscription management
     chat, notifications, track, trades/log
 
 src/lib/
@@ -58,9 +61,17 @@ src/lib/
   chatStore.ts    chat persistence
   usePolling.ts   visibility-aware polling hook
   supabase.ts     service-role client (server only)
+  push.ts         server-side web push sends (VAPID) — see "Push notifications" below
+  pushClient.ts   browser-side subscribe/unsubscribe helpers
 
 src/components/
   ArbitrationPanel.tsx   admin dispute-resolution UI (Admin console → Disputes tab)
+  InstallPrompt.tsx      dismissible "install this as an app" banner
+  ServiceWorkerRegister.tsx   registers public/sw.js (production only)
+
+public/
+  sw.js           service worker — offline app-shell fallback + push/notificationclick handlers
+  icons/          manifest + apple-touch-icon PNGs, generated from src/app/icon.svg
 
 contracts/VeriPayEscrow.sol   the escrow contract (deploy via Remix)
 ```
@@ -94,6 +105,19 @@ Every write (create trade, release, refund, raise/resolve dispute, sell-side MON
 This used to be done with `window.ethereum.request(...)` + a raw viem `createWalletClient`. **That silently breaks for most real users** — `window.ethereum` only exists for browser-extension wallets. It's `undefined` for thirdweb's in-app (email/social login) wallet and for wallets connected over WalletConnect, which covers most people on mobile. The symptom was "No browser wallet detected. Please install MetaMask." on every write action, for anyone not using a desktop extension — found and fixed across `create/page.tsx`, `trade/[id]/page.tsx`, `exchange/order/[id]/page.tsx`, and `ArbitrationPanel.tsx`.
 
 thirdweb's own pipeline works uniformly across every connection type and switches/adds Monad Testnet on the wallet automatically — the manual `wallet_switchEthereumChain` / `wallet_addEthereumChain` dance is gone and shouldn't come back. **If you add a new write action, use `escrowContract` + `prepareContractCall` from `monad.ts`, not `window.ethereum`.**
+
+## PWA — install + push notifications
+
+VeriPay isn't distributed through an app store; it installs as a Progressive Web App straight from `veripay.store` (manifest + service worker + home-screen icons). `src/app/install/page.tsx` walks users through it per-platform, and `InstallPrompt.tsx` surfaces a dismissible one-line nudge site-wide (native install prompt on Android/Chrome/desktop via `beforeinstallprompt`; Share → Add to Home Screen instructions on iOS, which never fires that event).
+
+**Push notifications are a separate opt-in from installing the app.** The existing in-app bell (`notifications` table, polled every 20s) only works while a tab is open. Real device notifications — the kind that show up with the screen off — go through the Web Push API:
+
+- `src/lib/pushClient.ts` (browser): requests `Notification` permission, subscribes via `PushManager` using `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, POSTs the subscription to `/api/push/subscribe` keyed by the connected wallet address (lowercased, same key as `notifications.to_address`). Wired into the Navbar's notification-bell panel as an "Enable Device Alerts" toggle — only shown once a wallet is connected.
+- `push_subscriptions` table in Supabase (`address`, `endpoint` unique, `p256dh`, `auth`) — one row per browser/device, upserted on `endpoint` conflict so re-subscribing doesn't duplicate rows.
+- `src/lib/push.ts` (server): `sendPushToAddress()` looks up every subscription for an address and calls `web-push`'s `sendNotification`. Hooked into the existing `POST /api/notifications` handler — every trade/chat notification that already gets written to the bell also fires a best-effort push, wrapped so a push failure never breaks the request. Expired subscriptions (404/410 from the push service) are pruned automatically.
+- `public/sw.js` handles `push` (shows the notification), `notificationclick` (focuses/opens the right trade), and `pushsubscriptionchange` (re-subscribes and calls `/api/push/resubscribe` to carry the address forward if the browser rotates the subscription).
+
+**Deliberately not cached:** the service worker's `fetch` handler only intercepts page navigations (for the offline fallback screen). `/api/*` — pricing, escrow reads, chat, orders — is never touched by the cache, so a stale price or trade status can never be served offline. Don't change this without re-reading the "Pricing engine" section below on why staleness here is a real financial bug, not a UX nit.
 
 ## Pricing engine (`src/lib/pricing.ts`)
 
@@ -144,6 +168,8 @@ Only `NEXT_PUBLIC_*` reaches the browser. Setting `CONTRACT_ADDRESS` instead of 
 | `EXCHANGE_PAYOUT_PRIVATE_KEY` | no | hot wallet; enables automatic crypto delivery |
 | `PAYSTACK_SECRET_KEY` / `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | no | live card payments |
 | `MONAD_RPC_URL` | no | override testnet RPC |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | no | web push (device notifications); without both, push silently no-ops |
+| `VAPID_SUBJECT` | no (`mailto:support@veripay.store`) | contact URI push services may use to reach the app owner |
 
 Without Paystack keys the card flow runs in labelled TEST MODE and tags the order accordingly. Paystack test keys are confirmed working end-to-end (real checkout URL, real access code, `configured: true`) — the card flow is not theoretical, it's tested. Going live only needs a Paystack live-mode application, which needs a registered business.
 

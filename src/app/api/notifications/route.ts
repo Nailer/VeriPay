@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, isSupabaseConfigured } from "@/lib/supabase";
+import { sendPushToAddress } from "@/lib/push";
 
 export type NotificationType = "trade" | "chat";
 
@@ -99,6 +100,16 @@ export async function POST(request: Request) {
       read: data.read,
       createdAt: new Date(data.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
+
+    // Best-effort real device notification — never blocks or fails the response.
+    sendPushToAddress(key, {
+      title: type === "trade" ? "New Escrow Created" : `New Message · Trade #00${tradeId}`,
+      body:
+        type === "trade"
+          ? `${fromAddress.slice(0, 8)}…${fromAddress.slice(-6)} opened a trade for ${amount ?? "?"} MON`
+          : (message as string) ?? "You have a new message",
+      url: `/trade/${tradeId}`,
+    }).catch(() => {});
 
     return NextResponse.json({ success: true, notification: newNotification });
   } catch (err) {

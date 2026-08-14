@@ -5,6 +5,7 @@ import { Providers } from "./providers";
 import Navbar from "@/components/Navbar";
 import Analytics from "@/components/Analytics";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import InstallPrompt from "@/components/InstallPrompt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -60,6 +61,7 @@ export default function RootLayout({
           <Analytics />
           <ServiceWorkerRegister />
           <Navbar />
+          <InstallPrompt />
           {children}
         </Providers>
       </body>
