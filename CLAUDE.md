@@ -49,7 +49,8 @@ src/app/
 
 src/lib/
   abi.ts          v2 contract ABI + CONTRACT_ADDRESS
-  escrow.ts       reads trades from EITHER contract version
+  escrow.ts       reads trades from EITHER contract version (dashboard, trade detail, trade chat)
+  monad.ts        thirdweb chain + contract + sendTransaction helpers — see "Sending transactions" below
   pricing.ts      server-authoritative pricing engine
   chainVerify.ts  on-chain verification of sell-side deposits
   exchangeStore.ts order persistence + lifecycle
@@ -57,6 +58,9 @@ src/lib/
   chatStore.ts    chat persistence
   usePolling.ts   visibility-aware polling hook
   supabase.ts     service-role client (server only)
+
+src/components/
+  ArbitrationPanel.tsx   admin dispute-resolution UI (Admin console → Disputes tab)
 
 contracts/VeriPayEscrow.sol   the escrow contract (deploy via Remix)
 ```
@@ -72,7 +76,9 @@ Two versions exist in the wild:
 
 UI gates v2-only features (`Report a problem`, auto-release countdown, fee line, arbitration panel) behind `!trade.legacy`.
 
-Deployment is via **Remix only** — there's no Hardhat/Foundry here. See `contracts/README.md`.
+**As of now, v2 is NOT deployed.** `NEXT_PUBLIC_CONTRACT_ADDRESS` is unset, so the live site runs on the v1 fallback address — no fee, no disputes, no arbitration, even though all of that UI exists and is fully wired. Deploying v2 and setting the env var is what turns it on; nothing else needs to change. Don't tell anyone (users, investors, docs) that fees or disputes are live until this is actually done — see `contracts/README.md` for the Remix steps.
+
+Deployment is via **Remix only** — there's no Hardhat/Foundry here.
 
 ### v2 safety properties worth preserving
 
@@ -80,6 +86,14 @@ Deployment is via **Remix only** — there's no Hardhat/Foundry here. See `contr
 - `MAX_FEE_BPS = 500` is a constant. Don't make it settable.
 - Fee rate is locked per-trade at creation, so changing the global fee can't affect open trades.
 - Refunds are never charged a fee. The platform earns only when a trade succeeds.
+
+## Sending transactions — use thirdweb, never `window.ethereum`
+
+Every write (create trade, release, refund, raise/resolve dispute, sell-side MON transfer) goes through `src/lib/monad.ts`: `prepareContractCall` / `prepareTransaction` + `sendTransaction({ account, transaction })` + `waitForReceipt`, where `account` comes from `useActiveAccount()`.
+
+This used to be done with `window.ethereum.request(...)` + a raw viem `createWalletClient`. **That silently breaks for most real users** — `window.ethereum` only exists for browser-extension wallets. It's `undefined` for thirdweb's in-app (email/social login) wallet and for wallets connected over WalletConnect, which covers most people on mobile. The symptom was "No browser wallet detected. Please install MetaMask." on every write action, for anyone not using a desktop extension — found and fixed across `create/page.tsx`, `trade/[id]/page.tsx`, `exchange/order/[id]/page.tsx`, and `ArbitrationPanel.tsx`.
+
+thirdweb's own pipeline works uniformly across every connection type and switches/adds Monad Testnet on the wallet automatically — the manual `wallet_switchEthereumChain` / `wallet_addEthereumChain` dance is gone and shouldn't come back. **If you add a new write action, use `escrowContract` + `prepareContractCall` from `monad.ts`, not `window.ethereum`.**
 
 ## Pricing engine (`src/lib/pricing.ts`)
 
@@ -131,9 +145,9 @@ Only `NEXT_PUBLIC_*` reaches the browser. Setting `CONTRACT_ADDRESS` instead of 
 | `PAYSTACK_SECRET_KEY` / `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | no | live card payments |
 | `MONAD_RPC_URL` | no | override testnet RPC |
 
-Without Paystack keys the card flow runs in labelled TEST MODE and tags the order accordingly.
+Without Paystack keys the card flow runs in labelled TEST MODE and tags the order accordingly. Paystack test keys are confirmed working end-to-end (real checkout URL, real access code, `configured: true`) — the card flow is not theoretical, it's tested. Going live only needs a Paystack live-mode application, which needs a registered business.
 
-`.env` is gitignored. Never print secrets into chat output or commit them.
+`.env` is gitignored. Never print secrets into chat output or commit them. Watch for near-miss variable names — a past bug had `_ACCOUNT_NUMBER`/`_ACCOUNT_NAME` instead of `EXCHANGE_MERCHANT_ACCOUNT_NUMBER`/`EXCHANGE_MERCHANT_ACCOUNT_NAME`, which silently fell back to fake bank details shown to real buyers. If bank details on the buy flow ever look wrong, check the exact env var names first, both locally and on Vercel — they're two separate places and can drift out of sync.
 
 ## Design rules
 
@@ -154,19 +168,25 @@ Without Paystack keys the card flow runs in labelled TEST MODE and tags the orde
 
 ## Current state
 
+- Live at **veripay.store** (custom domain, DNS on Namecheap pointed at Vercel, valid SSL, confirmed HTTP 200). The `.vercel.app` URL still works alongside it. All hardcoded references to the old `monad-pay-lagos.vercel.app` URL have been fixed and pushed (`README.md`, `docs/docs.json` navbar "Launch App" button, `src/components/Navbar.tsx` thirdweb `ConnectButton` `appMetadata.url` on both desktop and mobile). If a thirdweb client-ID allowed-domains list exists on the thirdweb dashboard, confirm `veripay.store` is on it — not yet verified either way.
 - Monad **testnet** only. No real money has moved.
-- No real users, no revenue.
+- **v2 contract (fee + disputes + arbitration) is built, locally EVM-tested (27/27 passing), and fully wired into the UI — but not deployed.** `NEXT_PUBLIC_CONTRACT_ADDRESS` is still unset, so the live site runs on the v1 fallback address with no fee and no disputes. See the "Contract versions" section above — deploying v2 via Remix and setting the env var is the single next step that turns all of this on.
+- Card payments via Paystack are confirmed working end-to-end in **test mode** (real checkout URL, real access code returned). Going live needs a live-mode Paystack application, which needs a registered business — not done yet.
+- Mobile wallet transactions (in-app/email-login wallets, WalletConnect) were broken until the `window.ethereum` → thirdweb fix described above; now fixed and verified across all four write-action pages.
+- No real users, no revenue, no live transactions yet on either the escrow or the exchange.
 - Naira payouts are manual; there's no bank API integration.
-- Not licensed, contract not audited.
+- Not licensed, no legal entity formed yet, contract not audited.
 - Solo founder (Aje Emmanuel), sole owner. Started 11 April 2026.
+- Submitted a **Y Combinator** application (see "YC context" below) with escrow-first framing, a founder-introduction video, and a demo video/script prepared for Arcade.app editing. Also pitched at a **local investor event** the same period (see "Fundraising tracks" below) using a 10-slide Gamma.app deck.
 
-Known gaps worth fixing: contract payouts are push (a contract recipient that reverts blocks settlement); the arbitrator is a single address; `README.md` still says "Monad Pay Lagos" and needs rebranding.
+Known gaps worth fixing, in rough priority order: (1) deploy v2 to get fee/dispute/arbitration actually live; (2) get a security review before real funds move — contract is untested by anyone but the founder; (3) form a legal entity — blocks Paystack going live and any real fundraising close; (4) contract payouts are push-based (a recipient contract that reverts blocks settlement — no pull-payment fallback exists); (5) the arbitrator is a single address — centralization risk worth flagging honestly to investors; (6) no sizing yet on how much float the exchange needs to hold to avoid delayed payouts at volume.
 
-## YC context
+## Fundraising tracks — two separate, concurrent efforts
 
-This project is being submitted to **Y Combinator** (an equity investment, not a grant — they take ~7% for $500K). A previous application was rejected. The escrow-first framing above is the pitch. Draft application answers live in the conversation history, not the repo.
+Don't conflate these; they're different instruments for different audiences.
 
-Honest read for anyone asked to help with the application: the weakest point is the lack of real transactions and users. Advice should push toward getting real trades through the product rather than polishing wording.
+1. **Y Combinator** — equity investment, not a grant (~7% for $500K, standard YC deal). A previous application was rejected; this is a second attempt. The escrow-first framing above is the pitch. Draft answers to the full YC question set (traction, monetization, equity split, "how far along," founder video script, "what convinced you to apply") were worked through in prior conversation history, not stored in the repo. Honest read: the weakest point is still the lack of real transactions and users — advice for this track should keep pushing toward getting real trades through the product, not polishing wording further.
+2. **Local pre-seed (Nigeria)** — a smaller, separate raise pitched at a local investor event, structured as a **SAFE** (~$60,000 target) rather than a priced round, sized around: a testnet-to-mainnet + security review budget, few months of runway for the founder full-time, and a small marketing/liquidity push to get first real trades flowing. No valuation cap has been set — that needs real legal counsel before it's put in front of an investor, and shouldn't be invented on the founder's behalf. A 10-slide Gamma.app deck was built for this pitch, ending on an ask slide built from this reasoning and including the monetization paragraph originally drafted for the YC "how will you make money" answer.
 
 ## Working style
 
