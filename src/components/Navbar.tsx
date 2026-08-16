@@ -140,7 +140,7 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="flex items-center justify-between gap-2 px-3 py-2.5 sm:px-6 sm:py-4 md:px-12 backdrop-blur-md border-b border-zinc-200 dark:border-white/10 sticky top-0 z-50 bg-white/90 dark:bg-black/90 transition-all duration-300">
+      <header className="flex items-center justify-between gap-2 px-3 pt-[calc(env(safe-area-inset-top)+0.625rem)] pb-2.5 sm:px-6 sm:pt-[calc(env(safe-area-inset-top)+1rem)] sm:pb-4 md:px-12 backdrop-blur-md border-b border-zinc-200 dark:border-white/10 sticky top-0 z-50 bg-white/90 dark:bg-black/90 transition-all duration-300">
 
         {/* Logo + wordmark */}
         <Link href="/" className="flex items-center gap-2 sm:gap-2.5 cursor-pointer group hover:opacity-80 shrink-0" onClick={() => setMobileMenuOpen(false)}>
@@ -235,7 +235,7 @@ export default function Navbar() {
 
       {/* Mobile slide-down menu */}
       {mobileMenuOpen && (
-        <div className="sm:hidden fixed inset-x-0 top-[53px] z-40 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-4 py-5 flex flex-col gap-1 animate-in fade-in slide-in-from-top-2 duration-200 shadow-xl">
+        <div className="sm:hidden fixed inset-x-0 top-[calc(env(safe-area-inset-top)+53px)] z-40 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-4 py-5 flex flex-col gap-1 animate-in fade-in slide-in-from-top-2 duration-200 shadow-xl">
           <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}
             className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-semibold text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
             Dashboard
