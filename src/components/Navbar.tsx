@@ -193,6 +193,7 @@ export default function Navbar() {
               theme={mounted && isDark ? "dark" : "light"}
               connectModal={{ size: "wide" }}
               chain={defineChain(10143)}
+              connectButton={{ label: "Sign in" }}
             />
             <NotificationBell
               bellRef={bellRef} panelRef={panelRef}
@@ -212,7 +213,7 @@ export default function Navbar() {
             theme={mounted && isDark ? "dark" : "light"}
             connectModal={{ size: "compact" }}
             chain={defineChain(10143)}
-            connectButton={{ label: "Connect", style: compactConnectStyle }}
+            connectButton={{ label: "Sign in", style: compactConnectStyle }}
             detailsButton={{ style: compactConnectStyle }}
           />
           <NotificationBell
