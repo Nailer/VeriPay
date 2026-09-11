@@ -2,7 +2,9 @@
 //
 // Struct fields 0-5 (buyer, seller, amount, released, sellerApprovedRefund,
 // metadata) are in the same order as the original contract, so existing reads
-// that index into `trades(...)` keep working. New fields are appended after.
+// that index into `trades(...)` keep working. New fields are appended after —
+// field 11 (`token`) is address(0) for a native-MON trade, or an ERC-20
+// address (e.g. Agora's AUSD) for a token trade.
 
 export const escrowAbi = [
   { "inputs": [], "stateMutability": "nonpayable", "type": "constructor" },
@@ -16,6 +18,18 @@ export const escrowAbi = [
     "name": "createTrade",
     "outputs": [{ "internalType": "uint256", "name": "id", "type": "uint256" }],
     "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "_seller", "type": "address" },
+      { "internalType": "string", "name": "_metadata", "type": "string" },
+      { "internalType": "address", "name": "_token", "type": "address" },
+      { "internalType": "uint256", "name": "_amount", "type": "uint256" }
+    ],
+    "name": "createTradeWithToken",
+    "outputs": [{ "internalType": "uint256", "name": "id", "type": "uint256" }],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -79,7 +93,8 @@ export const escrowAbi = [
       { "internalType": "uint64", "name": "autoReleaseAt", "type": "uint64" },
       { "internalType": "bool", "name": "disputed", "type": "bool" },
       { "internalType": "bool", "name": "refunded", "type": "bool" },
-      { "internalType": "uint16", "name": "feeBps", "type": "uint16" }
+      { "internalType": "uint16", "name": "feeBps", "type": "uint16" },
+      { "internalType": "address", "name": "token", "type": "address" }
     ],
     "stateMutability": "view",
     "type": "function"
@@ -100,7 +115,8 @@ export const escrowAbi = [
           { "internalType": "uint64", "name": "autoReleaseAt", "type": "uint64" },
           { "internalType": "bool", "name": "disputed", "type": "bool" },
           { "internalType": "bool", "name": "refunded", "type": "bool" },
-          { "internalType": "uint16", "name": "feeBps", "type": "uint16" }
+          { "internalType": "uint16", "name": "feeBps", "type": "uint16" },
+          { "internalType": "address", "name": "token", "type": "address" }
         ],
         "internalType": "struct VeriPayEscrow.Trade",
         "name": "",
@@ -126,12 +142,14 @@ export const escrowAbi = [
     "stateMutability": "view", "type": "function"
   },
   {
-    "inputs": [], "name": "accruedFees",
+    "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "name": "accruedFees",
     "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "view", "type": "function"
   },
   {
-    "inputs": [], "name": "escrowedBalance",
+    "inputs": [{ "internalType": "address", "name": "_token", "type": "address" }],
+    "name": "escrowedBalance",
     "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "view", "type": "function"
   },
@@ -173,7 +191,8 @@ export const escrowAbi = [
 
   // ─── Admin ────────────────────────────────────────────────────────────────
   {
-    "inputs": [], "name": "withdrawFees",
+    "inputs": [{ "internalType": "address", "name": "_token", "type": "address" }],
+    "name": "withdrawFees",
     "outputs": [], "stateMutability": "nonpayable", "type": "function"
   },
   {
@@ -258,9 +277,18 @@ export const escrowAbi = [
     "anonymous": false,
     "inputs": [
       { "indexed": true, "internalType": "address", "name": "to", "type": "address" },
+      { "indexed": true, "internalType": "address", "name": "token", "type": "address" },
       { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
     ],
     "name": "FeesWithdrawn", "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "uint256", "name": "id", "type": "uint256" },
+      { "indexed": true, "internalType": "address", "name": "token", "type": "address" }
+    ],
+    "name": "TradeToken", "type": "event"
   },
   {
     "anonymous": false,

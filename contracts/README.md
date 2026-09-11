@@ -19,6 +19,7 @@ This version adds:
 | Refunds | full | full, and **never** charged a fee |
 | Fee changes | n/a | capped at 5% in code; the rate is locked per trade at creation |
 | Owner access to escrowed money | n/a | none — `withdrawFees` can only move already-earned fees |
+| Escrow asset | native MON only | MON, or an ERC-20 like Agora's AUSD via `createTradeWithToken` |
 
 ## Deploy
 
@@ -73,7 +74,9 @@ All from the Remix **Deployed Contracts** panel, as the owner:
 | `withdrawFees` | collect earned fees | — |
 
 Two reads worth knowing: `accruedFees` is what you can withdraw, and
-`escrowedBalance` is customer money you can never touch.
+`escrowedBalance` is customer money you can never touch. Both now take an
+asset address — pass `0x0000000000000000000000000000000000000000` for MON,
+or the token's address (e.g. AUSD) for that asset. Same for `withdrawFees`.
 
 ## Verified behaviour
 
