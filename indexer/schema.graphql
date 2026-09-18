@@ -1,0 +1,24 @@
+# Two entities: the raw trade history (source of truth, mirrors on-chain
+# events 1:1) and a rolled-up per-address reputation figure derived from it.
+# The reputation numbers are never written directly by any handler except as
+# a consequence of a TradeRecord's status changing — so they can always be
+# recomputed from TradeRecord alone if this ever needs re-auditing.
+
+type TradeRecord {
+  id: ID! # on-chain trade id, as a string
+  buyer: String!
+  seller: String!
+  amount: BigInt!
+  token: String! # "0x0000000000000000000000000000000000000000" = native MON
+  status: String! # open | released | refunded | disputed | resolved
+  createdAt: BigInt!
+}
+
+type AddressReputation {
+  id: ID! # lowercase address
+  totalTrades: Int!
+  completedTrades: Int! # paid out as seller, or refunded as buyer, cleanly
+  disputedTrades: Int! # trades this address was party to that were disputed
+  refundedTrades: Int! # times this address was refunded as a buyer
+  lastActivityAt: BigInt!
+}

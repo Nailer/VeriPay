@@ -12,6 +12,7 @@ import {
   AlertTriangle, Clock, Scale, RotateCcw,
 } from "lucide-react";
 import Link from "next/link";
+import ReputationBadge from "@/components/ReputationBadge";
 
 const MONAD_CHAIN = {
   id: 10143,
@@ -319,9 +320,10 @@ export default function TradeDetail() {
               {isBuyer && <span className="text-[10px] font-black bg-zinc-900 dark:bg-white text-white dark:text-black px-2.5 py-1 rounded-full shrink-0">YOU</span>}
             </div>
             <div className="p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-3 transition-colors">
-              <div className="flex flex-col min-w-0">
-                <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest mb-1 transition-colors">Seller (Vendor)</span>
+              <div className="flex flex-col min-w-0 gap-1.5">
+                <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest transition-colors">Seller (Vendor)</span>
                 <span className="text-zinc-900 dark:text-white font-mono text-[11px] sm:text-xs transition-colors truncate">{truncAddr(trade.seller)}</span>
+                <ReputationBadge address={trade.seller} />
               </div>
               {isSeller && <span className="text-[10px] font-black bg-zinc-900 dark:bg-white text-white dark:text-black px-2.5 py-1 rounded-full shrink-0">YOU</span>}
             </div>

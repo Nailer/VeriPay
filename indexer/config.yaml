@@ -1,0 +1,32 @@
+# Envio HyperIndex config for VeriPay's on-chain reputation feed.
+#
+# Why this exists: VeriPay's escrow already writes a permanent event for
+# every trade outcome (created, released, disputed, resolved, refunded).
+# Reputation here is not a number we store and could quietly edit — it's
+# derived entirely by replaying those public events, so anyone can
+# independently re-derive the same score straight from the chain. Monad's
+# near-zero fees are what make writing one of these events per trade
+# affordable at any transaction size in the first place; Envio is what makes
+# querying the resulting history fast enough to show on a trade page.
+#
+# CONTRACT_ADDRESS is set once VeriPayEscrow (with AUSD support) is deployed
+# — see contracts/README.md. Until then this indexer has nothing to sync.
+name: veripay-reputation
+description: On-chain reputation for VeriPay escrow addresses, derived from trade history.
+
+contracts:
+  - name: VeriPayEscrow
+    handler: src/EventHandlers.ts
+    events:
+      - event: "TradeCreated(uint256 indexed id, address indexed buyer, address indexed seller, uint256 amount)"
+      - event: "TradeToken(uint256 indexed id, address indexed token)"
+      - event: "FundsReleased(uint256 indexed id, address to)"
+      - event: "DisputeRaised(uint256 indexed id, address by)"
+      - event: "DisputeResolved(uint256 indexed id, uint256 toBuyer, uint256 toSeller)"
+
+chains:
+  - id: 10143 # Monad testnet
+    start_block: 0
+    contracts:
+      - name: VeriPayEscrow
+        address: "${CONTRACT_ADDRESS}"
