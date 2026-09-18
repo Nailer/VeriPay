@@ -8,13 +8,14 @@ import Link from "next/link";
 import { useTheme } from "next-themes";
 import {
   Sun, Moon, Monitor, Bell, BellOff, BellRing, ShieldCheck, MessageSquare,
-  X, Check, Menu,
+  X, Check, Menu, Fingerprint, Loader2,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useActiveAccount } from "thirdweb/react";
+import { useActiveAccount, useSetActiveWallet } from "thirdweb/react";
 import Logo from "@/components/Logo";
 import { usePolling } from "@/lib/usePolling";
 import { isPushSupported, getExistingSubscription, subscribeToPush, unsubscribeFromPush } from "@/lib/pushClient";
+import { isPasskeySupported, connectWithPasskey, friendlyPasskeyError } from "@/lib/mera";
 
 type Notification = {
   id: number;
@@ -52,6 +53,26 @@ export default function Navbar() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const account = useActiveAccount();
+  const setActiveWallet = useSetActiveWallet();
+
+  // ─── Passkey sign-in (Mera) ───────────────────────────────────────────────
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
+  const [passkeyError, setPasskeyError] = useState<string | null>(null);
+  const passkeySupported = mounted && isPasskeySupported();
+
+  const handlePasskeySignIn = useCallback(async () => {
+    setPasskeyBusy(true);
+    setPasskeyError(null);
+    try {
+      const wallet = await connectWithPasskey();
+      await wallet.connect({ client } as Parameters<typeof wallet.connect>[0]);
+      await setActiveWallet(wallet);
+    } catch (err) {
+      setPasskeyError(friendlyPasskeyError(err));
+    } finally {
+      setPasskeyBusy(false);
+    }
+  }, [setActiveWallet]);
 
   // ─── Mobile menu ─────────────────────────────────────────────────────────
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -187,6 +208,9 @@ export default function Navbar() {
 
           {/* Wallet connect + Bell */}
           <div className="flex items-center gap-2">
+            {!account && passkeySupported && (
+              <PasskeyButton busy={passkeyBusy} error={passkeyError} onClick={handlePasskeySignIn} dismissError={() => setPasskeyError(null)} />
+            )}
             <ConnectButton
               client={client} wallets={wallets}
               appMetadata={{ name: "VeriPay", url: "https://veripay.store" }}
@@ -207,6 +231,9 @@ export default function Navbar() {
 
         {/* Mobile right side: connect + bell + hamburger */}
         <div className="flex sm:hidden items-center gap-1.5 shrink-0">
+          {!account && passkeySupported && (
+            <PasskeyButton busy={passkeyBusy} error={passkeyError} onClick={handlePasskeySignIn} dismissError={() => setPasskeyError(null)} isMobile />
+          )}
           <ConnectButton
             client={client} wallets={wallets}
             appMetadata={{ name: "VeriPay", url: "https://veripay.store" }}
@@ -272,6 +299,47 @@ export default function Navbar() {
         </div>
       )}
     </>
+  );
+}
+
+// ─── Passkey sign-in button (Face ID / fingerprint, no seed phrase) ──────────
+// Only rendered when no wallet is connected and this device's browser
+// supports WebAuthn. Sits beside "Sign in" as the frictionless first option
+// for someone who has never touched crypto before.
+function PasskeyButton({
+  busy, error, onClick, dismissError, isMobile = false,
+}: {
+  busy: boolean;
+  error: string | null;
+  onClick: () => void;
+  dismissError: () => void;
+  isMobile?: boolean;
+}) {
+  return (
+    <div className="relative">
+      <button
+        onClick={onClick}
+        disabled={busy}
+        aria-label="Sign in with Face ID or fingerprint"
+        title="Sign in with Face ID / fingerprint — no seed phrase"
+        className="flex items-center justify-center w-9 h-9 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors disabled:opacity-60"
+      >
+        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4" />}
+      </button>
+
+      {error && (
+        <div
+          className={`absolute top-full mt-2 z-[100] w-64 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl p-3.5 animate-in fade-in slide-in-from-top-2 duration-200 ${isMobile ? "right-0" : "left-0"}`}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">{error}</p>
+            <button onClick={dismissError} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-white shrink-0">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
