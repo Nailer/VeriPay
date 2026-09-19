@@ -22,7 +22,7 @@ Five sponsor bounty integrations, chosen for genuine product fit over easy bount
 1. **Agora (AUSD stablecoin)** — done at the contract level (see "Contract versions" below). Removes MON price-volatility risk from the exchange spread.
 2. **Monad Foundation (Mera passkey)** — done. Face ID/fingerprint sign-in, no seed phrase. See "Passkey sign-in" below.
 3. **Envio (HyperIndex)** — done (indexer scaffolded, untested against a live contract since nothing's deployed yet). Powers the reputation feed. See `indexer/`.
-4. **Chainlink (CRE)** — not started. Automates the 7-day auto-release instead of relying on a human to call it.
+4. **Chainlink (CRE)** — built, not deployable without a Chainlink account. Automates the 7-day auto-release instead of relying on a human to call it. See "CRE auto-release automation" below.
 5. **Alchemy** — done. `NEXT_PUBLIC_MONAD_RPC_URL` (falls back to the public node) is read by every RPC client in the app, client and server, via one shared constant in `monad.ts`. Needs an actual Alchemy API key set to be live — the founder needs to create that account, not something done on their behalf.
 
 ## Commands
@@ -137,6 +137,17 @@ thirdweb's own pipeline works uniformly across every connection type and switche
 `src/app/api/reputation/[address]/route.ts` queries the indexer's GraphQL endpoint (`ENVIO_GRAPHQL_URL` env var — unset means `configured: false`, not an error) and `src/components/ReputationBadge.tsx` renders it, currently wired into the seller card on the trade detail page. Renders nothing for an address with no history, so a fresh address isn't shown a discouraging "0 trades" badge.
 
 **Not yet tested against a live contract** — the indexer's `config.yaml`/`schema.graphql`/`src/EventHandlers.ts` pass `envio codegen` + `tsc --noEmit` cleanly, but real end-to-end verification needs the contract deployed (for a real address to index) and either Docker (local `envio dev`) or an Envio hosted deployment (`envio deploy`, needs an account/API token from <https://envio.dev/app/api-tokens>) — neither was available in the environment this was built in.
+
+## CRE auto-release automation (`hackathon/metropolis` only)
+
+Closes a real reliability gap: today, `autoRelease()` on the escrow only fires if a human remembers to call it after a buyer's confirmation window passes. A Chainlink CRE cron workflow checks recent trades every 15 minutes and triggers release for anything genuinely due.
+
+Two halves, on-chain and off-chain:
+
+- **`contracts/cre/`** — `AutoReleaseReceiver.sol` receives a signed CRE report (a batch of trade ids) and calls `autoRelease(id)` on each via try/catch, so one already-settled trade in a batch never blocks the rest. `ReceiverTemplate.sol`/`IReceiver.sol`/`IERC165.sol` are vendored **verbatim** from Chainlink's own `cre-templates` repo (`starter-templates/keeper-bot`) — that's the security-critical signature/sender-verification layer, not something to hand-roll from a docs description. Locally EVM-tested, 10/10 passing: authorized-forwarder success, unauthorized-sender rejection, batch partial-failure resilience, forwarder rotation. Holds no funds and needs no special permission on VeriPayEscrow — `autoRelease()` is already `external`, callable by anyone; this contract just calls it on a schedule instead of by hand.
+- **`cre/`** — the workflow itself (`workflow.ts` + `main.ts`), written against `@chainlink/cre-sdk`'s real installed types (verified by reading `node_modules`, not guessed from docs — the docs' own suggested high-level pattern turned out to need a CLI codegen step this was built without, so this uses the lower-level `evmClient.callContract`/`runtime.report`/`evmClient.writeReport` primitives directly). Passes `tsc --noEmit` against the real SDK.
+
+**Not deployable without a Chainlink CRE account** — the CLI needs "deploy access" requested from Chainlink, and CRE workflows compile to WASM and run inside a DON's TEE, so there's no local way to actually execute one end-to-end here. `cre/README.md` has the real remaining steps.
 
 ## PWA — install + push notifications
 
