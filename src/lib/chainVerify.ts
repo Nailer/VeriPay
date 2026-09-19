@@ -15,7 +15,10 @@
 
 import { createPublicClient, http, parseEther, formatEther } from "viem";
 
-const MONAD_RPC = process.env.MONAD_RPC_URL || "https://testnet-rpc.monad.xyz";
+// MONAD_RPC_URL overrides for the server only, if it ever needs to differ
+// from the client's endpoint; otherwise both read the same Alchemy URL
+// (Alchemy hackathon bounty) from one env var.
+const MONAD_RPC = process.env.MONAD_RPC_URL || process.env.NEXT_PUBLIC_MONAD_RPC_URL || "https://testnet-rpc.monad.xyz";
 
 const MONAD_CHAIN = {
   id: 10143,

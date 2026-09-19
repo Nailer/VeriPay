@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useActiveWalletChain } from "thirdweb/react";
 import { createPublicClient, http, formatEther } from "viem";
 import { readNextTradeId, readTrade } from "@/lib/escrow";
+import { MONAD_RPC_URL } from "@/lib/monad";
 import Link from "next/link";
 import { Loader2, ArrowRight, AlertCircle } from "lucide-react";
 
@@ -12,8 +13,8 @@ const MONAD_CHAIN = {
   name: "Monad Testnet",
   nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
   rpcUrls: {
-    default: { http: ["https://testnet-rpc.monad.xyz"] },
-    public: { http: ["https://testnet-rpc.monad.xyz"] },
+    default: { http: [MONAD_RPC_URL] },
+    public: { http: [MONAD_RPC_URL] },
   },
 };
 
@@ -42,7 +43,7 @@ export default function Dashboard() {
     try {
       const publicClient = createPublicClient({
         chain: MONAD_CHAIN as any,
-        transport: http("https://testnet-rpc.monad.xyz"),
+        transport: http(MONAD_RPC_URL),
       });
 
       // readTrade handles both the old and new contract shapes.

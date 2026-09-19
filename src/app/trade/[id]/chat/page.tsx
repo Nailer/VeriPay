@@ -7,6 +7,7 @@ import { ArrowLeft, ShieldCheck, Send, Lock, CheckCheck } from "lucide-react";
 import { useActiveAccount } from "thirdweb/react";
 import { createPublicClient, http } from "viem";
 import { readTrade } from "@/lib/escrow";
+import { MONAD_RPC_URL } from "@/lib/monad";
 import { usePolling } from "@/lib/usePolling";
 
 export default function ChatPage() {
@@ -32,9 +33,9 @@ export default function ChatPage() {
         chain: {
           id: 10143, name: "Monad Testnet",
           nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
-          rpcUrls: { default: { http: ["https://testnet-rpc.monad.xyz"] }, public: { http: ["https://testnet-rpc.monad.xyz"] } },
+          rpcUrls: { default: { http: [MONAD_RPC_URL] }, public: { http: [MONAD_RPC_URL] } },
         } as any,
-        transport: http("https://testnet-rpc.monad.xyz"),
+        transport: http(MONAD_RPC_URL),
       });
 
       // readTrade copes with both contract versions; decoding v1 data with the

@@ -23,7 +23,7 @@ Five sponsor bounty integrations, chosen for genuine product fit over easy bount
 2. **Monad Foundation (Mera passkey)** — done. Face ID/fingerprint sign-in, no seed phrase. See "Passkey sign-in" below.
 3. **Envio (HyperIndex)** — done (indexer scaffolded, untested against a live contract since nothing's deployed yet). Powers the reputation feed. See `indexer/`.
 4. **Chainlink (CRE)** — not started. Automates the 7-day auto-release instead of relying on a human to call it.
-5. **Alchemy** — not started. Swap in as the RPC provider (lowest-effort of the five — `MONAD_RPC_URL` override already exists).
+5. **Alchemy** — done. `NEXT_PUBLIC_MONAD_RPC_URL` (falls back to the public node) is read by every RPC client in the app, client and server, via one shared constant in `monad.ts`. Needs an actual Alchemy API key set to be live — the founder needs to create that account, not something done on their behalf.
 
 ## Commands
 
@@ -199,7 +199,8 @@ Only `NEXT_PUBLIC_*` reaches the browser. Setting `CONTRACT_ADDRESS` instead of 
 | `EXCHANGE_MERCHANT_ADDRESS` | no | where sellers send crypto |
 | `EXCHANGE_PAYOUT_PRIVATE_KEY` | no | hot wallet; enables automatic crypto delivery |
 | `PAYSTACK_SECRET_KEY` / `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | no | live card payments |
-| `MONAD_RPC_URL` | no | override testnet RPC |
+| `NEXT_PUBLIC_MONAD_RPC_URL` | no | RPC endpoint for both client and server (e.g. Alchemy's `https://monad-testnet.g.alchemy.com/v2/KEY` — Alchemy hackathon bounty). Falls back to the public node. Client-exposed by design; restrict it to veripay.store in Alchemy's dashboard. |
+| `MONAD_RPC_URL` | no | server-only override, if the server ever needs a different endpoint than the client — otherwise leave unset and just set the `NEXT_PUBLIC_` one |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | no | web push (device notifications); without both, push silently no-ops |
 | `VAPID_SUBJECT` | no (`mailto:support@veripay.store`) | contact URI push services may use to reach the app owner |
 

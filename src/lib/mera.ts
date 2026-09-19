@@ -42,10 +42,11 @@ import { HDKey } from "@scure/bip32";
 import { entropyToMnemonic, mnemonicToSeedSync } from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
 import { client } from "@/app/client";
+import { MONAD_RPC_URL } from "@/lib/monad";
 
 const CREDENTIAL_KEY = "veripay-passkey-credential";
 const ACCOUNT_PATH = "m/44'/60'/0'/0/0";
-const MONAD_RPC = "https://testnet-rpc.monad.xyz";
+const MONAD_RPC = MONAD_RPC_URL;
 
 const monadTestnetThirdweb = defineChain({
   id: 10143,

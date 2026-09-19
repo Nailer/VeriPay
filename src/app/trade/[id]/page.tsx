@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useActiveAccount } from "thirdweb/react";
 import { createPublicClient, http, formatEther } from "viem";
 import { prepareContractCall, sendTransaction, waitForReceipt } from "thirdweb";
-import { escrowContract, friendlyTxError } from "@/lib/monad";
+import { escrowContract, friendlyTxError, MONAD_RPC_URL } from "@/lib/monad";
 import { readTrade, type EscrowTrade } from "@/lib/escrow";
 import {
   Loader2, ShieldAlert, CheckCircle2, ArrowLeft, Info, HelpCircle,
@@ -19,8 +19,8 @@ const MONAD_CHAIN = {
   name: "Monad Testnet",
   nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
   rpcUrls: {
-    default: { http: ["https://testnet-rpc.monad.xyz"] },
-    public: { http: ["https://testnet-rpc.monad.xyz"] },
+    default: { http: [MONAD_RPC_URL] },
+    public: { http: [MONAD_RPC_URL] },
   },
 };
 
@@ -51,7 +51,7 @@ export default function TradeDetail() {
     try {
       const publicClient = createPublicClient({
         chain: MONAD_CHAIN as any,
-        transport: http("https://testnet-rpc.monad.xyz"),
+        transport: http(MONAD_RPC_URL),
       });
 
       // Handles both the old and new contract shapes.

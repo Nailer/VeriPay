@@ -6,13 +6,13 @@ import { createPublicClient, http, formatEther } from "viem";
 import { prepareContractCall, sendTransaction, waitForReceipt } from "thirdweb";
 import { CONTRACT_ADDRESS, escrowAbi } from "@/lib/abi";
 import { isLegacyContract } from "@/lib/escrow";
-import { escrowContract, friendlyTxError } from "@/lib/monad";
+import { escrowContract, friendlyTxError, MONAD_RPC_URL } from "@/lib/monad";
 import {
   Loader2, Scale, ExternalLink, AlertTriangle, RefreshCw, Inbox, MessageSquare,
 } from "lucide-react";
 import Link from "next/link";
 
-const RPC = "https://testnet-rpc.monad.xyz";
+const RPC = MONAD_RPC_URL;
 const MONAD_CHAIN = {
   id: 10143,
   name: "Monad Testnet",

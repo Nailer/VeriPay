@@ -4,7 +4,7 @@ import { useState } from "react";
 import { parseEther, createPublicClient, http } from "viem";
 import { useActiveAccount } from "thirdweb/react";
 import { prepareContractCall, sendTransaction, waitForReceipt } from "thirdweb";
-import { escrowContract, friendlyTxError } from "@/lib/monad";
+import { escrowContract, friendlyTxError, MONAD_RPC_URL } from "@/lib/monad";
 import { CONTRACT_ADDRESS, escrowAbi } from "@/lib/abi";
 import { useRouter } from "next/navigation";
 import { Loader2, ShieldCheck, ArrowLeft, CheckCircle2 } from "lucide-react";
@@ -15,8 +15,8 @@ const MONAD_CHAIN = {
   name: "Monad Testnet",
   nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
   rpcUrls: {
-    default: { http: ["https://testnet-rpc.monad.xyz"] },
-    public: { http: ["https://testnet-rpc.monad.xyz"] },
+    default: { http: [MONAD_RPC_URL] },
+    public: { http: [MONAD_RPC_URL] },
   },
 };
 
@@ -59,7 +59,7 @@ export default function CreateTrade() {
         try {
           const publicClient = createPublicClient({
             chain: MONAD_CHAIN as any,
-            transport: http("https://testnet-rpc.monad.xyz"),
+            transport: http(MONAD_RPC_URL),
           });
           const nextIdBig = await publicClient.readContract({
             address: CONTRACT_ADDRESS,

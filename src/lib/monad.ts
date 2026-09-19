@@ -19,11 +19,17 @@ import { defineChain, getContract } from "thirdweb";
 import { client } from "@/app/client";
 import { CONTRACT_ADDRESS, escrowAbi } from "@/lib/abi";
 
+// Alchemy's Monad testnet endpoint when configured (Alchemy hackathon
+// bounty), falling back to the public node otherwise. Client-exposed by
+// design, same as NEXT_PUBLIC_THIRDWEB_CLIENT_ID — restrict it to
+// veripay.store in Alchemy's dashboard rather than treating it as secret.
+export const MONAD_RPC_URL = process.env.NEXT_PUBLIC_MONAD_RPC_URL || "https://testnet-rpc.monad.xyz";
+
 export const monadTestnet = defineChain({
   id: 10143,
   name: "Monad Testnet",
   nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
-  rpc: "https://testnet-rpc.monad.xyz",
+  rpc: MONAD_RPC_URL,
 });
 
 /** The escrow contract, ready for thirdweb's prepareContractCall / sendTransaction. */
