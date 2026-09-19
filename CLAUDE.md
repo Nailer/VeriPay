@@ -19,7 +19,7 @@ Rule the hackathon requires: since VeriPay already existed before the hackathon,
 **The core hackathon thesis — "why does this need Monad specifically":** before this branch, Monad was infrastructure detail — the app didn't visibly need Monad's speed or near-zero fees over any other chain. The fix is a public, on-chain **reputation** feed (see "Reputation" below): it's only viable because Monad's fees are cheap enough to write a real event on every trade, and it's only trustworthy because it's derived from those events rather than a number VeriPay could quietly edit.
 
 Five sponsor bounty integrations, chosen for genuine product fit over easy bounty-chasing:
-1. **Agora (AUSD stablecoin)** — done at the contract level (see "Contract versions" below). Removes MON price-volatility risk from the exchange spread.
+1. **Agora (AUSD stablecoin)** — contract deployed and live (see "Contract versions" below). Removes MON price-volatility risk from the exchange spread. Still needs: wiring AUSD as a settlement option into the exchange/create-trade UI (contract already supports it via `createTradeWithToken`).
 2. **Monad Foundation (Mera passkey)** — done. Face ID/fingerprint sign-in, no seed phrase. See "Passkey sign-in" below.
 3. **Envio (HyperIndex)** — done (indexer scaffolded, untested against a live contract since nothing's deployed yet). Powers the reputation feed. See `indexer/`.
 4. **Chainlink (CRE)** — built, not deployable without a Chainlink account. Automates the 7-day auto-release instead of relying on a human to call it. See "CRE auto-release automation" below.
@@ -104,7 +104,9 @@ On `main`, two versions exist in the wild:
 
 UI gates v2-only features (`Report a problem`, auto-release countdown, fee line, arbitration panel) behind `!trade.legacy`.
 
-**As of now, nothing past v1 is deployed anywhere.** `NEXT_PUBLIC_CONTRACT_ADDRESS` is unset, so the live site runs on the v1 fallback address — no fee, no disputes, no arbitration, no AUSD, even though all of that UI exists and is fully wired. On this branch, a throwaway deployer key was generated to deploy the AUSD-extended contract once funded (blocked on testnet MON as of this writing) — ownership/arbitrator/fee-recipient all transfer to the founder's real wallet immediately after deploy, and the throwaway key is discarded. Don't tell anyone (users, investors, docs, hackathon judges) that fees, disputes, or AUSD are live until this is actually done — see `contracts/README.md` for the Remix steps.
+**On `hackathon/metropolis`, the AUSD-extended contract is now deployed and live**, at `0x00bdf9fbc9f59cc6814bbc7a91b19bbad1517e6d` on Monad testnet — `NEXT_PUBLIC_CONTRACT_ADDRESS` in `.env` points at it (this also fixed a real pre-existing bug: the var was named `CONTRACT_ADDRESS`, missing the `NEXT_PUBLIC_` prefix, so nothing had ever actually been read from it by client code before this). Deployed via a throwaway key generated for this one purpose; independently verified on-chain (not just trusted the deploy script's own output) — `owner()`, `arbitrator()`, `feeRecipient()` all read back as the founder's real wallet (`0xEfD0497f4557b49E84369cfb884B6c7446e11aBA`), `feeBps()` reads `100` (1%), `autoReleaseDelay()` reads `604800` (7 days). The throwaway key has been deleted from disk — it holds no privilege on the contract anymore and its leftover testnet MON is inconsequential.
+
+**On `main`, nothing past v1 is deployed** — that branch's `NEXT_PUBLIC_CONTRACT_ADDRESS` is still unset, so production (veripay.store) still runs on the v1 fallback with no fee, no disputes, no AUSD. Don't conflate the two branches: don't tell anyone (users, investors, docs) that fees/disputes/AUSD are live on the actual product until this branch's contract work is deliberately merged to `main` — that's a separate decision from getting it working for the hackathon demo.
 
 Deployment is via **Remix only** — there's no Hardhat/Foundry here.
 
