@@ -1,14 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { parseEther, createPublicClient, http } from "viem";
+import { parseEther, parseUnits, createPublicClient, http } from "viem";
 import { useActiveAccount } from "thirdweb/react";
 import { prepareContractCall, sendTransaction, waitForReceipt } from "thirdweb";
-import { escrowContract, friendlyTxError, MONAD_RPC_URL } from "@/lib/monad";
+import {
+  escrowContract, friendlyTxError, MONAD_RPC_URL,
+  ausdContract, AUSD_ADDRESS, AUSD_DECIMALS, erc20Abi,
+} from "@/lib/monad";
 import { CONTRACT_ADDRESS, escrowAbi } from "@/lib/abi";
 import { useRouter } from "next/navigation";
 import { Loader2, ShieldCheck, ArrowLeft, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+
+type Asset = "MON" | "AUSD";
 
 const MONAD_CHAIN = {
   id: 10143,
@@ -27,7 +32,9 @@ export default function CreateTrade() {
   const [seller, setSeller] = useState("");
   const [amount, setAmount] = useState("");
   const [metadata, setMetadata] = useState("");
+  const [asset, setAsset] = useState<Asset>("MON");
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState<"approve" | "create" | "">("");
   const [error, setError] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
@@ -44,14 +51,50 @@ export default function CreateTrade() {
       // works whether the connected wallet is a browser extension, an
       // email/social in-app wallet, or a mobile wallet over WalletConnect.
       // Thirdweb switches or adds Monad Testnet on the wallet automatically.
-      const transaction = prepareContractCall({
-        contract: escrowContract,
-        method: "createTrade",
-        params: [seller as `0x${string}`, metadata],
-        value: parseEther(amount),
-      });
+      let result: Awaited<ReturnType<typeof sendTransaction>>;
 
-      const result = await sendTransaction({ account, transaction });
+      if (asset === "AUSD") {
+        const amountUnits = parseUnits(amount, AUSD_DECIMALS);
+
+        // ERC-20 needs an explicit allowance before the contract can pull
+        // funds via transferFrom — a native-MON trade skips this entirely.
+        const publicClient = createPublicClient({ chain: MONAD_CHAIN as any, transport: http(MONAD_RPC_URL) });
+        const allowance = (await publicClient.readContract({
+          address: AUSD_ADDRESS,
+          abi: erc20Abi,
+          functionName: "allowance",
+          args: [account.address as `0x${string}`, CONTRACT_ADDRESS],
+        })) as bigint;
+
+        if (allowance < amountUnits) {
+          setLoadingStep("approve");
+          const approveTx = prepareContractCall({
+            contract: ausdContract,
+            method: "approve",
+            params: [CONTRACT_ADDRESS, amountUnits],
+          });
+          const approveResult = await sendTransaction({ account, transaction: approveTx });
+          await waitForReceipt(approveResult);
+        }
+
+        setLoadingStep("create");
+        const transaction = prepareContractCall({
+          contract: escrowContract,
+          method: "createTradeWithToken",
+          params: [seller as `0x${string}`, metadata, AUSD_ADDRESS, amountUnits],
+        });
+        result = await sendTransaction({ account, transaction });
+      } else {
+        setLoadingStep("create");
+        const transaction = prepareContractCall({
+          contract: escrowContract,
+          method: "createTrade",
+          params: [seller as `0x${string}`, metadata],
+          value: parseEther(amount),
+        });
+        result = await sendTransaction({ account, transaction });
+      }
+
       const receipt = await waitForReceipt(result);
 
       if (receipt.status === "success") {
@@ -79,7 +122,7 @@ export default function CreateTrade() {
               txHash: result.transactionHash,
               buyerAddress: account.address,
               sellerAddress: seller,
-              amountWei: parseEther(amount).toString(),
+              amountWei: (asset === "AUSD" ? parseUnits(amount, AUSD_DECIMALS) : parseEther(amount)).toString(),
               metadata,
             }),
           }).catch(() => {});
@@ -109,6 +152,7 @@ export default function CreateTrade() {
       setError(friendlyTxError(err));
     } finally {
       setLoading(false);
+      setLoadingStep("");
     }
   };
 
@@ -131,7 +175,7 @@ export default function CreateTrade() {
               </div>
 
               <h3 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white mb-2 uppercase tracking-tight">Funds Secured!</h3>
-              <p className="text-zinc-900 dark:text-white font-black text-2xl sm:text-3xl mb-5 sm:mb-6">{amount} MON</p>
+              <p className="text-zinc-900 dark:text-white font-black text-2xl sm:text-3xl mb-5 sm:mb-6">{amount} {asset}</p>
 
               <div className="bg-zinc-50 dark:bg-black/40 rounded-2xl p-4 border border-zinc-200 dark:border-zinc-800 mb-6 text-left">
                 <div className="flex flex-col gap-3">
@@ -199,16 +243,42 @@ export default function CreateTrade() {
             />
           </div>
 
+          {/* Asset */}
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-black uppercase tracking-widest text-zinc-500 ml-1">Escrow In</label>
+            <div className="grid grid-cols-2 gap-2">
+              {(["MON", "AUSD"] as Asset[]).map((a) => (
+                <button
+                  key={a} type="button" onClick={() => setAsset(a)}
+                  className={`py-3 rounded-2xl border font-black uppercase tracking-widest text-sm transition-all ${
+                    asset === a
+                      ? "bg-zinc-900 dark:bg-white text-white dark:text-black border-zinc-900 dark:border-white"
+                      : "bg-white dark:bg-black/50 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:border-zinc-400"
+                  }`}
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
+            {asset === "AUSD" && (
+              <p className="text-xs text-zinc-500 dark:text-zinc-500 ml-1 leading-relaxed">
+                A dollar-pegged stablecoin — no price movement between locking funds and release.
+              </p>
+            )}
+          </div>
+
           {/* Amount */}
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-black uppercase tracking-widest text-zinc-500 ml-1">Amount to Secure (MON)</label>
+            <label className="text-xs font-black uppercase tracking-widest text-zinc-500 ml-1">Amount to Secure ({asset})</label>
             <div className="relative">
               <input
                 required type="number" step="0.0001" placeholder="0.00"
                 value={amount} onChange={(e) => setAmount(e.target.value)}
                 className="w-full bg-white dark:bg-black/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 sm:px-5 py-3.5 sm:py-4 text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-700 font-bold text-base sm:text-lg"
               />
-              <span className="absolute right-4 sm:right-5 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-600 font-black text-[9px] sm:text-[10px] tracking-widest uppercase hidden xs:block">Monad Ledger</span>
+              <span className="absolute right-4 sm:right-5 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-600 font-black text-[9px] sm:text-[10px] tracking-widest uppercase hidden xs:block">
+                {asset === "AUSD" ? "Agora AUSD" : "Monad Ledger"}
+              </span>
             </div>
           </div>
 
@@ -228,7 +298,9 @@ export default function CreateTrade() {
             className="mt-2 relative group overflow-hidden px-6 sm:px-8 py-4 sm:py-5 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl"
           >
             <span className="relative z-10 flex items-center justify-center gap-3 text-sm sm:text-base">
-              {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Securing on Ledger...</> : "Fund & Secure Trade"}
+              {loading
+                ? <><Loader2 className="w-5 h-5 animate-spin" /> {loadingStep === "approve" ? "Approving AUSD..." : "Securing on Ledger..."}</>
+                : "Fund & Secure Trade"}
             </span>
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
           </button>

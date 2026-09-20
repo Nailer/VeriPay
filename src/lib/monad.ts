@@ -40,6 +40,51 @@ export const escrowContract = getContract({
   abi: escrowAbi,
 });
 
+// Agora's AUSD on Monad testnet (Agora hackathon bounty) — verified on-chain
+// directly rather than trusted from search results, which turned up a
+// mainnet-only address with no code on this chain. Confirmed live here:
+// symbol() -> "AUSD", decimals() -> 6.
+export const AUSD_ADDRESS = "0x333a12e2B519DA16EBE75012d54574C16ef4463f" as const;
+export const AUSD_DECIMALS = 6;
+
+export const erc20Abi = [
+  {
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    name: "allowance",
+    outputs: [{ type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    name: "approve",
+    outputs: [{ type: "bool" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+] as const;
+
+/** AUSD, ready for thirdweb's prepareContractCall / sendTransaction. */
+export const ausdContract = getContract({
+  client,
+  chain: monadTestnet,
+  address: AUSD_ADDRESS,
+  abi: erc20Abi,
+});
+
 /** Turns a wallet or RPC error into something worth showing a user. */
 export function friendlyTxError(err: unknown): string {
   const e = err as { shortMessage?: string; reason?: string; message?: string; code?: number };

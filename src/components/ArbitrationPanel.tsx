@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useActiveAccount } from "thirdweb/react";
-import { createPublicClient, http, formatEther } from "viem";
+import { createPublicClient, http } from "viem";
 import { prepareContractCall, sendTransaction, waitForReceipt } from "thirdweb";
 import { CONTRACT_ADDRESS, escrowAbi } from "@/lib/abi";
-import { isLegacyContract } from "@/lib/escrow";
+import { isLegacyContract, formatTradeAmount } from "@/lib/escrow";
 import { escrowContract, friendlyTxError, MONAD_RPC_URL } from "@/lib/monad";
 import {
   Loader2, Scale, ExternalLink, AlertTriangle, RefreshCw, Inbox, MessageSquare,
@@ -30,6 +30,7 @@ type Disputed = {
   amount: bigint;
   metadata: string;
   feeBps: number;
+  token: string;
 };
 
 const short = (a: string) => `${a.slice(0, 8)}…${a.slice(-6)}`;
@@ -87,9 +88,9 @@ export default function ArbitrationPanel() {
       for (const row of rows) {
         if (!row) continue;
         const { i, r } = row;
-        const [buyer, seller, amount, released, , metadata, , , disputed, refunded, feeBps] = r;
+        const [buyer, seller, amount, released, , metadata, , , disputed, refunded, feeBps, token] = r;
         if (disputed && !released && !refunded) {
-          open.push({ id: i, buyer, seller, amount, metadata, feeBps: Number(feeBps) });
+          open.push({ id: i, buyer, seller, amount, metadata, feeBps: Number(feeBps), token });
         }
       }
       setDisputes(open);
@@ -240,6 +241,8 @@ export default function ArbitrationPanel() {
             const sellerGross = d.amount - buyerWei;
             const fee = (sellerGross * BigInt(d.feeBps)) / BigInt(10000);
             const sellerNet = sellerGross - fee;
+            const assetSymbol = formatTradeAmount(d).symbol;
+            const fmt = (wei: bigint) => formatTradeAmount({ amount: wei, token: d.token }).formatted;
 
             return (
               <div key={d.id} className="p-4 rounded-2xl bg-white dark:bg-zinc-900/70 border border-zinc-900 dark:border-white">
@@ -247,7 +250,7 @@ export default function ArbitrationPanel() {
                   <div className="flex items-center gap-2">
                     <Scale className="w-4 h-4 text-zinc-900 dark:text-white" />
                     <span className="text-sm font-black text-zinc-900 dark:text-white">Trade #00{d.id}</span>
-                    <span className="text-xs font-bold text-zinc-500">{formatEther(d.amount)} MON</span>
+                    <span className="text-xs font-bold text-zinc-500">{fmt(d.amount)} {assetSymbol}</span>
                   </div>
                   <Link
                     href={`/trade/${d.id}/chat`}
@@ -299,14 +302,14 @@ export default function ArbitrationPanel() {
 
                 <div className="p-3 rounded-xl bg-zinc-50 dark:bg-black/40 border border-zinc-200 dark:border-zinc-800 mb-3 text-[11px] font-bold">
                   <div className="flex justify-between text-zinc-700 dark:text-zinc-300">
-                    <span>Buyer gets back</span><span>{formatEther(buyerWei)} MON</span>
+                    <span>Buyer gets back</span><span>{fmt(buyerWei)} {assetSymbol}</span>
                   </div>
                   <div className="flex justify-between text-zinc-700 dark:text-zinc-300">
-                    <span>Seller receives</span><span>{formatEther(sellerNet)} MON</span>
+                    <span>Seller receives</span><span>{fmt(sellerNet)} {assetSymbol}</span>
                   </div>
                   <div className="flex justify-between text-zinc-400 mt-1 pt-1 border-t border-zinc-200 dark:border-zinc-800">
                     <span>Platform fee ({d.feeBps / 100}% of seller&apos;s share)</span>
-                    <span>{formatEther(fee)} MON</span>
+                    <span>{fmt(fee)} {assetSymbol}</span>
                   </div>
                 </div>
 

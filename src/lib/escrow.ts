@@ -12,8 +12,9 @@
 // works again, this module detects which version is deployed and normalises
 // both into one shape.
 
-import type { PublicClient } from "viem";
+import { formatEther, formatUnits, type PublicClient } from "viem";
 import { CONTRACT_ADDRESS, escrowAbi } from "@/lib/abi";
+import { AUSD_ADDRESS, AUSD_DECIMALS } from "@/lib/monad";
 
 /** address(0) in the Trade struct means the trade escrows native MON. */
 export const NATIVE_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -151,4 +152,18 @@ export async function readTrade(client: PublicClient, id: number | bigint): Prom
     token: r[11],
     legacy: false,
   };
+}
+
+/**
+ * Formats a raw trade amount for display, using the right decimals and
+ * symbol for whichever asset the trade actually used. `formatEther` alone
+ * is wrong for an AUSD trade — AUSD uses 6 decimals, not 18 — so every page
+ * showing a trade amount should go through this rather than call
+ * formatEther directly.
+ */
+export function formatTradeAmount(trade: Pick<EscrowTrade, "amount" | "token">): { formatted: string; symbol: string } {
+  if (trade.token?.toLowerCase() === AUSD_ADDRESS.toLowerCase()) {
+    return { formatted: formatUnits(trade.amount, AUSD_DECIMALS), symbol: "AUSD" };
+  }
+  return { formatted: formatEther(trade.amount), symbol: "MON" };
 }

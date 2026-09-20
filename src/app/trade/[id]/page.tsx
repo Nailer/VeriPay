@@ -3,10 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useActiveAccount } from "thirdweb/react";
-import { createPublicClient, http, formatEther } from "viem";
+import { createPublicClient, http } from "viem";
 import { prepareContractCall, sendTransaction, waitForReceipt } from "thirdweb";
 import { escrowContract, friendlyTxError, MONAD_RPC_URL } from "@/lib/monad";
-import { readTrade, type EscrowTrade } from "@/lib/escrow";
+import { readTrade, formatTradeAmount, type EscrowTrade } from "@/lib/escrow";
 import {
   Loader2, ShieldAlert, CheckCircle2, ArrowLeft, Info, HelpCircle,
   AlertTriangle, Clock, Scale, RotateCcw,
@@ -161,6 +161,8 @@ export default function TradeDetail() {
   const feePct = trade.feeBps / 100;
   const feeWei = (trade.amount * BigInt(trade.feeBps)) / BigInt(10000);
   const sellerNet = trade.amount - feeWei;
+  const { formatted: amountFormatted, symbol: assetSymbol } = formatTradeAmount(trade);
+  const { formatted: sellerNetFormatted } = formatTradeAmount({ amount: sellerNet, token: trade.token });
 
   const secondsLeft = Number(trade.autoReleaseAt) - now;
   const windowPassed = secondsLeft <= 0;
@@ -250,12 +252,12 @@ export default function TradeDetail() {
             <div className="p-4 sm:p-6 md:p-8 rounded-[1.5rem] sm:rounded-[2rem] bg-white dark:bg-black/40 border border-zinc-200 dark:border-zinc-800 flex flex-col justify-center transition-colors">
               <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest mb-1.5 transition-colors">Locked Value</span>
               <span className="text-xl sm:text-3xl md:text-4xl font-black text-zinc-900 dark:text-white transition-colors leading-tight">
-                {formatEther(trade.amount)}{" "}
-                <span className="text-xs sm:text-sm font-normal text-zinc-500">MON</span>
+                {amountFormatted}{" "}
+                <span className="text-xs sm:text-sm font-normal text-zinc-500">{assetSymbol}</span>
               </span>
               {trade.feeBps > 0 && !settled && (
                 <span className="text-[10px] text-zinc-500 mt-2 leading-relaxed">
-                  Seller receives {formatEther(sellerNet)} MON after the {feePct}% fee.
+                  Seller receives {sellerNetFormatted} {assetSymbol} after the {feePct}% fee.
                   Refunds are returned in full.
                 </span>
               )}
@@ -343,7 +345,7 @@ export default function TradeDetail() {
                   className="w-full flex items-center justify-center px-6 sm:px-8 py-4 sm:py-5 bg-zinc-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest rounded-xl sm:rounded-2xl hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all disabled:opacity-50 active:scale-[0.98] text-sm"
                 >
                   {actionLoading === "releaseToSeller" && <Loader2 className="w-5 h-5 animate-spin mr-3" />}
-                  Confirm Delivery &amp; Release MON
+                  Confirm Delivery &amp; Release {assetSymbol}
                 </button>
               )}
 
