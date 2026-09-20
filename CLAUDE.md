@@ -23,7 +23,7 @@ Five sponsor bounty integrations, chosen for genuine product fit over easy bount
 2. **Monad Foundation (Mera passkey)** — done. Face ID/fingerprint sign-in, no seed phrase. See "Passkey sign-in" below.
 3. **Envio (HyperIndex)** — done (indexer scaffolded, untested against a live contract since nothing's deployed yet). Powers the reputation feed. See `indexer/`.
 4. **Chainlink (CRE)** — built, not deployable without a Chainlink account. Automates the 7-day auto-release instead of relying on a human to call it. See "CRE auto-release automation" below.
-5. **Alchemy** — done. `NEXT_PUBLIC_MONAD_RPC_URL` (falls back to the public node) is read by every RPC client in the app, client and server, via one shared constant in `monad.ts`. Needs an actual Alchemy API key set to be live — the founder needs to create that account, not something done on their behalf.
+5. **Alchemy** — live. `NEXT_PUBLIC_MONAD_RPC_URL` is set to the founder's real Alchemy Monad-testnet endpoint (verified directly — `eth_chainId` returns `10143`, and it correctly reads the deployed escrow contract) on this branch's Preview deployments and in local `.env`. Not set on `main`/production, which still uses the public node.
 
 ## Commands
 
