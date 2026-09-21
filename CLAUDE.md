@@ -19,11 +19,13 @@ Rule the hackathon requires: since VeriPay already existed before the hackathon,
 **The core hackathon thesis — "why does this need Monad specifically":** before this branch, Monad was infrastructure detail — the app didn't visibly need Monad's speed or near-zero fees over any other chain. The fix is a public, on-chain **reputation** feed (see "Reputation" below): it's only viable because Monad's fees are cheap enough to write a real event on every trade, and it's only trustworthy because it's derived from those events rather than a number VeriPay could quietly edit.
 
 Five sponsor bounty integrations, chosen for genuine product fit over easy bounty-chasing:
-1. **Agora (AUSD stablecoin)** — contract deployed and live (see "Contract versions" below). Removes MON price-volatility risk from the exchange spread. Still needs: wiring AUSD as a settlement option into the exchange/create-trade UI (contract already supports it via `createTradeWithToken`).
+1. **Agora (AUSD stablecoin)** — contract deployed and live (see "Contract versions" below), and wired all the way into the UI: a MON/AUSD toggle on the create-escrow page does the real two-step approve-then-escrow flow, and every page that displays a trade amount (`formatTradeAmount()` in `escrow.ts`) is asset-aware, not just the create form.
 2. **Monad Foundation (Mera passkey)** — done. Face ID/fingerprint sign-in, no seed phrase. See "Passkey sign-in" below.
-3. **Envio (HyperIndex)** — done (indexer scaffolded, untested against a live contract since nothing's deployed yet). Powers the reputation feed. See `indexer/`.
+3. **Envio (HyperIndex)** — indexer built (see `indexer/`), not yet deployed to Envio's hosted service — needs the founder's Envio account (sign-up in progress).
 4. **Chainlink (CRE)** — built, not deployable without a Chainlink account. Automates the 7-day auto-release instead of relying on a human to call it. See "CRE auto-release automation" below.
 5. **Alchemy** — live. `NEXT_PUBLIC_MONAD_RPC_URL` is set to the founder's real Alchemy Monad-testnet endpoint (verified directly — `eth_chainId` returns `10143`, and it correctly reads the deployed escrow contract) on this branch's Preview deployments and in local `.env`. Not set on `main`/production, which still uses the public node.
+
+**Testable preview:** `https://monad-pay-lagos-git-hackathon-metropolis-nailer1s-projects.vercel.app` — a stable alias that updates automatically on every push to this branch, entirely separate from veripay.store/production. Vercel's SSO/login protection was disabled project-wide (`vercel project protection disable monad-pay-lagos --sso`) so this link is openly viewable — worth knowing if that project-level setting ever needs revisiting, since it now applies to every preview deployment on this project, not just this branch's.
 
 ## Commands
 
