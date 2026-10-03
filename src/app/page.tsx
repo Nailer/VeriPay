@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CONTRACT_ADDRESS } from "@/lib/abi";
 import { ArrowRight, ShieldCheck, Zap, Lock, Wallet } from "lucide-react";
 
 export default function Home() {
@@ -68,29 +69,28 @@ export default function Home() {
             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-zinc-200/50 dark:bg-white/5 border border-zinc-300/50 dark:border-white/10 flex items-center justify-center mb-5 sm:mb-6 group-hover:scale-110 transition-transform duration-500">
               <ShieldCheck className="w-6 h-6 sm:w-7 sm:h-7 text-zinc-900 dark:text-white" />
             </div>
-            <h3 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white mb-2 sm:mb-3 transition-colors">Military-Grade Security</h3>
+            <h3 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white mb-2 sm:mb-3 transition-colors">Check the seller first</h3>
             <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed transition-colors">
-              Our smart contracts are heavily audited and immutable. Your funds are never touched by humans and only released upon cryptographic proof of agreement.
+              Paste any vendor&apos;s wallet and see every trade they&apos;ve done here — paid out, disputed, refunded. It&apos;s read straight from Monad, so nobody can fake it. Not even us.
             </p>
+            <Link href="/seller" className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-zinc-900 dark:text-white hover:underline underline-offset-4">Check a seller <ArrowRight className="w-4 h-4" /></Link>
           </div>
-
           <div className="group p-6 sm:p-8 rounded-3xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-white/50 transition-all duration-500 hover:-translate-y-1 hover:bg-zinc-100 dark:hover:bg-zinc-900/80">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-zinc-200/50 dark:bg-white/5 border border-zinc-300/50 dark:border-white/10 flex items-center justify-center mb-5 sm:mb-6 group-hover:scale-110 transition-transform duration-500">
-              <Zap className="w-6 h-6 sm:w-7 sm:h-7 text-zinc-900 dark:text-white" />
-            </div>
-            <h3 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white mb-2 sm:mb-3 transition-colors">Lightning Fast</h3>
-            <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed transition-colors">
-              Powered by Monad&apos;s high-throughput parallel execution, your escrow transactions resolve in milliseconds with essentially zero network latency.
-            </p>
-          </div>
-
-          <div className="group p-6 sm:p-8 rounded-3xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-white/50 transition-all duration-500 hover:-translate-y-1 hover:bg-zinc-100 dark:hover:bg-zinc-900/80 sm:col-span-2 md:col-span-1">
             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-zinc-200/50 dark:bg-white/5 border border-zinc-300/50 dark:border-white/10 flex items-center justify-center mb-5 sm:mb-6 group-hover:scale-110 transition-transform duration-500">
               <Lock className="w-6 h-6 sm:w-7 sm:h-7 text-zinc-900 dark:text-white" />
             </div>
-            <h3 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white mb-2 sm:mb-3 transition-colors">Total Transparency</h3>
+            <h3 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white mb-2 sm:mb-3 transition-colors">Pay in dollars</h3>
             <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed transition-colors">
-              Every step of the escrow lifecycle is fully verifiable on-chain. There are no black boxes or hidden fees—what you see in the contract is what you get.
+              Lock your payment in AUSD, a dollar-backed stablecoin, so the amount you agreed on is the amount the seller gets — no price swings while you wait for delivery.
+            </p>
+          </div>
+          <div className="group p-6 sm:p-8 rounded-3xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-white/50 transition-all duration-500 hover:-translate-y-1 hover:bg-zinc-100 dark:hover:bg-zinc-900/80 sm:col-span-2 md:col-span-1">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-zinc-200/50 dark:bg-white/5 border border-zinc-300/50 dark:border-white/10 flex items-center justify-center mb-5 sm:mb-6 group-hover:scale-110 transition-transform duration-500">
+              <Zap className="w-6 h-6 sm:w-7 sm:h-7 text-zinc-900 dark:text-white" />
+            </div>
+            <h3 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white mb-2 sm:mb-3 transition-colors">Never stuck waiting</h3>
+            <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed transition-colors">
+              If a buyer goes quiet after delivery, the seller is paid automatically once the 7-day window passes. No one has to remember to press a button.
             </p>
           </div>
 
@@ -103,7 +103,7 @@ export default function Home() {
         <div className="flex gap-4 sm:gap-6">
           <Link href="/install" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Install App</Link>
           <a href="https://www.coinapi.io/learn/glossary/escrow-service" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Terms of Service</a>
-          <a href="https://monad-testnet.socialscan.io/address/0xd0cc532f55ce6849d5b70e24d6188073f8921621" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Smart Contracts</a>
+          <a href={`https://testnet.monadscan.com/address/${CONTRACT_ADDRESS}`} className="hover:text-zinc-900 dark:hover:text-white transition-colors">Smart Contracts</a>
         </div>
       </footer>
     </div>

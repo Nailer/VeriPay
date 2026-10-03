@@ -9,8 +9,8 @@
 # affordable at any transaction size in the first place; Envio is what makes
 # querying the resulting history fast enough to show on a trade page.
 #
-# CONTRACT_ADDRESS is set once VeriPayEscrow (with AUSD support) is deployed
-# — see contracts/README.md. Until then this indexer has nothing to sync.
+# Points at the live VeriPayEscrow deployment on Monad testnet (hackathon/metropolis).
+# If the contract is ever redeployed, update address + start_block below.
 name: veripay-reputation
 description: On-chain reputation for VeriPay escrow addresses, derived from trade history.
 
@@ -25,8 +25,8 @@ contracts:
       - event: "DisputeResolved(uint256 indexed id, uint256 toBuyer, uint256 toSeller)"
 
 chains:
-  - id: 10143 # Monad testnet
-    start_block: 0
+  - id: 10143 # Monad testnet — served by Envio HyperSync (monad-testnet.hypersync.xyz)
+    start_block: 63987883 # block VeriPayEscrow was deployed in; nothing to index before it
     contracts:
       - name: VeriPayEscrow
-        address: "${CONTRACT_ADDRESS}"
+        address: "0x00bdf9fbc9f59cc6814bbc7a91b19bbad1517e6d"

@@ -44,7 +44,10 @@ export const escrowContract = getContract({
 // directly rather than trusted from search results, which turned up a
 // mainnet-only address with no code on this chain. Confirmed live here:
 // symbol() -> "AUSD", decimals() -> 6.
-export const AUSD_ADDRESS = "0x333a12e2B519DA16EBE75012d54574C16ef4463f" as const;
+// Overridable without a redeploy (the escrow accepts any ERC-20) — if Agora
+// points us at a different official testnet AUSD, set NEXT_PUBLIC_AUSD_ADDRESS.
+export const AUSD_ADDRESS = (process.env.NEXT_PUBLIC_AUSD_ADDRESS ||
+  "0x333a12e2B519DA16EBE75012d54574C16ef4463f") as `0x${string}`;
 export const AUSD_DECIMALS = 6;
 
 export const erc20Abi = [

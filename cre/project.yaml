@@ -1,0 +1,12 @@
+# CRE project settings — RPC endpoints the workflow reads/writes through.
+# Public Monad testnet node here so no API key is committed; swap in an
+# Alchemy URL locally if the public node is flaky.
+staging-settings:
+  rpcs:
+    - chain-name: monad-testnet
+      url: https://testnet-rpc.monad.xyz
+
+production-settings:
+  rpcs:
+    - chain-name: monad-testnet
+      url: https://testnet-rpc.monad.xyz

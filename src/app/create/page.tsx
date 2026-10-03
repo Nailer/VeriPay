@@ -12,6 +12,7 @@ import { CONTRACT_ADDRESS, escrowAbi } from "@/lib/abi";
 import { useRouter } from "next/navigation";
 import { Loader2, ShieldCheck, ArrowLeft, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import SellerReputationCard from "@/components/SellerReputationCard";
 
 type Asset = "MON" | "AUSD";
 
@@ -238,9 +239,10 @@ export default function CreateTrade() {
             <label className="text-xs font-black uppercase tracking-widest text-zinc-500 ml-1">Seller Wallet Address</label>
             <input
               required type="text" placeholder="0x..."
-              value={seller} onChange={(e) => setSeller(e.target.value)}
+              value={seller} onChange={(e) => setSeller(e.target.value.trim())}
               className="bg-white dark:bg-black/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 sm:px-5 py-3.5 sm:py-4 text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-700 font-mono text-sm"
             />
+            {/^0x[a-fA-F0-9]{40}$/.test(seller) && <SellerReputationCard address={seller} />}
           </div>
 
           {/* Asset */}
