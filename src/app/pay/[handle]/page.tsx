@@ -147,7 +147,10 @@ export default function PayLink() {
         await lock();
       };
 
-      if (init.demo || !init.publicKey) return await confirm(init.reference);
+      if (init.demo) return await confirm(init.reference);
+      // A secret key without its public half can't open the card popup. Say so,
+      // rather than confirming a charge that was never made.
+      if (!init.publicKey) throw new Error("Card checkout isn't switched on for this site yet.");
 
       if (!window.PaystackPop) throw new Error("Card checkout is still loading — try again in a moment.");
       window.PaystackPop.setup({

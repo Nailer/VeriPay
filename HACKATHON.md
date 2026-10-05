@@ -81,9 +81,8 @@ Everything below is new in this window, on the `hackathon/metropolis` branch:
 | AUSD (testnet) | `0x333a12e2B519DA16EBE75012d54574C16ef4463f` |
 | vNGN — test naira (ours) | `0xdbb53d0a2d1b91ef6a41cf1128fef562ffc531eb` |
 
-Trades #0–#4 are demo/test trades created by our own wallets so the
-reputation features have real data to show (#3 and #4 are naira trades from
-testing the pay-link flow). They're real on-chain transactions, not mocked —
+Every trade on the contract so far (#0 onwards) is a demo or test trade created by our own wallets so the
+reputation features have real data to show (the naira ones come from testing the pay-link flow). They're real on-chain transactions, not mocked —
 but they're ours, not customers'.
 
 **About vNGN.** The naira a buyer pays by card is represented on-chain by

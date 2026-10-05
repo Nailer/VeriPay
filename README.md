@@ -71,7 +71,7 @@ place the chain is visible to the user at all.
 Every transaction the app has made is listed on the escrow contract's
 explorer page above.
 
-**The trades on the contract today (#0–#4) are our own demo and test trades**,
+**Every trade on the contract so far is one of our own demo or test trades**,
 created so the reputation features have data to show. They are real on-chain
 transactions, but they are not customers.
 
