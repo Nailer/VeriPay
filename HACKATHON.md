@@ -3,6 +3,7 @@
 **Track:** Consumer Products & Payments
 **Live demo:** https://monad-pay-lagos-git-hackathon-metropolis-nailer1s-projects.vercel.app
 **Network:** Monad testnet (chain 10143). No real money moves.
+**Code:** https://github.com/Nailer/Monad-Pay-Lagos (MIT) — the [README](./README.md) lists what existed before the hackathon and what was built during it, and discloses AI tool use.
 
 ## One line
 
@@ -103,8 +104,8 @@ so nothing in the contract changes.
    with Paystack's test card `4084 0840 8408 4081` (any future expiry, CVV
    `408`). The money is locked for the seller in about a second.
 3. **Check a seller:** tap *Check a seller* on the home page and paste
-   `0xEfD0497f4557b49E84369cfb884B6c7446e11aBA`. You'll see 2 paid out,
-   0 disputes, 3 trades — every one clickable through to its on-chain detail.
+   `0xEfD0497f4557b49E84369cfb884B6c7446e11aBA`. You'll see 3 paid out,
+   0 disputes, 4 trades (our own demo trades) — every one clickable through to its on-chain detail.
 4. **Same check, at the moment it matters:** tap *Start Escrow* and paste that
    same address as the seller. The record appears before you commit any money.
 5. **Passkey sign-in:** tap the fingerprint icon next to *Sign in* on a phone

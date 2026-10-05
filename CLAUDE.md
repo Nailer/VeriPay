@@ -12,7 +12,7 @@ The market is Instagram / WhatsApp / Jiji commerce — people buying from strang
 
 ## Hackathon branch — `hackathon/metropolis`
 
-VeriPay is entering Monad's **Metropolis** hackathon (Sep 1 – Oct 13, $250K pool, track: **Consumer Products & Payments** — "make blockchain invisible to the end user," which is VeriPay's whole premise). All hackathon-specific work happens on `hackathon/metropolis`, kept deliberately separate from `main` — `main` is what's live at veripay.store for real (if early) users, and nothing here should reach production without a deliberate decision to merge it.
+VeriPay is entering Monad's **Metropolis** hackathon (build window Sep 1 – Oct 13, deadline **Oct 13 11:59 PM ET = 4:59 AM Oct 14 Lagos**; $145K pool: $25K overall + $10K to each of the top three per track; judged on five equal 20% criteria — Product Quality, Technical Excellence, Monad Integration, Track Fit, Innovation & Impact; testnet is allowed; track: **Consumer Products & Payments** — "make blockchain invisible to the end user," which is VeriPay's whole premise). All hackathon-specific work happens on `hackathon/metropolis`, kept deliberately separate from `main` — `main` is what's live at veripay.store for real (if early) users, and nothing here should reach production without a deliberate decision to merge it.
 
 Rule the hackathon requires: since VeriPay already existed before the hackathon, only work *actually built during the Sep 1 – Oct 13 window* counts toward the submission. The demo has to show what's new, not just what already existed.
 
@@ -24,6 +24,8 @@ Five sponsor bounty integrations, chosen for genuine product fit over easy bount
 3. **Envio (HyperIndex)** — indexer built and pointed at the live contract (`indexer/config.yaml` hardcodes the address + deploy block 63987883; Monad testnet HyperSync confirmed live). Not yet deployed to Envio's hosted service — the founder's GitHub App install never reached GitHub (no Envio check-runs/deployments exist on the repo). The app doesn't depend on it: `src/lib/reputation.ts` falls back to reading the contract directly with identical counting rules.
 4. **Chainlink (CRE)** — `AutoReleaseReceiver` deployed and live; workflow compiles to WASM via the real CRE CLI. Runs via `cre workflow simulate --broadcast` (free account, no gated deploy access). See "CRE auto-release automation" below.
 5. **Alchemy** — live. `NEXT_PUBLIC_MONAD_RPC_URL` is set to the founder's real Alchemy Monad-testnet endpoint (verified directly — `eth_chainId` returns `10143`, and it correctly reads the deployed escrow contract) on this branch's Preview deployments and in local `.env`. Not set on `main`/production, which still uses the public node.
+
+**Rules compliance (checked against the official T&Cs, 2026-10-05):** the repo is **public**, default branch `hackathon/metropolis`, MIT `LICENSE`. The README is the judged document and must keep: the pre-existing vs built-during table (rule 4.1.4 — VeriPay predates the hackathon, so this disclosure is what makes it eligible), the AI-tools disclosure, third-party credits, contract addresses, and setup steps a stranger can follow (`.env.example`, `supabase/schema.sql`). Never backdate or rewrite commit history. Because the repo is public, nothing private belongs in any tracked file. Tests judges can run: `contracts/test` (30 local-EVM tests, `npm test`) and `tests/e2e-pay.mjs`.
 
 **Submission doc:** `HACKATHON.md` — the write-up, before/after table, sponsor evidence, live addresses, test steps, honest limitations. Keep it current; it's what judges read.
 
