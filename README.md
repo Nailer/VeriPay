@@ -166,8 +166,8 @@ Requirements: Node.js 20 or newer, a free [Supabase](https://supabase.com)
 project, a free [thirdweb client id](https://thirdweb.com/create-api-key).
 
 ```bash
-git clone https://github.com/Nailer/Monad-Pay-Lagos.git
-cd Monad-Pay-Lagos
+git clone https://github.com/Nailer/VeriPay.git
+cd VeriPay
 npm install
 cp .env.example .env
 ```

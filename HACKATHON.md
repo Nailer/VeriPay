@@ -3,7 +3,7 @@
 **Track:** Consumer Products & Payments
 **Live demo:** https://monad-pay-lagos-git-hackathon-metropolis-nailer1s-projects.vercel.app
 **Network:** Monad testnet (chain 10143). No real money moves.
-**Code:** https://github.com/Nailer/Monad-Pay-Lagos (MIT) — the [README](./README.md) lists what existed before the hackathon and what was built during it, and discloses AI tool use.
+**Code:** https://github.com/Nailer/VeriPay (MIT) — the [README](./README.md) lists what existed before the hackathon and what was built during it, and discloses AI tool use.
 
 ## One line
 
