@@ -27,7 +27,7 @@ Five sponsor bounty integrations, chosen for genuine product fit over easy bount
 
 **Submission doc:** `HACKATHON.md` — the write-up, before/after table, sponsor evidence, live addresses, test steps, honest limitations. Keep it current; it's what judges read.
 
-**Demo data:** trades #0–#2 on the live escrow were created by our own demo wallet (`0xeb1B…fd06`, buyer) with the founder's wallet as seller, so reputation has real numbers to show (2 paid out, 0 disputes, 3 total). #2 was left open on purpose — its auto-release window passes 2026-10-10 04:05 UTC, which is when the CRE demo can actually release something. The demo wallet's key is in `.deploy-tmp/demo-wallet.json` and `cre/.env` (both gitignored); it's a testnet throwaway with no privilege on the escrow, and owns `AutoReleaseReceiver` (owner powers there are harmless — `autoRelease` is callable by anyone anyway). Say these are our demo trades if asked; never present them as customer trades.
+**Demo data:** (trades #3–#4 are naira test trades from the pay-link work — see "Pay links" below.) Trades #0–#2 on the live escrow were created by our own demo wallet (`0xeb1B…fd06`, buyer) with the founder's wallet as seller, so reputation has real numbers to show (2 paid out, 0 disputes, 3 total). #2 was left open on purpose — its auto-release window passes 2026-10-10 04:05 UTC, which is when the CRE demo can actually release something. The demo wallet's key is in `.deploy-tmp/demo-wallet.json` and `cre/.env` (both gitignored); it's a testnet throwaway with no privilege on the escrow, and owns `AutoReleaseReceiver` (owner powers there are harmless — `autoRelease` is callable by anyone anyway). Say these are our demo trades if asked; never present them as customer trades.
 
 **AUSD test tokens:** testnet AUSD (`0x333a…463f`) mints owner-only — there's no public faucet. Getting some means asking Agora. `NEXT_PUBLIC_AUSD_ADDRESS` overrides the address without a contract redeploy if Agora names a different official token.
 
@@ -140,6 +140,24 @@ thirdweb's own pipeline works uniformly across every connection type and switche
 
 **Don't use `viemAdapter.wallet.fromViem` to wrap it**, even though that's what mera's own docs and thirdweb's docs both point to — it proxies raw EIP-1193 `.request()` calls straight to the transport, which is correct for a real injected provider (MetaMask) but not for a derived local key over a plain RPC transport, which doesn't understand wallet-specific methods like `eth_sendTransaction`. That's the exact "No browser wallet detected" bug class this project already hit once (see "Sending transactions" above) — it would silently fail to sign anything. The working pattern, verified by reading thirdweb's own adapter source rather than trusting the docs: build the `Account` object by hand using viem's proper signing Actions (`walletClient.sendTransaction(...)`, `.signMessage(...)`, `.signTypedData(...)`), then wrap that with `createWalletAdapter` from `thirdweb/wallets`. `mera.ts`'s doc comment has the full reasoning.
 
+## Pay links + naira card flow (`hackathon/metropolis` only)
+
+The headline consumer flow for the hackathon: a seller claims `/pay/<handle>` at `/sell`; a buyer opens it, sees the seller's on-chain record, types an amount **in naira**, signs in with a passkey, pays by card, and the money is locked in escrow. No wallet address, token name or gas fee appears anywhere.
+
+How the money path works (`src/lib/payments.ts`, `/api/pay/intent`, `/api/pay/confirm`):
+
+1. `createIntent` stores a `pay_intents` row and returns a reference `VP-<id>-…`. **It deliberately does not call Paystack's initialize** — the inline popup opens the charge itself under that reference, and Paystack rejects a reference that was already registered ("Duplicate Transaction Reference"). An end-to-end test caught exactly that.
+2. `confirmIntent` asks Paystack (never the browser) whether the charge succeeded and for how much, requires the reference to start with `VP-<that intent's id>-`, claims the row with the status guard in the SQL `WHERE`, takes a single delivery slot (`mint_tx = 'pending'`), then mints exactly that many **vNGN** to the buyer plus a 0.12 MON gas top-up if they hold under 0.06. Idempotent — replaying it never mints twice.
+3. The browser then does approve + `createTradeWithToken(seller, item, NGN_TOKEN_ADDRESS, amount)` through thirdweb as usual.
+
+**vNGN** (`contracts/test/VeriPayTestNaira.sol`, live at `0xdbb53d0a2d1b91ef6a41cf1128fef562ffc531eb`, 6 decimals, owner-only mint) is a testnet stand-in for a regulated naira stablecoin. It exists because 1 MON ≈ ₦44, so a ₦25,000 order would need ~570 testnet MON of liquidity nobody has. Never describe it as real money or as cNGN. `formatTradeAmount()` renders it as `₦25,000` everywhere.
+
+Minting key: `PAY_MINTER_PRIVATE_KEY` (the demo wallet, which owns vNGN), falling back to `EXCHANGE_PAYOUT_PRIVATE_KEY`. If a deployment only has the fallback, that wallet must be made vNGN's owner (`transferOwnership`) and hold MON for gas, or delivery fails after the card is charged. `GET /api/pay/intent` reports `{deliveryAddress, cardProcessor, storage}` without secrets — check it first when a deploy misbehaves.
+
+Seller links (`src/lib/sellers.ts`, `sellers` table): a handle is claimed by signing `claimMessage()` from `sellerShared.ts`, verified server-side, one link per address. Supabase tables `sellers` and `pay_intents` have RLS on and are only touched with the service role.
+
+Verified with `.deploy-tmp/e2e-pay.mjs` (gitignored) — 14/14: real Paystack test-mode charge, exact mint, gas top-up, ~1.2s escrow lock, wrong-signer claim rejected, replay doesn't double-mint, a ₦2,500 payment can't fund a ₦50,000 intent. Trades #3 and #4 on the live escrow are from this testing.
+
 ## Reputation indexer (`hackathon/metropolis` only)
 
 `indexer/` is a separate Envio HyperIndex project (own `package.json`, deploys independently — see `indexer/README.md`) that turns the escrow contract's own events into a public, per-address reputation figure: completed trades, disputes, refunds. It's the answer to "why does this need Monad" for the hackathon — Monad's near-zero fees make writing a real event on every trade affordable regardless of trade size, and because the numbers are derived purely from those events (not a score VeriPay stores and could edit), anyone can independently re-verify them straight from the chain.
@@ -220,6 +238,8 @@ Only `NEXT_PUBLIC_*` reaches the browser. Setting `CONTRACT_ADDRESS` instead of 
 | `PAYSTACK_SECRET_KEY` / `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | no | live card payments |
 | `NEXT_PUBLIC_MONAD_RPC_URL` | no | RPC endpoint for both client and server (e.g. Alchemy's `https://monad-testnet.g.alchemy.com/v2/KEY` — Alchemy hackathon bounty). Falls back to the public node. Client-exposed by design; restrict it to veripay.store in Alchemy's dashboard. |
 | `MONAD_RPC_URL` | no | server-only override, if the server ever needs a different endpoint than the client — otherwise leave unset and just set the `NEXT_PUBLIC_` one |
+| `PAY_MINTER_PRIVATE_KEY` | no | pay links: testnet key that owns vNGN and delivers it after a verified card charge (falls back to `EXCHANGE_PAYOUT_PRIVATE_KEY`) |
+| `NEXT_PUBLIC_NGN_TOKEN_ADDRESS` | no | override the vNGN token address |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | no | web push (device notifications); without both, push silently no-ops |
 | `VAPID_SUBJECT` | no (`mailto:support@veripay.store`) | contact URI push services may use to reach the app owner |
 

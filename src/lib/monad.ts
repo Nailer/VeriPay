@@ -50,6 +50,15 @@ export const AUSD_ADDRESS = (process.env.NEXT_PUBLIC_AUSD_ADDRESS ||
   "0x333a12e2B519DA16EBE75012d54574C16ef4463f") as `0x${string}`;
 export const AUSD_DECIMALS = 6;
 
+// VeriPay Test Naira (vNGN) — the testnet stand-in for a naira stablecoin
+// that makes the pay-link flow naira-native: a buyer pays ₦ by card and
+// exactly that many vNGN are locked in escrow, so no screen ever needs to
+// mention MON or a price. See contracts/test/VeriPayTestNaira.sol for what it
+// is and — importantly — isn't.
+export const NGN_TOKEN_ADDRESS = (process.env.NEXT_PUBLIC_NGN_TOKEN_ADDRESS ||
+  "0xdbb53d0a2d1b91ef6a41cf1128fef562ffc531eb") as `0x${string}`;
+export const NGN_TOKEN_DECIMALS = 6;
+
 export const erc20Abi = [
   {
     inputs: [{ name: "account", type: "address" }],
@@ -98,3 +107,11 @@ export function friendlyTxError(err: unknown): string {
   }
   return raw;
 }
+
+/** vNGN, ready for thirdweb's prepareContractCall / sendTransaction. */
+export const ngnContract = getContract({
+  client,
+  chain: monadTestnet,
+  address: NGN_TOKEN_ADDRESS,
+  abi: erc20Abi,
+});

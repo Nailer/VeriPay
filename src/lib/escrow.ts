@@ -14,7 +14,7 @@
 
 import { formatEther, formatUnits, type PublicClient } from "viem";
 import { CONTRACT_ADDRESS, escrowAbi } from "@/lib/abi";
-import { AUSD_ADDRESS, AUSD_DECIMALS } from "@/lib/monad";
+import { AUSD_ADDRESS, AUSD_DECIMALS, NGN_TOKEN_ADDRESS, NGN_TOKEN_DECIMALS } from "@/lib/monad";
 
 /** address(0) in the Trade struct means the trade escrows native MON. */
 export const NATIVE_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -161,9 +161,16 @@ export async function readTrade(client: PublicClient, id: number | bigint): Prom
  * showing a trade amount should go through this rather than call
  * formatEther directly.
  */
-export function formatTradeAmount(trade: Pick<EscrowTrade, "amount" | "token">): { formatted: string; symbol: string } {
-  if (trade.token?.toLowerCase() === AUSD_ADDRESS.toLowerCase()) {
-    return { formatted: formatUnits(trade.amount, AUSD_DECIMALS), symbol: "AUSD" };
+export function formatTradeAmount(trade: Pick<EscrowTrade, "amount" | "token">): { formatted: string; symbol: string; display: string } {
+  const token = trade.token?.toLowerCase();
+  if (token === NGN_TOKEN_ADDRESS.toLowerCase()) {
+    const formatted = Number(formatUnits(trade.amount, NGN_TOKEN_DECIMALS)).toLocaleString("en-NG", { maximumFractionDigits: 2 });
+    return { formatted, symbol: "NGN", display: `₦${formatted}` };
   }
-  return { formatted: formatEther(trade.amount), symbol: "MON" };
+  if (token === AUSD_ADDRESS.toLowerCase()) {
+    const formatted = formatUnits(trade.amount, AUSD_DECIMALS);
+    return { formatted, symbol: "AUSD", display: `${formatted} AUSD` };
+  }
+  const formatted = formatEther(trade.amount);
+  return { formatted, symbol: "MON", display: `${formatted} MON` };
 }

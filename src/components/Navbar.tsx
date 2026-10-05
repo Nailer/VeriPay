@@ -3,7 +3,7 @@
 import { ConnectButton } from "thirdweb/react";
 import { client } from "@/app/client";
 import { defineChain } from "thirdweb";
-import { createWallet, inAppWallet } from "thirdweb/wallets";
+import { wallets } from "@/lib/wallets";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import {
@@ -28,16 +28,6 @@ type Notification = {
   createdAt: string;
 };
 
-const wallets = [
-  inAppWallet({ auth: { options: ["email", "google", "apple", "facebook", "phone"] } }),
-  createWallet("io.metamask"),
-  createWallet("walletConnect"),
-  createWallet("com.coinbase.wallet"),
-  createWallet("me.rainbow"),
-  createWallet("com.walletconnect"),
-  createWallet("io.rabby"),
-  createWallet("io.zerion.wallet"),
-];
 
 // Compact styling for the thirdweb connect button so the mobile header stays slim
 const compactConnectStyle = {
@@ -443,7 +433,7 @@ function NotificationBell({
                         </p>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed line-clamp-2">
                           {notif.type === "trade"
-                            ? <>From <span className="font-mono">{notif.fromAddress.slice(0, 8)}…{notif.fromAddress.slice(-6)}</span> · <span className="text-zinc-900 dark:text-white font-bold">{notif.amount} MON</span></>
+                            ? <>From <span className="font-mono">{notif.fromAddress.slice(0, 8)}…{notif.fromAddress.slice(-6)}</span> · <span className="text-zinc-900 dark:text-white font-bold">{/^[\d.]+$/.test(notif.amount ?? "") ? `${notif.amount} MON` : notif.amount}</span></>
                             : <>&ldquo;{notif.message}&rdquo;</>}
                         </p>
                         <p className="text-[10px] text-zinc-400 mt-1 font-medium">{notif.createdAt}</p>
