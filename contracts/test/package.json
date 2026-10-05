@@ -1,0 +1,13 @@
+{
+  "name": "veripay-contract-tests",
+  "private": true,
+  "type": "module",
+  "description": "Local-EVM tests for VeriPayEscrow and the Chainlink CRE receiver. Compiles with solc, runs on an in-process Ganache chain.",
+  "scripts": { "test": "node --test" },
+  "devDependencies": {
+    "@openzeppelin/contracts": "^5.6.1",
+    "ganache": "^7.9.2",
+    "solc": "^0.8.30",
+    "viem": "^2.47.12"
+  }
+}
