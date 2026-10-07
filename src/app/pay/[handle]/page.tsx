@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useActiveAccount } from "thirdweb/react";
 import { prepareContractCall, sendTransaction, waitForReceipt } from "thirdweb";
 import { createPublicClient, http, parseUnits, formatEther, toEventSelector } from "viem";
-import { Loader2, ShieldCheck, Fingerprint, CheckCircle2, Zap } from "lucide-react";
+import { Loader2, ShieldCheck, Fingerprint, CheckCircle2, Zap, ArrowUpRight } from "lucide-react";
 import {
   escrowContract, ngnContract, friendlyTxError, MONAD_RPC_URL,
   NGN_TOKEN_ADDRESS, NGN_TOKEN_DECIMALS, erc20Abi,
@@ -23,7 +23,7 @@ declare global {
 
 type Seller = { handle: string; name: string; address: string };
 type Step = "form" | "paying" | "confirming" | "locking" | "done";
-type Done = { tradeId: string; seconds: number; feeNgn: number | null };
+type Done = { tradeId: string; seconds: number; feeNgn: number | null; txHash: string; at: Date };
 
 const TRADE_CREATED = toEventSelector("TradeCreated(uint256,address,address,uint256)");
 const testCard = (process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "").startsWith("pk_test");
@@ -44,6 +44,7 @@ export default function PayLink() {
   const [error, setError] = useState("");
   const [funded, setFunded] = useState(false); // card charged + money in account, escrow not yet locked
   const [done, setDone] = useState<Done | null>(null);
+  const [payRef, setPayRef] = useState(""); // our reference for this payment, shown on the receipt
 
   useEffect(() => {
     fetch(`/api/sellers?handle=${encodeURIComponent(handle)}`)
@@ -112,7 +113,7 @@ export default function PayLink() {
         }).catch(() => {});
       }
 
-      setDone({ tradeId, seconds, feeNgn });
+      setDone({ tradeId, seconds, feeNgn, txHash: sent.transactionHash, at: new Date() });
       setStep("done");
     } catch (err) {
       setError(friendlyTxError(err));
@@ -133,6 +134,7 @@ export default function PayLink() {
       });
       const init = await res.json();
       if (!res.ok) throw new Error(init.error || "Couldn't start the payment.");
+      setPayRef(init.intent.id);
 
       const confirm = async (reference: string) => {
         setStep("confirming");
@@ -182,27 +184,53 @@ export default function PayLink() {
   const card = "w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-5 sm:p-8";
 
   if (step === "done" && done) {
+    const row = "flex items-start justify-between gap-4 py-2.5";
+    const key = "text-[11px] font-black uppercase tracking-widest text-zinc-500 shrink-0 pt-0.5";
+    const val = "text-sm font-bold text-zinc-900 dark:text-white text-right break-words min-w-0";
     return (
       <div className="flex-1 flex flex-col items-center py-8 sm:py-14 px-4 w-full max-w-md mx-auto">
-        <div className={`${card} text-center anim-scale-in`}>
-          <div className="w-16 h-16 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center mx-auto mb-5">
-            <CheckCircle2 className="w-8 h-8 text-white dark:text-black" />
+        <div className={`${card} anim-scale-in`}>
+          <div className="text-center">
+            <div className="w-14 h-14 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="w-7 h-7 text-white dark:text-black" />
+            </div>
+            <p className="text-[11px] font-black uppercase tracking-widest text-zinc-500">Payment secured</p>
+            <p className="text-4xl font-black text-zinc-900 dark:text-white mt-1">{naira(amountNgn)}</p>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-2 leading-relaxed">
+              Held safely for you. {seller.name} only gets paid when you confirm your order arrived.
+            </p>
           </div>
-          <p className="text-3xl font-black text-zinc-900 dark:text-white">{naira(amountNgn)}</p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-2 leading-relaxed">
-            is locked for <span className="font-bold text-zinc-900 dark:text-white">{seller.name}</span>. They&apos;ve been told to deliver.
-            They only get paid when you confirm it arrived.
-          </p>
-          <div className="mt-5 inline-flex items-center gap-2 px-3 py-2 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[11px] font-bold text-zinc-600 dark:text-zinc-300">
-            <Zap className="w-3.5 h-3.5" />
-            Secured in {done.seconds.toFixed(1)}s{done.feeNgn !== null && ` · network cost ${naira(Math.max(done.feeNgn, 0.01))}`}
+
+          <div className="my-5 border-t border-dashed border-zinc-300 dark:border-zinc-700" />
+
+          <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
+            <div className={row}><span className={key}>Paid to</span><span className={val}>{seller.name}<span className="block text-xs font-medium text-zinc-500">@{seller.handle}</span></span></div>
+            <div className={row}><span className={key}>For</span><span className={val}>{item.trim()}</span></div>
+            {done.tradeId && <div className={row}><span className={key}>Order no.</span><span className={`${val} font-mono`}>#{done.tradeId.padStart(4, "0")}</span></div>}
+            {payRef && <div className={row}><span className={key}>Reference</span><span className={`${val} font-mono`}>VP-{payRef}</span></div>}
+            <div className={row}><span className={key}>Date</span><span className={val}>{done.at.toLocaleString("en-NG", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span></div>
+            <div className={row}><span className={key}>Status</span><span className={val}>Held until you confirm delivery</span></div>
           </div>
+
+          <div className="mt-4 flex items-center justify-center gap-2 px-3 py-2 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[11px] font-bold text-zinc-600 dark:text-zinc-300">
+            <Zap className="w-3.5 h-3.5 shrink-0" />
+            Secured in {done.seconds.toFixed(1)}s{done.feeNgn !== null && ` · network fee ${naira(Math.max(done.feeNgn, 0.01))}, paid for you`}
+          </div>
+
           <Link
             href={done.tradeId ? `/trade/${done.tradeId}` : "/dashboard"}
-            className="mt-6 block w-full py-4 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest text-sm"
+            className="mt-5 block w-full py-4 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest text-sm text-center"
           >
             Track your order
           </Link>
+          <a
+            href={`https://testnet.monadscan.com/tx/${done.txHash}`} target="_blank" rel="noopener noreferrer"
+            className="mt-2 flex items-center justify-center gap-1.5 w-full py-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold text-sm"
+          >
+            View proof on Monad <ArrowUpRight className="w-4 h-4" />
+          </a>
+
+          <p className="mt-4 text-[11px] text-zinc-500 text-center">Test payment — no real money moved.</p>
         </div>
       </div>
     );
