@@ -27,6 +27,7 @@ create table if not exists pay_intents (
   paystack_ref   text unique,          -- one card charge can fund one payment only
   mint_tx        text,                 -- 'pending' while delivery is in flight
   test_mode      boolean not null default false,
+  gas_topups     integer not null default 0,   -- network-fee top-ups sent for this payment (capped)
   created_at     timestamptz not null default now(),
   paid_at        timestamptz
 );

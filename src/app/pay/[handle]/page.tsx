@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useActiveAccount } from "thirdweb/react";
 import { prepareContractCall, sendTransaction, waitForReceipt } from "thirdweb";
-import { createPublicClient, http, parseUnits, formatEther, toEventSelector } from "viem";
+import { createPublicClient, http, parseUnits, parseEther, formatEther, toEventSelector } from "viem";
 import { Loader2, ShieldCheck, Fingerprint, CheckCircle2, Zap, ArrowUpRight } from "lucide-react";
 import {
   escrowContract, ngnContract, friendlyTxError, MONAD_RPC_URL,
@@ -25,6 +25,7 @@ type Seller = { handle: string; name: string; address: string };
 type Step = "form" | "paying" | "confirming" | "locking" | "done";
 type Done = { tradeId: string; seconds: number; feeNgn: number | null; txHash: string; at: Date };
 
+const MIN_GAS = parseEther("0.05"); // enough for approve + lock, with room to spare
 const TRADE_CREATED = toEventSelector("TradeCreated(uint256,address,address,uint256)");
 const testCard = (process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "").startsWith("pk_test");
 const naira = (n: number) => `₦${n.toLocaleString("en-NG", { maximumFractionDigits: 2 })}`;
@@ -66,6 +67,25 @@ export default function PayLink() {
     try {
       const units = parseUnits(amountNgn.toFixed(2), NGN_TOKEN_DECIMALS);
       const pub = createPublicClient({ transport: http(MONAD_RPC_URL) });
+
+      // The server pays the buyer's network fees. If that hasn't landed (or
+      // they came back to an earlier payment), ask for it before signing
+      // anything — otherwise the wallet fails with a baffling balance error.
+      const me = account.address as `0x${string}`;
+      if ((await pub.getBalance({ address: me })) < MIN_GAS) {
+        const r = await fetch("/api/pay/confirm", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payRef ? { id: payRef } : { buyerAddress: me, handle: seller.handle }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (d.intent?.id) setPayRef(d.intent.id);
+        let ready = false;
+        for (let i = 0; i < 8 && !ready; i++) {
+          ready = (await pub.getBalance({ address: me })) >= MIN_GAS;
+          if (!ready) await new Promise((res) => setTimeout(res, 1000));
+        }
+        if (!ready) throw new Error("We're still getting your payment ready. Wait a few seconds and tap retry — you won't be charged again.");
+      }
 
       const allowance = (await pub.readContract({
         address: NGN_TOKEN_ADDRESS, abi: erc20Abi, functionName: "allowance",
@@ -119,13 +139,26 @@ export default function PayLink() {
       setError(friendlyTxError(err));
       setStep("form");
     }
-  }, [account, seller, amountNgn, item]);
+  }, [account, seller, amountNgn, item, payRef]);
 
   const pay = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!account || !seller) return;
     if (funded) return lock();
     setError(""); setStep("paying");
+
+    // Already paid for this and never finished (closed the tab, hit an error)?
+    // The money is still in their account — lock it, don't charge again.
+    try {
+      const pub = createPublicClient({ transport: http(MONAD_RPC_URL) });
+      const held = (await pub.readContract({
+        address: NGN_TOKEN_ADDRESS, abi: erc20Abi, functionName: "balanceOf", args: [account.address as `0x${string}`],
+      })) as bigint;
+      if (amountNgn > 0 && held >= parseUnits(amountNgn.toFixed(2), NGN_TOKEN_DECIMALS)) {
+        setFunded(true);
+        return lock();
+      }
+    } catch { /* fall through to a normal payment */ }
 
     try {
       const res = await fetch("/api/pay/intent", {

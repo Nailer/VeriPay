@@ -99,11 +99,15 @@ export const ausdContract = getContract({
 
 /** Turns a wallet or RPC error into something worth showing a user. */
 export function friendlyTxError(err: unknown): string {
-  const e = err as { shortMessage?: string; reason?: string; message?: string; code?: number };
+  const e = err as { shortMessage?: string; reason?: string; message?: string; details?: string; code?: number };
   const raw = e.shortMessage || e.reason || e.message || "Transaction failed.";
   const lower = raw.toLowerCase();
   if (e.code === 4001 || lower.includes("reject") || lower.includes("denied") || lower.includes("cancelled")) {
     return "Transaction cancelled.";
+  }
+  const all = `${lower} ${(e.details || "").toLowerCase()} ${(e.message || "").toLowerCase()}`;
+  if (all.includes("insufficient balance") || all.includes("insufficient funds")) {
+    return "Your account isn't quite ready yet. Wait a few seconds and try again.";
   }
   return raw;
 }

@@ -25,8 +25,11 @@ const CHAIN = { id: 10143, name: "Monad Testnet", nativeCurrency: { name: "MON",
 
 // Two escrow transactions cost ~0.03 MON at current prices; a first-time
 // buyer has none, so top them up rather than send them to a faucet.
-const GAS_FLOOR = parseEther("0.06");
-const GAS_TOPUP = parseEther("0.12");
+const GAS_FLOOR = parseEther("0.08");
+const GAS_TOPUP = parseEther("0.15");
+// A payment may be topped up more than once (a top-up can fail, or a retry can
+// find the account dry), but not without limit — this is our MON.
+const MAX_GAS_TOPUPS = 3;
 
 const mintAbi = [
   { type: "function", name: "mint", stateMutability: "nonpayable", inputs: [{ type: "address" }, { type: "uint256" }], outputs: [] },
@@ -43,8 +46,8 @@ export type PayIntent = {
   testMode: boolean;
 };
 
-type Row = { id: string; handle: string; seller_address: string; buyer_address: string; amount_ngn: string | number; item: string; status: PayIntent["status"]; test_mode: boolean; mint_tx: string | null };
-const COLS = "id, handle, seller_address, buyer_address, amount_ngn, item, status, test_mode, mint_tx";
+type Row = { id: string; handle: string; seller_address: string; buyer_address: string; amount_ngn: string | number; item: string; status: PayIntent["status"]; test_mode: boolean; mint_tx: string | null; gas_topups: number };
+const COLS = "id, handle, seller_address, buyer_address, amount_ngn, item, status, test_mode, mint_tx, gas_topups";
 const toIntent = (r: Row): PayIntent => ({
   id: r.id, handle: r.handle, sellerAddress: r.seller_address, buyerAddress: r.buyer_address,
   amountNgn: Number(r.amount_ngn), item: r.item, status: r.status, testMode: r.test_mode,
@@ -108,31 +111,86 @@ export function paymentsStatus() {
   return { deliveryAddress: minterAccount()?.address ?? null, cardProcessor: paystackConfigured(), storage: isSupabaseConfigured() };
 }
 
-async function deliver(intent: PayIntent): Promise<string> {
+function chainClients() {
   const account = minterAccount();
   if (!account) throw new Error("No delivery key configured (PAY_MINTER_PRIVATE_KEY)");
   const transport = http(RPC, { retryCount: 3, timeout: 20_000 });
-  const pub = createPublicClient({ chain: CHAIN, transport });
-  const wallet = createWalletClient({ account, chain: CHAIN, transport });
-  const buyer = intent.buyerAddress as `0x${string}`;
+  return {
+    account,
+    pub: createPublicClient({ chain: CHAIN, transport }),
+    wallet: createWalletClient({ account, chain: CHAIN, transport }),
+  };
+}
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function deliver(intent: PayIntent): Promise<string> {
+  const { pub, wallet } = chainClients();
   const mintTx = await wallet.writeContract({
     address: NGN_TOKEN_ADDRESS, abi: mintAbi, functionName: "mint",
-    args: [buyer, parseUnits(intent.amountNgn.toFixed(2), NGN_TOKEN_DECIMALS)],
+    args: [intent.buyerAddress as `0x${string}`, parseUnits(intent.amountNgn.toFixed(2), NGN_TOKEN_DECIMALS)],
   });
   const receipt = await pub.waitForTransactionReceipt({ hash: mintTx, timeout: 30_000 });
   if (receipt.status !== "success") throw new Error("mint reverted");
-
-  // Best-effort: a failed top-up shouldn't undo a successful delivery.
-  try {
-    if ((await pub.getBalance({ address: buyer })) < GAS_FLOOR) {
-      const gasTx = await wallet.sendTransaction({ to: buyer, value: GAS_TOPUP });
-      await pub.waitForTransactionReceipt({ hash: gasTx, timeout: 30_000 });
-    }
-  } catch (err) {
-    console.error(`Gas top-up failed for intent ${intent.id}:`, err);
-  }
   return mintTx;
+}
+
+/**
+ * Make sure a buyer can afford the two escrow transactions. Returns whether
+ * they can once this returns.
+ *
+ * This used to be a single best-effort send straight after the mint, and it
+ * failed silently in production: the buyer was charged, held their naira, and
+ * then couldn't lock it ("Signer had insufficient balance"). So it now retries
+ * with a freshly read nonce, and runs again whenever a funded payment is
+ * re-confirmed — which is what the page's retry button does.
+ */
+async function ensureGas(id: string): Promise<boolean> {
+  const { data } = await supabaseAdmin.from("pay_intents").select(COLS).eq("id", id).maybeSingle();
+  const row = data as Row | null;
+  if (!row) return false;
+  const { account, pub, wallet } = chainClients();
+  const buyer = row.buyer_address as `0x${string}`;
+
+  if ((await pub.getBalance({ address: buyer })) >= GAS_FLOOR) return true;
+  if (row.gas_topups >= MAX_GAS_TOPUPS) return false;
+
+  // Count the attempt first, guarded on the old value, so two concurrent
+  // requests can't both send.
+  const { data: claimed } = await supabaseAdmin.from("pay_intents")
+    .update({ gas_topups: row.gas_topups + 1 }).eq("id", id).eq("gas_topups", row.gas_topups).select("id").maybeSingle();
+  if (!claimed) return false;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const nonce = await pub.getTransactionCount({ address: account.address, blockTag: "pending" });
+      const hash = await wallet.sendTransaction({ to: buyer, value: GAS_TOPUP, nonce });
+      const receipt = await pub.waitForTransactionReceipt({ hash, timeout: 30_000 });
+      if (receipt.status === "success") return true;
+    } catch (err) {
+      console.error(`Gas top-up attempt ${attempt + 1} failed for intent ${id}:`, err);
+    }
+    await sleep(1500);
+    if ((await pub.getBalance({ address: buyer })) >= GAS_FLOOR) return true; // it landed after all
+  }
+  return false;
+}
+
+/**
+ * A buyer who already paid but never got as far as locking (closed the tab,
+ * lost signal, hit an error) comes back holding their naira. Find that payment
+ * so the page can carry on without charging them again.
+ */
+export async function resumeForBuyer(buyerRaw: string, handleRaw: string) {
+  if (!isSupabaseConfigured()) return fail("Storage isn't configured.", 503);
+  const buyer = String(buyerRaw || "").toLowerCase();
+  if (!/^0x[a-f0-9]{40}$/.test(buyer)) return fail("Sign in first.", 401);
+  const { data } = await supabaseAdmin.from("pay_intents").select(COLS)
+    .eq("buyer_address", buyer).eq("handle", String(handleRaw || "").toLowerCase()).eq("status", "funded")
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (!data) return fail("No earlier payment found.", 404);
+  const gasReady = await ensureGas((data as Row).id).catch(() => false);
+  return { ok: true as const, intent: toIntent(data as Row), gasReady };
 }
 
 export async function confirmIntent(idRaw: string, referenceRaw: string) {
@@ -144,7 +202,10 @@ export async function confirmIntent(idRaw: string, referenceRaw: string) {
   if (!row) return fail("Payment not found.", 404);
   let current = row as Row;
 
-  if (current.status === "funded") return { ok: true as const, intent: toIntent(current) }; // idempotent
+  if (current.status === "funded") { // idempotent — but make sure they can still afford to lock it
+    const gasReady = await ensureGas(id).catch(() => false);
+    return { ok: true as const, intent: toIntent(current), gasReady };
+  }
 
   if (current.status === "awaiting_payment") {
     // The reference is minted by us as VP-<intent id>-…, so a charge made for
@@ -176,7 +237,8 @@ export async function confirmIntent(idRaw: string, referenceRaw: string) {
     const mintTx = await deliver(toIntent(slot as Row));
     const { data: done } = await supabaseAdmin.from("pay_intents")
       .update({ status: "funded", mint_tx: mintTx }).eq("id", id).select(COLS).single();
-    return { ok: true as const, intent: toIntent(done as Row) };
+    const gasReady = await ensureGas(id).catch(() => false);
+    return { ok: true as const, intent: toIntent(done as Row), gasReady };
   } catch (err) {
     console.error(`Delivery failed for intent ${id}:`, err);
     await supabaseAdmin.from("pay_intents").update({ mint_tx: null }).eq("id", id); // release the slot so a retry can run
