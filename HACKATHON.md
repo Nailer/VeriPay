@@ -67,7 +67,7 @@ Everything below is new in this window, on the `hackathon/metropolis` branch:
 | Sponsor | How it's used | Where |
 |---|---|---|
 | **Agora — AUSD** | Escrow locks AUSD instead of volatile MON, so the agreed price is the paid price. Two-step approve → escrow flow in the UI. | `contracts/VeriPayEscrow.sol`, `src/app/create/page.tsx` |
-| **Envio — HyperIndex** | Indexes every escrow event into per-address reputation. The app reads it via GraphQL; if the indexer is unreachable it falls back to reading the contract directly, with identical counting rules. | `indexer/`, `src/lib/reputation.ts` |
+| **Envio — HyperIndex** | Indexes every escrow event into per-address reputation. Live on Envio's hosted service: `https://indexer.dev.hyperindex.xyz/09eb2b1/v1/graphql`. The app reads it via GraphQL; if the indexer is unreachable it falls back to reading the contract directly, with identical counting rules. | `indexer/`, `src/lib/reputation.ts` |
 | **Monad Foundation — Mera** | Passkey accounts: the wallet is derived from the passkey's WebAuthn PRF output, so the same passkey gives the same address on any device. | `src/lib/mera.ts` |
 | **Chainlink — CRE** | Cron workflow scans for trades past their release window and sends a signed report; `AutoReleaseReceiver` calls `autoRelease()` for each. | `cre/`, `contracts/cre/` |
 | **Alchemy** | RPC for every read and write. | `src/lib/monad.ts` |

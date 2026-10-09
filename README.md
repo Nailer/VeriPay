@@ -238,8 +238,10 @@ tests/                    end-to-end payment test
 - **Chainlink CRE** runs through Chainlink's simulator with real testnet
   writes via their mock forwarder; production deployment needs Chainlink's
   deploy access (one `setForwarderAddress` call, no redeploy).
-- **Envio**: the indexer is built and configured for the live contract; where
-  it isn't reachable the app reads the same numbers directly from the chain.
+- **Envio**: the indexer is deployed on Envio's hosted service (development
+  tier) at <https://indexer.dev.hyperindex.xyz/09eb2b1/v1/graphql>. If it is ever unreachable the app reads the same numbers
+  directly from the chain; the two were checked against each other for every
+  address and match.
 
 ## AI tools disclosure
 
