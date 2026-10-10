@@ -6,6 +6,7 @@ import { useActiveAccount } from "thirdweb/react";
 import { createPublicClient, http } from "viem";
 import { prepareContractCall, sendTransaction, waitForReceipt } from "thirdweb";
 import { escrowContract, friendlyTxError, MONAD_RPC_URL } from "@/lib/monad";
+import { readyToTransact } from "@/lib/gas";
 import { readTrade, formatTradeAmount, type EscrowTrade } from "@/lib/escrow";
 import {
   Loader2, ShieldAlert, CheckCircle2, ArrowLeft, Info, HelpCircle,
@@ -74,7 +75,7 @@ export default function TradeDetail() {
 
   const executeAction = async (functionName: Action) => {
     if (!account) {
-      setError("Please connect your wallet first.");
+      setError("Please sign in first.");
       return;
     }
 
@@ -85,6 +86,10 @@ export default function TradeDetail() {
       // Sent through thirdweb's own pipeline — works for browser-extension
       // wallets, thirdweb's in-app (email/social) wallet, and mobile wallets
       // over WalletConnect alike. No window.ethereum needed.
+      // Covers the network fee for people who signed in with a fingerprint
+      // and have never held MON. Wallets that already have some skip this.
+      await readyToTransact(account.address);
+
       const transaction = prepareContractCall({
         contract: escrowContract,
         method: functionName,

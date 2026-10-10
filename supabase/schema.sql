@@ -11,6 +11,7 @@ create table if not exists sellers (
   handle     text primary key check (handle ~ '^[a-z0-9][a-z0-9_-]{2,29}$'),
   name       text not null check (char_length(name) between 2 and 60),
   address    text not null unique check (address ~ '^0x[a-f0-9]{40}$'),
+  gas_topups integer not null default 0,   -- network-fee top-ups sent to this seller (capped)
   created_at timestamptz not null default now()
 );
 

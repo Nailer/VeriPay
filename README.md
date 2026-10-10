@@ -103,6 +103,8 @@ foundation; everything after is the submission.
 |---|---|
 | **Seller payment links** — claim `/pay/<handle>` by signing a message | `src/app/sell`, `src/lib/sellers.ts`, `src/app/api/sellers` |
 | **Pay in naira by card, straight into escrow** — server-verified charge, exact amount issued and locked, gas paid for the buyer | `src/app/pay/[handle]`, `src/lib/payments.ts`, `src/app/api/pay` |
+| **Network fees paid for the user** — buyers and sellers never hold or see MON; capped server-side sponsorship | `src/lib/payments.ts`, `src/lib/gas.ts`, `src/app/api/pay/gas` |
+| **Orders in plain words** — what you bought, what you sold, what needs you | `src/app/orders`, `src/components/OrdersList.tsx` |
 | **On-chain seller reputation** — on the pay page, the create page, every trade page and a public lookup | `src/lib/reputation.ts`, `src/app/seller`, `src/components/SellerReputationCard.tsx` |
 | **Reputation indexer** (Envio HyperIndex) with a direct-from-chain fallback that uses identical counting rules | `indexer/` |
 | **Passkey sign-in** — Face ID / fingerprint, no seed phrase (Mera) | `src/lib/mera.ts`, `src/lib/useSignIn.ts` |

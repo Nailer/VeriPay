@@ -8,6 +8,7 @@ import { useSignIn } from "@/lib/useSignIn";
 import { claimMessage, normaliseHandle } from "@/lib/sellerShared";
 import { MONAD_RPC_URL, NGN_TOKEN_ADDRESS, NGN_TOKEN_DECIMALS, erc20Abi } from "@/lib/monad";
 import SellerReputationCard from "@/components/SellerReputationCard";
+import OrdersList from "@/components/OrdersList";
 
 type Seller = { handle: string; name: string; address: string };
 
@@ -118,6 +119,13 @@ export default function Sell() {
           </form>
         )}
       </div>
+
+      {account && seller && (
+        <div className={card}>
+          <p className="text-xs font-black uppercase tracking-widest text-zinc-500 mb-2">Your orders</p>
+          <OrdersList address={seller.address} role="seller" empty="No orders yet. When a buyer pays through your link, it appears here straight away." />
+        </div>
+      )}
 
       {account && seller && (
         <div className={card}>

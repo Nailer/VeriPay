@@ -9,7 +9,7 @@ import { claimMessage, normaliseHandle } from "@/lib/sellerShared";
 export type Seller = { handle: string; name: string; address: string };
 
 const HANDLE_RE = /^[a-z0-9][a-z0-9_-]{2,29}$/;
-const RESERVED = new Set(["admin", "api", "pay", "sell", "seller", "veripay", "support", "help", "dashboard", "exchange", "create", "trade", "install"]);
+const RESERVED = new Set(["admin", "api", "pay", "sell", "seller", "veripay", "support", "help", "dashboard", "exchange", "create", "trade", "install", "orders"]);
 
 export async function getSellerByHandle(handle: string): Promise<Seller | null> {
   if (!isSupabaseConfigured()) return null;

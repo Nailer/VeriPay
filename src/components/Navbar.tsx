@@ -39,6 +39,14 @@ const compactConnectStyle = {
   borderRadius: "9999px",
 } as const;
 
+// The original crypto-native screens. Kept, but one level down: the people this
+// is built for pay in naira and shouldn't have to parse "escrow" or "MON".
+const MORE_LINKS = [
+  { href: "/create", label: "Pay with crypto" },
+  { href: "/exchange", label: "Buy / sell crypto" },
+  { href: "/dashboard", label: "All trades" },
+];
+
 export default function Navbar() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -63,6 +71,31 @@ export default function Navbar() {
       setPasskeyBusy(false);
     }
   }, [setActiveWallet]);
+
+  // ─── Who's signed in, in human terms ─────────────────────────────────────
+  // thirdweb's default button shows a wallet address and a MON balance, which
+  // means nothing to someone who signed in with a fingerprint to pay in naira.
+  const [shopName, setShopName] = useState<string | null>(null);
+  useEffect(() => {
+    setShopName(null);
+    if (!account?.address) return;
+    let cancelled = false;
+    fetch(`/api/sellers?address=${account.address}`).then((r) => r.json())
+      .then((d) => { if (!cancelled) setShopName(d.seller?.name ?? null); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [account?.address]);
+
+  const accountChip = useCallback(() => (
+    <button
+      aria-label="Your account"
+      className="flex items-center gap-2 h-9 pl-1.5 pr-3.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white text-[13px] font-bold max-w-[9.5rem] sm:max-w-[12rem]"
+    >
+      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black text-[11px] font-black shrink-0">
+        {shopName ? shopName.charAt(0).toUpperCase() : <Check className="w-3.5 h-3.5" />}
+      </span>
+      <span className="truncate">{shopName ?? "Signed in"}</span>
+    </button>
+  ), [shopName]);
 
   // ─── Mobile menu ─────────────────────────────────────────────────────────
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -163,16 +196,24 @@ export default function Navbar() {
 
         {/* Desktop nav links */}
         <div className="hidden sm:flex items-center gap-4 sm:gap-6">
-          <Link href="/dashboard" className="text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
-            Dashboard
+          <Link href="/orders" className="text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
+            My orders
           </Link>
-          <Link href="/create" className="text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
-            New Escrow
+          <Link href="/sell" className="text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
+            Sell
           </Link>
-          <Link href="/exchange" className="flex items-center gap-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
-            Exchange
-            <span className="px-1.5 py-0.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black text-[9px] font-black uppercase tracking-wider">New</span>
+          <Link href="/seller" className="text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
+            Check a seller
           </Link>
+          {/* Crypto-native routes stay reachable, just not in a shopper's face */}
+          <div className="relative group">
+            <button className="text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors focus:outline-none">More</button>
+            <div className="absolute right-0 top-full mt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible translate-y-2 group-hover:translate-y-0 transition-all duration-200 flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-xl w-48 py-1 z-50">
+              {MORE_LINKS.map((l) => (
+                <Link key={l.href} href={l.href} className="px-4 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors">{l.label}</Link>
+              ))}
+            </div>
+          </div>
 
           {/* Theme switcher */}
           {mounted && (
@@ -208,6 +249,7 @@ export default function Navbar() {
               connectModal={{ size: "wide" }}
               chain={defineChain(10143)}
               connectButton={{ label: "Sign in" }}
+              detailsButton={{ render: accountChip }}
             />
             <NotificationBell
               bellRef={bellRef} panelRef={panelRef}
@@ -231,7 +273,7 @@ export default function Navbar() {
             connectModal={{ size: "compact" }}
             chain={defineChain(10143)}
             connectButton={{ label: "Sign in", style: compactConnectStyle }}
-            detailsButton={{ style: compactConnectStyle }}
+            detailsButton={{ render: accountChip }}
           />
           <NotificationBell
             bellRef={bellRef} panelRef={panelRef}
@@ -254,19 +296,16 @@ export default function Navbar() {
       {/* Mobile slide-down menu */}
       {mobileMenuOpen && (
         <div className="sm:hidden fixed inset-x-0 top-[calc(env(safe-area-inset-top)+53px)] z-40 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-4 py-5 flex flex-col gap-1 animate-in fade-in slide-in-from-top-2 duration-200 shadow-xl">
-          <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-semibold text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
-            Dashboard
-          </Link>
-          <Link href="/create" onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-semibold text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
-            New Escrow
-          </Link>
-          <Link href="/exchange" onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-2 px-4 py-3.5 rounded-xl text-base font-semibold text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
-            Buy / Sell Crypto
-            <span className="px-1.5 py-0.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black text-[9px] font-black uppercase tracking-wider">New</span>
-          </Link>
+          {[{ href: "/orders", label: "My orders" }, { href: "/sell", label: "Sell — get your payment link" }, { href: "/seller", label: "Check a seller" }].map((l) => (
+            <Link key={l.href} href={l.href} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-semibold text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">{l.label}</Link>
+          ))}
+          <div className="border-t border-zinc-200 dark:border-zinc-800 mt-2 pt-3">
+            <p className="px-4 text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">More</p>
+            {MORE_LINKS.map((l) => (
+              <Link key={l.href} href={l.href} onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center px-4 py-2.5 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">{l.label}</Link>
+            ))}
+          </div>
           <div className="border-t border-zinc-200 dark:border-zinc-800 mt-2 pt-4 px-4">
             <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-3">Theme</p>
             <div className="flex gap-2">
@@ -429,11 +468,13 @@ function NotificationBell({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-wide leading-tight">
-                          {notif.type === "trade" ? "New Escrow Created" : `New Message · Trade #00${notif.tradeId}`}
+                          {notif.type === "trade" ? "New order" : `New message · Order #${notif.tradeId}`}
                         </p>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed line-clamp-2">
                           {notif.type === "trade"
-                            ? <>From <span className="font-mono">{notif.fromAddress.slice(0, 8)}…{notif.fromAddress.slice(-6)}</span> · <span className="text-zinc-900 dark:text-white font-bold">{/^[\d.]+$/.test(notif.amount ?? "") ? `${notif.amount} MON` : notif.amount}</span></>
+                            ? (/^[\d.]+$/.test(notif.amount ?? "")
+                                ? <>A buyer locked <span className="text-zinc-900 dark:text-white font-bold">{notif.amount} MON</span> for you.</>
+                                : <>A buyer paid <span className="text-zinc-900 dark:text-white font-bold">{notif.amount}</span>. It&apos;s held for you — deliver, and it&apos;s yours.</>)
                             : <>&ldquo;{notif.message}&rdquo;</>}
                         </p>
                         <p className="text-[10px] text-zinc-400 mt-1 font-medium">{notif.createdAt}</p>

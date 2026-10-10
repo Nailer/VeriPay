@@ -15,6 +15,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { supabaseAdmin, isSupabaseConfigured } from "@/lib/supabase";
 import { verifyTransaction, paystackPublicKey, paystackConfigured } from "@/lib/paystack";
 import { getSellerByHandle } from "@/lib/sellers";
+import { getReputation } from "@/lib/reputation";
 import { NGN_TOKEN_ADDRESS, NGN_TOKEN_DECIMALS } from "@/lib/monad";
 
 export const PAY_MIN_NGN = 100;
@@ -149,7 +150,7 @@ async function ensureGas(id: string): Promise<boolean> {
   const { data } = await supabaseAdmin.from("pay_intents").select(COLS).eq("id", id).maybeSingle();
   const row = data as Row | null;
   if (!row) return false;
-  const { account, pub, wallet } = chainClients();
+  const { pub } = chainClients();
   const buyer = row.buyer_address as `0x${string}`;
 
   if ((await pub.getBalance({ address: buyer })) >= GAS_FLOOR) return true;
@@ -161,19 +162,57 @@ async function ensureGas(id: string): Promise<boolean> {
     .update({ gas_topups: row.gas_topups + 1 }).eq("id", id).eq("gas_topups", row.gas_topups).select("id").maybeSingle();
   if (!claimed) return false;
 
+  return sendGas(buyer, `intent ${id}`);
+}
+
+async function sendGas(to: `0x${string}`, what: string): Promise<boolean> {
+  const { account, pub, wallet } = chainClients();
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const nonce = await pub.getTransactionCount({ address: account.address, blockTag: "pending" });
-      const hash = await wallet.sendTransaction({ to: buyer, value: GAS_TOPUP, nonce });
+      const hash = await wallet.sendTransaction({ to, value: GAS_TOPUP, nonce });
       const receipt = await pub.waitForTransactionReceipt({ hash, timeout: 30_000 });
       if (receipt.status === "success") return true;
     } catch (err) {
-      console.error(`Gas top-up attempt ${attempt + 1} failed for intent ${id}:`, err);
+      console.error(`Gas top-up attempt ${attempt + 1} failed for ${what}:`, err);
     }
     await sleep(1500);
-    if ((await pub.getBalance({ address: buyer })) >= GAS_FLOOR) return true; // it landed after all
+    if ((await pub.getBalance({ address: to })) >= GAS_FLOOR) return true; // it landed after all
   }
   return false;
+}
+
+/**
+ * Network fees for the actions that come *after* paying: a buyer releasing or
+ * disputing days later, a seller approving a refund. Neither has ever held MON.
+ *
+ * Only two kinds of account qualify, and each is capped, so this can't be used
+ * as a faucet: a registered seller who has actually been paid through escrow,
+ * and a buyer with a card-funded payment.
+ */
+export async function sponsorGas(addressRaw: string): Promise<{ ready: boolean }> {
+  if (!isSupabaseConfigured()) return { ready: false };
+  const address = String(addressRaw || "").toLowerCase();
+  if (!/^0x[a-f0-9]{40}$/.test(address)) return { ready: false };
+  const { pub } = chainClients();
+  if ((await pub.getBalance({ address: address as `0x${string}` })) >= GAS_FLOOR) return { ready: true };
+
+  const { data: seller } = await supabaseAdmin.from("sellers").select("handle, gas_topups").eq("address", address).maybeSingle();
+  if (seller && seller.gas_topups < MAX_GAS_TOPUPS) {
+    const { reputation } = await getReputation(address);
+    if (reputation.totalTrades > 0) {
+      const { data: claimed } = await supabaseAdmin.from("sellers")
+        .update({ gas_topups: seller.gas_topups + 1 }).eq("handle", seller.handle).eq("gas_topups", seller.gas_topups).select("handle").maybeSingle();
+      if (claimed) return { ready: await sendGas(address as `0x${string}`, `seller ${seller.handle}`) };
+    }
+  }
+
+  const { data: intents } = await supabaseAdmin.from("pay_intents").select("id")
+    .eq("buyer_address", address).eq("status", "funded").lt("gas_topups", MAX_GAS_TOPUPS)
+    .order("created_at", { ascending: false }).limit(1);
+  if (intents?.[0]) return { ready: await ensureGas(intents[0].id) };
+
+  return { ready: false };
 }
 
 /**
