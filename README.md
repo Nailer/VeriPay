@@ -8,7 +8,7 @@ arrives. The buyer never sees a wallet, a token or a gas fee.
 | | |
 |---|---|
 | **Hackathon** | Monad Metropolis — Track 02, Consumer Products & Payments |
-| **Live demo** | <https://monad-pay-lagos-git-hackathon-metropolis-nailer1s-projects.vercel.app> |
+| **Live demo** | <https://veripay.store> |
 | **Demo video** | _link added at submission_ |
 | **Network** | Monad testnet (chain id 10143). No real money moves. |
 | **Submission write-up** | [`HACKATHON.md`](./HACKATHON.md) |
@@ -237,9 +237,12 @@ tests/                    end-to-end payment test
   test token. Sellers cannot withdraw to a bank; that needs a licensed
   stablecoin / off-ramp partner and a registered business.
 - **The arbitrator is a single address** — a known centralisation point.
-- **Chainlink CRE** runs through Chainlink's simulator with real testnet
-  writes via their mock forwarder; production deployment needs Chainlink's
-  deploy access (one `setForwarderAddress` call, no redeploy).
+- **Chainlink CRE** runs through Chainlink's simulator, which makes real
+  testnet writes via their mock forwarder. It has run for real: on 11 Oct 2026
+  the workflow found trade #2 past its window and released it —
+  [transaction `0xa5cf52ae…87f823`](https://testnet.monadscan.com/tx/0xa5cf52aeac617514c10055bf703c2766eb5366f640958c171006681b9d87f823).
+  A scheduled production deployment needs Chainlink's deploy access (one
+  `setForwarderAddress` call, no redeploy).
 - **Envio**: the indexer is deployed on Envio's hosted service (development
   tier) at <https://indexer.dev.hyperindex.xyz/09eb2b1/v1/graphql>. If it is ever unreachable the app reads the same numbers
   directly from the chain; the two were checked against each other for every

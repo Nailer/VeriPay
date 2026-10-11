@@ -1,7 +1,7 @@
 # VeriPay — Monad Metropolis submission
 
 **Track:** Consumer Products & Payments
-**Live demo:** https://monad-pay-lagos-git-hackathon-metropolis-nailer1s-projects.vercel.app
+**Live demo:** https://veripay.store
 **Network:** Monad testnet (chain 10143). No real money moves.
 **Code:** https://github.com/Nailer/VeriPay (MIT) — the [README](./README.md) lists what existed before the hackathon and what was built during it, and discloses AI tool use.
 
@@ -103,7 +103,7 @@ so nothing in the contract changes.
    with Paystack's test card `4084 0840 8408 4081` (any future expiry, CVV
    `408`). The money is locked for the seller in about a second.
 3. **Check a seller:** tap *Check a seller* on the home page and paste
-   `0xEfD0497f4557b49E84369cfb884B6c7446e11aBA`. You'll see 3 paid out,
+   `0xEfD0497f4557b49E84369cfb884B6c7446e11aBA`. You'll see 4 paid out,
    0 disputes, 4 trades (our own demo trades) — every one clickable through to its on-chain detail.
 4. **Same check, at the moment it matters:** tap *Start Escrow* and paste that
    same address as the seller. The record appears before you commit any money.
@@ -113,9 +113,12 @@ so nothing in the contract changes.
 6. **Pay in dollars:** on *Start Escrow*, switch the toggle to **AUSD**. You'll
    be asked to approve AUSD first, then lock it. (Needs testnet AUSD in the
    wallet.)
-7. **Auto-release:** open trade #2 — it shows the countdown until the seller
-   can be paid without the buyer. The Chainlink workflow releases it once that
-   passes.
+7. **Auto-release:** open trade #2. Its buyer never confirmed, so after the
+   7-day window the Chainlink CRE workflow released it to the seller on
+   11 Oct 2026 — one transaction, forwarder → `AutoReleaseReceiver` →
+   `autoRelease(2)`:
+   [`0xa5cf52ae…87f823`](https://testnet.monadscan.com/tx/0xa5cf52aeac617514c10055bf703c2766eb5366f640958c171006681b9d87f823).
+   The seller's record moved from 3 to 4 paid out as a result.
 
 ## Honest limitations
 

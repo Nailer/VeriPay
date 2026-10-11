@@ -14,7 +14,7 @@
 // AutoReleaseReceiver and VeriPayEscrow would be a nice simplification, not
 // a required one — the logic here is complete on its own.
 
-import { bytesToHex, cre, getNetwork, hexToBase64, TxStatus, type Runtime } from '@chainlink/cre-sdk'
+import { bytesToHex, cre, getNetwork, prepareReportRequest, TxStatus, type Runtime } from '@chainlink/cre-sdk'
 import {
   type Address,
   decodeFunctionResult,
@@ -122,20 +122,18 @@ export const onCronTrigger = (runtime: Runtime<Config>): string => {
 
   const reportPayload = encodeAbiParameters([{ type: 'uint256[]' }], [dueTradeIds])
 
-  const report = runtime
-    .report({
-      encodedPayload: hexToBase64(reportPayload),
-      encoderName: 'evm',
-      signingAlgo: 'ecdsa',
-      hashingAlgo: 'keccak256',
-    })
-    .result()
+  // prepareReportRequest fills in the EVM encoder / ECDSA / keccak256 settings
+  // and the payload encoding. Building that request by hand with hexToBase64
+  // compiled fine but failed at run time ("not a function") in the CRE runtime.
+  const report = runtime.report(prepareReportRequest(reportPayload)).result()
 
   const writeResult = evmClient
     .writeReport(runtime, {
-      receiver: toBytes(receiverAddress),
+      // Hex string and string gas limit, exactly as Chainlink's generated
+      // bindings pass them — the bytes/bigint forms type-check but fail at run time.
+      receiver: receiverAddress,
       report,
-      gasConfig: { gasLimit: BigInt(gasLimit) },
+      gasConfig: { gasLimit },
     })
     .result()
 
@@ -147,7 +145,9 @@ export const onCronTrigger = (runtime: Runtime<Config>): string => {
   // the time this report landed) does NOT fail this transaction — see
   // AutoReleaseReceiver's try/catch and its AutoReleaseFailed event. It's
   // only re-attempted next run if it's still genuinely due.
-  return `Submitted auto-release for ${dueTradeIds.length} trade(s): ${dueTradeIds.join(', ')}`
+  const txHash = bytesToHex(writeResult.txHash || new Uint8Array(32))
+  runtime.log(`Auto-release report delivered. TX: ${txHash}`)
+  return `Submitted auto-release for ${dueTradeIds.length} trade(s): ${dueTradeIds.join(', ')} — tx ${txHash}`
 }
 
 export function initWorkflow(config: Config) {

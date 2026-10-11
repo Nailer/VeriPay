@@ -19,9 +19,11 @@ For a real (non-simulated) deployment, the receiver's owner calls
 production KeystoneForwarder for Monad testnet — after getting CRE deploy
 access. No redeploy needed.
 
-Trade **#2** on the escrow was seeded deliberately left open; its auto-release
-window passes **2026-10-10 04:05 UTC**. Run the simulation after that to see
-it actually release.
+**It has run for real.** Trade #2 was deliberately left open by its buyer. On
+2026-10-11 this workflow found it past its auto-release window and released
+it: forwarder → `AutoReleaseReceiver` → `VeriPayEscrow.autoRelease(2)`, events
+`AutoReleaseSucceeded(2)`, `AutoReleased(2, seller)` and `FeeCharged(2)` —
+[`0xa5cf52aeac617514c10055bf703c2766eb5366f640958c171006681b9d87f823`](https://testnet.monadscan.com/tx/0xa5cf52aeac617514c10055bf703c2766eb5366f640958c171006681b9d87f823).
 
 ## Layout
 
@@ -49,9 +51,13 @@ Needs the CRE CLI (`~/.cre/bin/cre`), Bun, and a free CRE account.
 ```bash
 cre login                                   # once — opens a browser
 cd cre
-cre workflow simulate auto-release --target staging-settings              # dry run, no tx
-cre workflow simulate auto-release --target staging-settings --broadcast  # real testnet write
+./simulate.sh              # dry run — reads the chain, sends nothing
+./simulate.sh --broadcast  # real testnet write (needs CRE_ETH_PRIVATE_KEY in cre/.env)
 ```
 
-`cre workflow build auto-release --target staging-settings` compiles to WASM
-without logging in — verified passing.
+Use `simulate.sh` rather than calling `cre workflow simulate` in place: run
+from inside this repository the compiled workflow traps at start-up, while the
+identical source runs correctly from a clean copy outside it. The script makes
+that copy. The cause isn't identified yet; see the comment in the script for
+what was ruled out. Install dependencies with **Bun** (`bun install`), which is
+what the CRE compiler expects.
