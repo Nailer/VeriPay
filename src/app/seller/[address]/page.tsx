@@ -21,6 +21,7 @@ export default function SellerRecord() {
   const { address } = useParams<{ address: string }>();
   const [trades, setTrades] = useState<TradeSummary[] | null>(null);
   const valid = /^0x[a-fA-F0-9]{40}$/.test(address ?? "");
+  const [shop, setShop] = useState<{ name: string; handle: string } | null>(null);
 
   useEffect(() => {
     if (!valid) return;
@@ -28,10 +29,11 @@ export default function SellerRecord() {
       .then((r) => r.json())
       .then((d) => setTrades(d.trades ?? []))
       .catch(() => setTrades([]));
+    fetch(`/api/sellers?address=${address}`).then((r) => r.json()).then((d) => setShop(d.seller ?? null)).catch(() => {});
   }, [address, valid]);
 
   if (!valid) {
-    return <div className="flex-1 flex items-center justify-center p-8 text-sm text-zinc-500">That doesn&apos;t look like a wallet address.</div>;
+    return <div className="flex-1 flex items-center justify-center p-8 text-sm text-zinc-500">We couldn&apos;t find that seller.</div>;
   }
 
   return (
@@ -40,12 +42,14 @@ export default function SellerRecord() {
         <ArrowLeft className="w-4 h-4" /> Check another seller
       </Link>
 
-      <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight mb-1">Trade record</h1>
-      <p className="font-mono text-xs text-zinc-500 break-all mb-6">{address}</p>
+      <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight mb-1">{shop ? shop.name : "Seller record"}</h1>
+      {shop
+        ? <p className="text-sm text-zinc-500 mb-6">@{shop.handle} · <Link href={`/pay/${shop.handle}`} className="font-bold text-zinc-900 dark:text-white underline underline-offset-4">Pay this seller</Link></p>
+        : <p className="font-mono text-xs text-zinc-500 break-all mb-6">{address}</p>}
 
       <SellerReputationCard address={address} showLink={false} />
 
-      <h2 className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mt-8 mb-3">Every trade, newest first</h2>
+      <h2 className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mt-8 mb-3">Every order, newest first</h2>
 
       {trades === null ? (
         <div className="flex items-center gap-2 text-sm text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /> Reading from Monad…</div>
