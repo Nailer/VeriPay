@@ -9,7 +9,8 @@ arrives. The buyer never sees a wallet, a token or a gas fee.
 |---|---|
 | **Hackathon** | Monad Metropolis — Track 02, Consumer Products & Payments |
 | **Live demo** | <https://veripay.store> |
-| **Demo video** | [`demo/veripay-demo.mp4`](./demo/veripay-demo.mp4) (2:17) — an automated run of the real app with an AI voice-over; [how it was made](./scripts/demo-video/README.md) |
+| **Demo video** | [`demo/veripay-demo.mp4`](./demo/veripay-demo.mp4) (2:17) — an automated run of the real app with subtitles and an AI voice-over; [how it was made](./scripts/demo-video/README.md) |
+| **Pitch video** | [`demo/veripay-pitch.mp4`](./demo/veripay-pitch.mp4) (1:45) — team, problem, and why |
 | **Network** | Monad testnet (chain id 10143). No real money moves. |
 | **Submission write-up** | [`HACKATHON.md`](./HACKATHON.md) |
 

@@ -11,7 +11,10 @@
   Fingerprint sign-in is exercised through Chrome's built-in virtual WebAuthn
   authenticator; the card step uses Paystack's test-mode "Success" option.
 - `compose.mjs` cuts the recordings into scenes, adds the title cards, and adds
-  narration generated with macOS text-to-speech. Nothing is sped up; the
+  narration generated with macOS text-to-speech (`narr.mjs` synthesises each
+  sentence separately so the burned-in subtitles are timed to the voice).
+- `pitch.mjs` builds `demo/veripay-pitch.mp4` the same way from title cards,
+  the founder's photo and two clips from the demo recording. Nothing is sped up; the
   charge-to-locked scene is uncut.
 
 They were run from a scratch folder with `playwright-core` installed and the

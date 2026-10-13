@@ -3,7 +3,8 @@
 import fs from "fs"; import { execFileSync } from "child_process"; import { createRequire } from "module";
 const sharp = createRequire(import.meta.url)("../node_modules/sharp");
 const { scenes } = JSON.parse(fs.readFileSync("vid/scenes.json", "utf8"));
-const VOICE = process.env.VOICE || "Daniel", RATE = process.env.RATE || "172";
+import { narrate, subtitleFilter } from "./narr.mjs";
+const SUB = { x: 608, y: 520, size: 25, max: 46, w: 630 };
 const W = 1280, H = 720, PH = 664, PW = Math.round(PH * 390 / 844 / 2) * 2, PX = 150, PY = 28;
 fs.mkdirSync("vid/out", { recursive: true });
 
@@ -36,7 +37,7 @@ const ff = (args) => execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error
 let total = 0; const parts = [];
 for (const [i, s] of scenes.entries()) {
   const m = META[s.id]; if (!m) continue;
-  const n = String(i).padStart(2, "0"), bg = `vid/out/${n}-bg.png`, aud = `vid/out/${n}.aiff`, out = `vid/out/${n}-${s.id}.mp4`;
+  const n = String(i).padStart(2, "0"), bg = `vid/out/${n}-bg.png`, out = `vid/out/${n}-${s.id}.mp4`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
     <rect width="${W}" height="${H}" fill="#0A0A0A"/>
     <rect x="${PX - 7}" y="${PY - 7}" width="${PW + 14}" height="${PH + 14}" rx="30" fill="#000" stroke="#3f3f46" stroke-width="2"/>
@@ -45,18 +46,19 @@ for (const [i, s] of scenes.entries()) {
     <text x="590" y="262" font-family="Helvetica Neue, Helvetica, Arial" font-weight="700" font-size="17" letter-spacing="3.5" fill="#a1a1aa">${esc(m.label)}</text>
     ${m.title.map((t, k) => `<text x="588" y="${326 + k * 58}" font-family="Helvetica Neue, Helvetica, Arial" font-weight="700" font-size="46" letter-spacing="-1" fill="#fff">${esc(t)}</text>`).join("")}
     <text x="590" y="640" font-family="Helvetica Neue, Helvetica, Arial" font-size="17" fill="#71717a">veripay.store   ·   Monad testnet   ·   test money, no real funds</text>
-    <text x="590" y="668" font-family="Helvetica Neue, Helvetica, Arial" font-size="15" fill="#52525b">Automated run of the real app (local build, live testnet contracts). AI voice.</text>
+    <text x="590" y="668" font-family="Helvetica Neue, Helvetica, Arial" font-size="15" fill="#52525b">Automated run of the real app (local build, live testnet contracts). AI voice-over.</text>
   </svg>`;
   await sharp(Buffer.from(svg)).png().toFile(bg);
-  execFileSync("say", ["-v", VOICE, "-r", RATE, "-o", aud, m.say]);
-  const A = probe(aud), V = s.clips.reduce((x, c) => x + (c.b - c.a), 0), T = Math.max(V, A + 0.7);
+  const voice = await narrate(m.say, `vid/out/${n}`, SUB);
+  const A = voice.duration, V = s.clips.reduce((x, c) => x + (c.b - c.a), 0), T = Math.max(V, A + 0.8);
   const ins = ["-loop", "1", "-framerate", "30", "-i", bg];
   for (const c of s.clips) ins.push("-ss", String(c.a), "-t", (c.b - c.a).toFixed(2), "-i", c.file);
-  ins.push("-i", aud);
+  ins.push("-i", voice.audio);
   const k = s.clips.length;
+  const subs = subtitleFilter(voice.cues, k + 2, "v0", T);
   const cat = k > 1 ? `${s.clips.map((_, j) => `[${j + 1}:v]`).join("")}concat=n=${k}:v=1:a=0[c];[c]` : "[1:v]";
-  const filter = `${cat}fps=30,crop=390:844:0:0,scale=${PW}:${PH}:flags=lanczos,tpad=stop_mode=clone:stop_duration=${Math.max(T - V, 0).toFixed(2)}[p];[0:v][p]overlay=${PX}:${PY}[v];[${k + 1}:a]adelay=350|350,apad[a]`;
-  ff([...ins, "-filter_complex", filter, "-map", "[v]", "-map", "[a]", "-t", T.toFixed(2), "-r", "30", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-ar", "44100", "-ac", "2", "-b:a", "128k", out]);
+  const filter = `${cat}fps=30,crop=390:844:0:0,scale=${PW}:${PH}:flags=lanczos,tpad=stop_mode=clone:stop_duration=${Math.max(T - V, 0).toFixed(2)}[p];[0:v][p]overlay=${PX}:${PY}[v0];${subs.steps};[${k + 1}:a]apad[a]`;
+  ff([...ins, ...subs.inputs, "-filter_complex", filter, "-map", `[${subs.out}]`, "-map", "[a]", "-t", T.toFixed(2), "-r", "30", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-ar", "44100", "-ac", "2", "-b:a", "160k", out]);
   parts.push(out); total += T;
   console.log(`${s.id.padEnd(13)} video ${V.toFixed(1)}s  voice ${A.toFixed(1)}s  ->  ${T.toFixed(1)}s`);
 }
