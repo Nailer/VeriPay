@@ -69,7 +69,7 @@ export default function SellerReputationCard({ address, showLink = true }: { add
         <div className="grid grid-cols-3 gap-2 text-center">
           <Stat value={asSellerSettled} label="Paid out" />
           <Stat value={r.disputedTrades} label="Disputes" />
-          <Stat value={r.totalTrades} label="Total trades" />
+          <Stat value={r.totalTrades} label="Total orders" />
         </div>
       )}
 

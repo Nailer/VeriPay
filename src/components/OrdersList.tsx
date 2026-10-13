@@ -37,8 +37,9 @@ export default function OrdersList({ address, role, empty }: { address: string; 
     }
   }, [address, role]);
 
-  // Keep watching while something is still waiting on someone.
-  usePolling(load, 20_000, orders === null || orders.some((o) => o.status === "open" || o.status === "disputed"));
+  // Keep watching while something is still waiting on someone — and while the
+  // list is empty, so a seller's first order appears without a refresh.
+  usePolling(load, 10_000, orders === null || orders.length === 0 || orders.some((o) => o.status === "open" || o.status === "disputed"));
 
   if (orders === null) return <Loader2 className="w-5 h-5 animate-spin text-zinc-500" />;
   if (orders.length === 0) return <p className="text-sm text-zinc-500 leading-relaxed">{empty}</p>;

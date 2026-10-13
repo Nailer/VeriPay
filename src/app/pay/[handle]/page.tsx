@@ -256,12 +256,12 @@ export default function PayLink() {
           >
             Track your order
           </Link>
-          <a
-            href={`https://testnet.monadscan.com/tx/${done.txHash}`} target="_blank" rel="noopener noreferrer"
+          <Link
+            href={`/proof/${done.txHash}`}
             className="mt-2 flex items-center justify-center gap-1.5 w-full py-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold text-sm"
           >
             View proof on Monad <ArrowUpRight className="w-4 h-4" />
-          </a>
+          </Link>
 
           <p className="mt-4 text-[11px] text-zinc-500 text-center">Test payment — no real money moved.</p>
         </div>

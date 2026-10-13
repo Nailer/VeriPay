@@ -15,7 +15,6 @@ const STATUS_LABEL: Record<TradeSummary["status"], string> = {
   split: "Split by arbitrator",
 };
 
-const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
 export default function SellerRecord() {
   const { address } = useParams<{ address: string }>();
@@ -64,13 +63,13 @@ export default function SellerRecord() {
                 className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors"
               >
                 <div className="min-w-0">
-                  <div className="text-sm font-bold text-zinc-900 dark:text-white truncate">{t.metadata || `Trade #${t.id}`}</div>
+                  <div className="text-sm font-bold text-zinc-900 dark:text-white truncate">{t.metadata || `Order #${t.id}`}</div>
                   <div className="text-[11px] text-zinc-500 mt-0.5">
-                    #{t.id} · as {t.role} · with <span className="font-mono">{short(t.counterparty)}</span>
+                    Order #{t.id} · {t.role === "seller" ? "sold" : "bought"}
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="text-sm font-black text-zinc-900 dark:text-white">{t.amount} {t.symbol}</div>
+                  <div className="text-sm font-black text-zinc-900 dark:text-white">{t.symbol === "NGN" ? `₦${t.amount}` : `${t.amount} ${t.symbol}`}</div>
                   <div className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{STATUS_LABEL[t.status]}</div>
                 </div>
               </Link>
