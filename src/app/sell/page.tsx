@@ -132,7 +132,7 @@ export default function Sell() {
           <SellerReputationCard address={seller.address} />
           {received !== null && (
             <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-              <span className="font-black text-zinc-900 dark:text-white">₦{received}</span> paid out to you so far.
+              <span className="font-black text-zinc-900 dark:text-white">₦{received}</span>{" "}paid out to you so far.
               This is the test version, so it&apos;s test money — bank withdrawals open at launch.
             </p>
           )}

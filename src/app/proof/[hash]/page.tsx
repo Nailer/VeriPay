@@ -12,6 +12,7 @@ import { CONTRACT_ADDRESS } from "@/lib/abi";
 // VeriPay's database.
 
 const RECEIVER = "0x4bdff272df53a78887fd84a9ee9f4aa9a161a0b9";
+const FORWARDER = "0xb9f79d863261869b234c481d1f9a7af84aead192"; // Chainlink's forwarder for Monad testnet
 const events = parseAbi([
   "event TradeCreated(uint256 indexed id, address indexed buyer, address indexed seller, uint256 amount)",
   "event FundsReleased(uint256 indexed id, address to)",
@@ -67,7 +68,7 @@ export default function ProofPage() {
           block: receipt.blockNumber.toLocaleString("en-US"),
           when: new Date(Number(block.timestamp) * 1000).toLocaleString("en-NG", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }),
           from: receipt.from, to: receipt.to ?? "",
-          toName: to === CONTRACT_ADDRESS.toLowerCase() ? "VeriPay escrow contract" : to === RECEIVER ? "VeriPay auto-release contract" : "Contract",
+          toName: to === CONTRACT_ADDRESS.toLowerCase() ? "VeriPay escrow contract" : to === RECEIVER ? "VeriPay auto-release contract" : to === FORWARDER ? "Chainlink forwarder" : "Contract",
           feeMon: Number(formatEther(receipt.gasUsed * receipt.effectiveGasPrice)).toFixed(4),
           steps,
         });
