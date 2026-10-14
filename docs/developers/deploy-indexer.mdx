@@ -1,0 +1,48 @@
+---
+title: "Deploy the indexer"
+description: "Run VeriPay's Envio HyperIndex reputation indexer locally or on Envio's hosted service, and connect the app to it."
+icon: "database-zap"
+---
+
+The indexer lives in `indexer/` — a separate project with its own `package.json`, deployed independently of the app.
+
+<Accordion title="In plain words" icon="lightbulb">
+  The indexer is a separate service that reads every VeriPay event from the blockchain and keeps a fast, searchable copy of seller records. You can run it on your computer or on Envio's servers.
+</Accordion>
+
+## Files
+
+| File | Purpose |
+|---|---|
+| `config.yaml` | Network (`10143`), contract address, `start_block: 63987883`, events, handler path |
+| `schema.graphql` | `TradeRecord`, `AddressReputation` |
+| `src/EventHandlers.ts` | Event → entity logic |
+| `abis/VeriPayEscrow.json` | ABI |
+| `pnpm-lock.yaml` | Required by Envio hosted builds |
+
+## Local
+
+```bash
+cd indexer
+npm install
+npm run codegen        # regenerate .envio/types.d.ts after any config/schema change
+npm run dev            # local indexer + GraphQL playground (needs Docker: Postgres + Hasura)
+```
+
+## Hosted (Envio)
+
+<Steps>
+  <Step title="Account">Create an account and API token at [envio.dev/app/api-tokens](https://envio.dev/app/api-tokens).</Step>
+  <Step title="Connect the repo">Create a hosted indexer from GitHub: branch `hackathon/metropolis`, root directory `indexer/`. The current project is `veripay-reputation` on the development tier.</Step>
+  <Step title="Deploy">Follow Envio's current docs ([docs.envio.dev](https://docs.envio.dev)) — the flow changes occasionally.</Step>
+  <Step title="Wire the app">Set `ENVIO_GRAPHQL_URL` (locally and on Vercel) to the GraphQL endpoint.</Step>
+  <Step title="Verify">`GET /api/reputation/<addr>` returns `"source":"envio"` and numbers equal `?trades=1` (chain) counts.</Step>
+</Steps>
+
+## After redeploying the escrow
+
+Update `address` and `start_block` in `config.yaml`, run `codegen`, redeploy, and update `ENVIO_GRAPHQL_URL` if the endpoint path changed.
+
+## Changing counting rules
+
+Change **both** `indexer/src/EventHandlers.ts` and `src/lib/reputation.ts` in the same commit, then compare outputs for every address that has traded.

@@ -1,0 +1,53 @@
+---
+title: "How VeriPay compares"
+description: "VeriPay against the alternatives people actually use today — on trust, cost, speed and accessibility."
+icon: "scale"
+---
+
+## At a glance
+
+| | Bank transfer to seller | Trusted WhatsApp middleman | Marketplace escrow | Crypto escrow dApp | **VeriPay** |
+|---|---|---|---|---|---|
+| Buyer protected | ❌ | ⚠️ trust the middleman | ✅ | ✅ | ✅ |
+| Seller protected from silent buyer | n/a | ⚠️ | ✅ | ⚠️ often stuck | ✅ auto-release |
+| Works on Instagram/WhatsApp | ✅ | ✅ | ❌ platform-locked | ✅ | ✅ |
+| Needs crypto knowledge | ❌ | ❌ | ❌ | ✅ wallet, seed, gas | ❌ |
+| Pay in naira by card | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Verifiable seller history | ❌ | ❌ | ⚠️ platform reviews | ⚠️ rarely | ✅ on-chain |
+| Operator can take funds | n/a | ✅ | ✅ | depends | ❌ by code |
+| Fee on a ₦2,000 order | ₦0–₦50 | varies | 5–15% | gas often > order | 1% (₦20) |
+| Settlement speed | instant | manual | days | minutes | ~1 s lock |
+
+<Accordion title="In plain words" icon="lightbulb">
+  VeriPay is the only option in the table that protects both sides, works on Instagram and WhatsApp, lets you pay in naira by card without knowing anything about crypto, shows a seller's history nobody can fake, and makes it impossible for the company itself to run off with the money.
+</Accordion>
+
+## The honest trade-offs
+
+<CardGroup cols={2}>
+  <Card title="Where VeriPay is stronger" icon="thumbs-up">
+    - Non-custodial: funds held by code, not a company.
+    - Reputation that can't be faked or edited.
+    - Cheap enough for tiny orders.
+    - Fast enough to feel like a normal payment.
+  </Card>
+  <Card title="Where VeriPay is weaker today" icon="thumbs-down">
+    - Testnet only; no real money yet.
+    - Disputes decided by a single arbitrator.
+    - No bank withdrawal for sellers yet.
+    - Not independently audited.
+  </Card>
+</CardGroup>
+
+## Design choices compared with typical crypto escrow
+
+| Decision | Typical crypto escrow | VeriPay | Why |
+|---|---|---|---|
+| Onboarding | Seed-phrase wallet | Passkey (PRF) EOA | Target users have never held a seed phrase |
+| Funding | User brings tokens | Card → server-verified mint | Users hold naira, not tokens |
+| Gas | User pays | Capped server sponsorship | Users have no MON |
+| Asset | Native coin | Any ERC-20 (vNGN, AUSD) or MON | Price stability between lock and release |
+| Deadlock | Funds stuck | Dispute + arbitrator, auto-release | Liveness for both parties |
+| Fee changes | Often apply retroactively | Snapshotted per trade, capped at 5% | Predictability |
+| Reputation | Off-chain reviews | Event-sourced, indexer + chain fallback | Unfakeable trust signal |
+| Upkeep | Manual "claim" | Chainlink CRE cron | Sellers never wait on a human |

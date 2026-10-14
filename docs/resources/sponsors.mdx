@@ -1,0 +1,37 @@
+---
+title: "Sponsor integrations"
+description: "How VeriPay uses Mera, Envio, Chainlink CRE, Alchemy and Agora AUSD — chosen for product fit, with evidence for each."
+icon: "handshake"
+---
+
+| Sponsor | What we use | How VeriPay uses it | Evidence |
+|---|---|---|---|
+| **Monad Foundation — Mera** | Passkey accounts | Fingerprint / Face ID sign-in creates the account from the passkey's PRF output. No seed phrase, no wallet app, same account on any device with the passkey. | `src/lib/mera.ts` · [Passkey accounts](/architecture/passkey-accounts) |
+| **Envio — HyperIndex** | Hosted indexer | Turns every escrow event into each seller's public record, served over GraphQL; chain fallback with identical rules. | `indexer/` · [Reputation](/architecture/reputation) |
+| **Chainlink — CRE** | Cron workflow + receiver | Finds orders whose buyer went silent past 7 days and pays the seller via a signed report. | `cre/`, `contracts/cre/` · [release tx](https://veripay.store/proof/0xa5cf52aeac617514c10055bf703c2766eb5366f640958c171006681b9d87f823) |
+| **Alchemy** | Monad RPC | Every read and write, browser and server. | `src/lib/monad.ts` |
+| **Agora — AUSD** | Dollar stablecoin | Escrow accepts AUSD; *Pay with crypto* has an AUSD toggle with approve-then-lock. Not demonstrated with Agora's token (testnet AUSD is Agora-issued only). | `contracts/VeriPayEscrow.sol` (`createTradeWithToken`) |
+
+<Accordion title="In plain words" icon="lightbulb">
+  VeriPay uses five partner technologies: Mera for fingerprint sign-in, Envio for fast seller records, Chainlink for automatic payouts, Alchemy to connect to the blockchain, and Agora's digital dollar as an optional currency.
+</Accordion>
+
+## Why each was chosen
+
+<AccordionGroup>
+  <Accordion title="Mera" icon="fingerprint">
+    The target user has never held a seed phrase. Passkeys remove the single biggest onboarding barrier and are phishing-resistant.
+  </Accordion>
+  <Accordion title="Envio" icon="database-zap">
+    Reputation must be computed from events to be trustworthy; querying raw events on every page load is too slow. Envio makes it fast while keeping it derivable.
+  </Accordion>
+  <Accordion title="Chainlink CRE" icon="timer">
+    `autoRelease` is permissionless but needs a caller. A decentralised scheduler closes the liveness gap without VeriPay running a privileged bot.
+  </Accordion>
+  <Accordion title="Alchemy" icon="radio-tower">
+    The public RPC is flaky under load; consumer checkout can't tolerate that.
+  </Accordion>
+  <Accordion title="Agora AUSD" icon="dollar-sign">
+    Escrow holds funds for days; a stable asset means the agreed price is the paid price, and it unlocks cross-border use.
+  </Accordion>
+</AccordionGroup>

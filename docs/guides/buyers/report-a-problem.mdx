@@ -1,0 +1,67 @@
+---
+title: "Report a problem"
+description: "Freeze the money and request a review when an order goes wrong and you can't sort it out with the seller."
+icon: "triangle-alert"
+---
+
+## When to use it
+
+Use **Report a problem** when talking it out hasn't worked:
+
+- The item never arrived and the seller stopped replying.
+- You received something different, fake or broken.
+- The seller won't refund but you believe you're owed one.
+
+<Tip>
+  Try the [order chat](/guides/order-chat) first. If the seller agrees to refund, they can do it directly and you get 100% back faster — see [Refunds](/guides/buyers/refunds).
+</Tip>
+
+## Steps
+
+<Steps>
+  <Step title="Open the order">
+    **My orders** → the order.
+  </Step>
+  <Step title="Tap Report a problem with this order">
+    At the bottom of the action panel.
+  </Step>
+  <Step title="Confirm">
+    Read the warning — *"This freezes the money. Neither of you can release or refund it until a VeriPay agent reviews the order and decides who gets what."* — and tap **Freeze & request review**.
+  </Step>
+  <Step title="Explain in the chat">
+    A system message is posted to the order chat so an agent sees it in the admin console. Add your evidence: photos, tracking numbers, what was agreed.
+  </Step>
+  <Step title="Wait for the decision">
+    The order shows **Under review** and the money is **Frozen**. The reviewer decides a split; you'll see **Settled by review**, **Refunded** or **Completed**.
+  </Step>
+</Steps>
+
+<Warning>
+  **Report before the confirmation window ends.** After the 7-day window, the order becomes eligible for automatic payout to the seller. Once paid out, it can't be disputed.
+</Warning>
+
+## Behind the button
+
+`raiseDispute(id)` may be called once, by the buyer or the seller, on an open order. It sets `disputed = true` and emits `DisputeRaised(id, by)`. While `disputed` is true:
+
+- `autoRelease(id)` reverts with `trade is disputed` — the seller **cannot** be paid automatically.
+- Only the arbitrator can settle it with `resolveDispute(id, buyerBps)`, choosing any split from 0 to 10,000 basis points.
+- The buyer can still release voluntarily; a seller-approved refund can still be claimed.
+
+<Accordion title="In plain words" icon="lightbulb">
+  Reporting a problem puts the money in a "frozen" state. The automatic payout stops. Only the VeriPay reviewer can unfreeze it by deciding how much goes to you and how much to the seller — anything from all to you, to all to the seller, or a split in between. You can still choose to pay the seller yourself if things get sorted out.
+</Accordion>
+
+## How the reviewer decides
+
+| Ruling | `buyerBps` | You receive | Seller receives |
+|---|---|---|---|
+| Full refund | `10000` | 100% | 0 |
+| Split down the middle | `5000` | 50% | 50% minus 1% fee on their half |
+| Seller in the right | `0` | 0 | 100% minus 1% fee |
+
+The fee is only ever charged on the seller's portion — a full refund costs you nothing. See [Disputes and arbitration](/architecture/disputes-and-arbitration).
+
+## Effect on records
+
+A dispute adds **+1 Disputes** to **both** your record and the seller's, regardless of the outcome. This discourages frivolous reports from either side.

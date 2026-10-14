@@ -1,0 +1,69 @@
+---
+title: "Exchange orders"
+description: "Create buy and sell orders with server-side pricing, fetch them, and perform user actions: declare payment, submit a deposit, cancel."
+icon: "receipt"
+---
+
+## Get an order or a wallet's orders
+
+```http
+GET /api/exchange/orders?id=<orderId>
+GET /api/exchange/orders?address=0x…
+```
+
+- `?id` → `{ order, merchantBank, merchantAddress }` (404 if unknown). Lapsed unpaid quotes are expired on read.
+- `?address` → `{ orders: [...] }`.
+
+## Create an order
+
+```http
+POST /api/exchange/orders
+```
+
+The client sends **intent only** — never a price.
+
+<ParamField body="side" type="&quot;buy&quot; | &quot;sell&quot;" required />
+<ParamField body="coin" type="string" required>`MON · USDT · BTC · ETH · SOL`</ParamField>
+<ParamField body="walletAddress" type="string" required>Where crypto is delivered (buy) or sent from (sell).</ParamField>
+<ParamField body="paymentMethod" type="&quot;transfer&quot; | &quot;card&quot;">Buy only. Default `transfer`.</ParamField>
+<ParamField body="amountNgn" type="number">Buy: naira to spend. Within min/max.</ParamField>
+<ParamField body="amountCrypto" type="number">Sell: coin amount to sell.</ParamField>
+<ParamField body="bank" type="object">Sell: `{ bankName, accountNumber (10 digits), accountName (≥ 3 chars) }`.</ParamField>
+
+Returns `{ order, merchantBank, merchantAddress }`. The order includes `exactAmountNgn` (kobo-suffixed for transfers; spend + card fee for card), `rate`, `baseRate`, `spreadPercent`, `feeNgn`, `amountCrypto`, `quoteExpiresAt`, `settlementRef`, `status: "awaiting_payment"`.
+
+## User actions
+
+```http
+PATCH /api/exchange/orders
+```
+
+<ParamField body="id" type="string" required />
+<ParamField body="action" type="string" required>`declare_payment · submit_tx · cancel`</ParamField>
+
+| Action | Applies to | Extra fields | Transition | Errors |
+|---|---|---|---|---|
+| `declare_payment` | buy · transfer | `payerName` (≥ 3), `payerNote` (≤ 500) | `awaiting_payment → payment_review` | expired (409), moved on (409) |
+| `submit_tx` | sell | `txHash` | `awaiting_payment / expired → verified` after on-chain verification | verification reason (+ `retryable`) |
+| `cancel` | any unpaid | — | `awaiting_payment / expired → cancelled` | can't cancel (409) |
+
+None of these actions release funds on their own.
+
+<Accordion title="In plain words" icon="lightbulb">
+  Create an order to buy or sell crypto, look it up, tell VeriPay you've paid, submit proof you've sent crypto, or cancel.
+</Accordion>
+
+<RequestExample>
+```bash Buy by transfer
+curl -X POST https://veripay.store/api/exchange/orders -H "Content-Type: application/json" \
+  -d '{"side":"buy","coin":"MON","amountNgn":20000,"walletAddress":"0xYou…","paymentMethod":"transfer"}'
+```
+```bash Declare payment
+curl -X PATCH https://veripay.store/api/exchange/orders -H "Content-Type: application/json" \
+  -d '{"id":"ab12cd34","action":"declare_payment","payerName":"Chioma Okafor"}'
+```
+```bash Submit sell deposit
+curl -X PATCH https://veripay.store/api/exchange/orders -H "Content-Type: application/json" \
+  -d '{"id":"ef56gh78","action":"submit_tx","txHash":"0x…64 hex…"}'
+```
+</RequestExample>

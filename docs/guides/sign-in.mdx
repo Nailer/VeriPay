@@ -1,0 +1,82 @@
+---
+title: "Sign in with your fingerprint"
+description: "Create or reuse your VeriPay account with Face ID, Touch ID, an Android fingerprint or Windows Hello — and what to do if your device doesn't support it."
+icon: "fingerprint"
+---
+
+## The short version
+
+<Steps>
+  <Step title="Tap the fingerprint button">
+    On any page that needs an account (paying, selling, your orders), tap **Use Face ID / fingerprint**, or the fingerprint icon next to **Sign in** in the top bar.
+  </Step>
+  <Step title="Approve on your device">
+    Your phone or laptop asks for your face, fingerprint or device PIN. Approve it.
+  </Step>
+  <Step title="You're in">
+    The top bar now shows **Signed in** (or your shop name if you're a seller). There's nothing to write down and no password to remember.
+  </Step>
+</Steps>
+
+## What's actually happening
+
+The first time, the browser registers a **WebAuthn passkey** for `veripay.store` with the **PRF extension** enabled. On every sign-in the authenticator evaluates the PRF and returns the same 32-byte output. VeriPay's page — on your device — converts that output into an Ethereum-compatible key (BIP-39 entropy → seed → BIP-32 path `m/44'/60'/0'/0/0`) and uses it to sign your transactions.
+
+<Accordion title="In plain words" icon="lightbulb">
+  Your device keeps a special secret locked behind your fingerprint. Each time you sign in, it produces the same "answer", and VeriPay's page turns that answer into your account — right there on your phone. VeriPay's servers never see the secret.
+</Accordion>
+
+<CardGroup cols={2}>
+  <Card title="Same account everywhere your passkey is" icon="refresh-cw">
+    If your passkey syncs (iCloud Keychain, Google Password Manager), signing in on another device gives you the **same** account.
+  </Card>
+  <Card title="Bound to veripay.store" icon="globe">
+    Passkeys are tied to the website's domain. An account created on a different VeriPay address (for example, a preview URL) is a different account.
+  </Card>
+</CardGroup>
+
+## Supported devices
+
+| Platform | Works with | Notes |
+|---|---|---|
+| iPhone / iPad | Face ID, Touch ID | Needs a recent iOS (18 or later) for PRF support |
+| Mac | Touch ID, iCloud Keychain | Safari, Chrome |
+| Android | Fingerprint, face unlock, screen lock | Chrome with Google Password Manager |
+| Windows | Windows Hello | Chrome / Edge |
+| Security keys | FIDO2 keys with `hmac-secret` | Most modern YubiKeys |
+
+<Accordion title="Why some devices don't work">
+  VeriPay needs the WebAuthn **PRF extension**, which turns a passkey into a stable secret. Older browsers and some password managers don't support it. When that happens, Mera returns `PRF_UNAVAILABLE` and you'll see: *"This device's biometric hardware doesn't support the passkey feature we need. Try Sign in instead."*
+
+  **In plain words:** some older phones or browsers can't do this trick. Use the other sign-in options instead.
+</Accordion>
+
+## Other ways to sign in
+
+If fingerprint sign-in isn't available, tap **Other ways to sign in** (or **Sign in**). You can use:
+
+- **Email**, **phone**, **Google**, **Apple** or **Facebook** (thirdweb in-app wallet)
+- **MetaMask**, **Coinbase Wallet**, **Rainbow**, **Rabby**, **Zerion**
+- **WalletConnect** (any mobile wallet)
+
+<Note>
+  Each method gives you a **different account**. If you signed up as a seller with your fingerprint, keep using your fingerprint so you see your orders and your link.
+</Note>
+
+## Signing out and switching
+
+Open the account menu in the top bar and choose **Disconnect**. Signing in again with the same method returns the same account.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="&quot;Cancelled, or your device couldn't complete Face ID / fingerprint verification.&quot;">
+    You dismissed the prompt or the biometric check failed. Try again; if it keeps failing, check your device's biometrics settings. (Mera error code `PASSKEY_OPERATION_FAILED`.)
+  </Accordion>
+  <Accordion title="I signed in but I see different orders than before">
+    You're probably using a different method or a different passkey than last time. Sign out and sign in the way you did originally.
+  </Accordion>
+  <Accordion title="I lost my phone">
+    If your passkey was synced to your cloud account, sign in on a new device with the same cloud account and the passkey will be there. If it wasn't synced, the account cannot be recovered — this is why synced passkeys are recommended.
+  </Accordion>
+</AccordionGroup>

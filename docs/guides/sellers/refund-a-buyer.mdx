@@ -1,0 +1,41 @@
+---
+title: "Refund a buyer"
+description: "Give a buyer their money back in full — when to do it, how, and what it does to your record."
+icon: "rotate-ccw"
+---
+
+## When to refund
+
+- You can't fulfil the order (out of stock, can't deliver to their location).
+- The buyer changed their mind and you're happy to cancel.
+- The item was wrong and the buyer is returning it.
+
+Refunding voluntarily is almost always better than letting a buyer report a problem: it's faster, and it **doesn't add a dispute** to your record.
+
+## Steps
+
+<Steps>
+  <Step title="Open the order">
+    **My orders** or the **Sell** page → the order.
+  </Step>
+  <Step title="Tap Refund the buyer">
+    This calls `sellerApproveRefund(id)` and emits `RefundAuthorized(id)`. VeriPay covers the network fee if needed.
+  </Step>
+  <Step title="The buyer takes it">
+    The order shows **Refund ready**. The buyer taps **Take my refund** and receives 100%.
+  </Step>
+</Steps>
+
+<Accordion title="In plain words" icon="lightbulb">
+  You say "yes, refund". The buyer then collects their full payment. You don't pay any fee, and nothing bad goes on your record.
+</Accordion>
+
+## Things to know
+
+| Question | Answer |
+|---|---|
+| Can I undo an approval? | No. Once approved, the buyer can claim at any time while the order is open. |
+| Can I refund part of an order? | Not directly. Partial outcomes happen through a dispute ruling. |
+| Does it cost me a fee? | No. Refunds are never charged a fee. |
+| Does it hurt my record? | Your **Paid out** doesn't increase; **Disputes** is unaffected. The buyer's **Refunds** goes up by one. |
+| What if the buyer never claims it? | Once refund-approved, the order is still technically open. Note that `autoRelease` does not check `sellerApprovedRefund`, so after the window it could still pay *you*. If you've agreed a refund, remind the buyer to claim promptly. |

@@ -1,0 +1,103 @@
+---
+title: "API overview"
+description: "Base URL, conventions, authentication model, rate considerations and the full route index of VeriPay's HTTP API."
+icon: "terminal"
+---
+
+VeriPay's HTTP API is the set of **Next.js route handlers** under `src/app/api/`. They serve the VeriPay app itself and are usable by integrators. All responses are JSON.
+
+<Accordion title="In plain words" icon="lightbulb">
+  These are the web addresses VeriPay's own app talks to behind the scenes. Developers can use them too — for example to look up a seller's record from another website.
+</Accordion>
+
+## Base URL
+
+```text
+https://veripay.store/api
+```
+
+Local: `http://localhost:3000/api`.
+
+## Conventions
+
+| Topic | Convention |
+|---|---|
+| Format | JSON request and response bodies; `Content-Type: application/json` |
+| Addresses | `0x` + 40 hex; case-insensitive input; stored and returned lowercased where persisted |
+| Amounts | Naira as JSON numbers (`amountNgn: 2500`); on-chain amounts as decimal strings in base units |
+| Errors | `{ "error": "Human-readable message" }` with an HTTP status — see [Errors](/api/errors) |
+| Caching | Dynamic routes are `force-dynamic`; rates return `Cache-Control: no-store` |
+| Time limits | Payment routes allow up to 60 s (`maxDuration = 60`) because they wait for on-chain receipts |
+
+## Authentication model
+
+There are **no API keys** for public routes. Security comes from the design of each route:
+
+| Mechanism | Used by |
+|---|---|
+| **Signature proof** (EIP-191) | `POST /api/sellers` |
+| **Server-side verification with a third party** (Paystack) | `/api/pay/confirm`, `/api/exchange/card/*` |
+| **On-chain verification** | `/api/exchange/orders` (`submit_tx`), gas eligibility |
+| **HMAC signature** (`x-paystack-signature`) | `/api/exchange/card/webhook` |
+| **Admin passcode** header `x-admin-code` | `/api/admin/*` |
+| **Bearer of an unguessable id** | `GET /api/exchange/orders?id=`, chat threads |
+
+<Warning>
+  Several write routes (notifications, chat, track, trades/log) **do not authenticate the caller**. They only write non-financial, display data, but integrators must not treat their contents as authoritative. See [Threat model](/security/threat-model).
+</Warning>
+
+## Route index
+
+### Pay links
+
+| Method | Route | Purpose |
+|---|---|---|
+| GET | [`/api/sellers?handle=` · `?address=`](/api/sellers/lookup) | Look up a seller |
+| POST | [`/api/sellers`](/api/sellers/claim) | Claim a link (signed) |
+| GET | [`/api/pay/intent`](/api/pay/status) | Deployment readiness (no secrets) |
+| POST | [`/api/pay/intent`](/api/pay/intent) | Start a card payment |
+| POST | [`/api/pay/confirm`](/api/pay/confirm) | Verify charge, mint, cover gas; or resume |
+| POST | [`/api/pay/gas`](/api/pay/gas) | Sponsor network fee for an eligible account |
+
+### Reputation
+
+| Method | Route | Purpose |
+|---|---|---|
+| GET | [`/api/reputation/:address`](/api/reputation) | Seller record (`?trades=1` adds orders) |
+| POST | [Envio GraphQL](/api/graphql) | Query the indexer directly |
+
+### Messaging
+
+| Method | Route | Purpose |
+|---|---|---|
+| GET · POST · PATCH | [`/api/notifications`](/api/notifications) | In-app notifications (+ push) |
+| GET · POST | [`/api/chat`](/api/chat) | Order chat |
+| POST | [`/api/push/subscribe` · `unsubscribe` · `resubscribe`](/api/push) | Web Push subscriptions |
+
+### Exchange
+
+| Method | Route | Purpose |
+|---|---|---|
+| GET | [`/api/exchange/rates`](/api/exchange/rates) | Live pricing |
+| GET · POST · PATCH | [`/api/exchange/orders`](/api/exchange/orders) | Create and act on orders |
+| POST | [`/api/exchange/card/init` · `verify` · `webhook`](/api/exchange/card) | Card payments |
+
+### Admin and telemetry
+
+| Method | Route | Purpose |
+|---|---|---|
+| GET · POST | [`/api/admin/orders`](/api/admin) | Fulfilment queue and actions |
+| GET · POST | [`/api/admin/chats`](/api/admin) | Support inbox |
+| GET | [`/api/admin/stats`](/api/admin) | Usage stats |
+| POST | [`/api/track`](/api/telemetry) | Page views and wallet connects |
+| POST | [`/api/trades/log`](/api/telemetry) | Mirror on-chain trade actions |
+
+## Degraded modes
+
+| Missing config | Behaviour |
+|---|---|
+| `SUPABASE_SERVICE_ROLE_KEY` | Persistence routes return `503` or empty results; reputation and chain reads still work |
+| `PAYSTACK_SECRET_KEY` | Card verification runs in labelled **TEST MODE** |
+| `ENVIO_GRAPHQL_URL` | Reputation served from the chain (`"source": "chain"`) |
+| VAPID keys | Push silently skipped |
+| Minter key | `GET /api/pay/intent` → `deliveryAddress: null`; confirm fails at delivery |

@@ -1,0 +1,75 @@
+---
+title: "Contract testing"
+description: "The 30-test local-EVM suite for VeriPayEscrow and AutoReleaseReceiver — how to run it, how it works, and every case it covers."
+icon: "flask-conical"
+---
+
+```bash
+cd contracts/test && npm install && npm test
+```
+
+The suite compiles the **real contract sources** with `solc` and runs them on an **in-process Ganache chain** via Node's built-in test runner (`node --test`). No Hardhat, no Foundry.
+
+<Accordion title="In plain words" icon="lightbulb">
+  These are automatic checks that run the real contract on a private, simulated blockchain on your computer and confirm it behaves correctly — 30 checks in total.
+</Accordion>
+
+## Layout
+
+| File | Purpose |
+|---|---|
+| `harness.mjs` | Compiles contracts, boots Ganache, deploys, exposes helpers (time travel, balances) |
+| `escrow.test.mjs` | 23 tests for `VeriPayEscrow` |
+| `receiver.test.mjs` | 7 tests for `AutoReleaseReceiver` |
+| `VeriPayTestNaira.sol` | Token used in ERC-20 tests (also the deployed vNGN) |
+| `package.json` | `ganache ^7.9.2`, `solc ^0.8.30`, `viem`, `@openzeppelin/contracts ^5.6.1` |
+
+## Escrow tests (23)
+
+| Area | Test |
+|---|---|
+| Deploy | deploys with a 1% fee, 7-day window, and the deployer in every role |
+| Native lifecycle | createTrade locks the full amount and records the trade |
+| | createTrade rejects zero value, a zero seller, and buying from yourself |
+| | release pays the seller 99% and keeps exactly 1% as a fee |
+| | only the buyer can release, and a trade can't be settled twice |
+| | a refund needs the seller's approval and charges no fee |
+| Auto-release | auto-release is blocked before the window and open to anyone after it |
+| Disputes | only a party to the trade can raise a dispute, and only once |
+| | a dispute freezes auto-release even after the window passes |
+| | only the arbitrator resolves, only disputed trades, and shares can't exceed 100% |
+| | full refund ruling returns everything to the buyer with no fee |
+| | a 50/50 ruling charges the fee on the seller's half only |
+| ERC-20 | createTradeWithToken pulls the tokens in and records the asset |
+| | createTradeWithToken rejects the zero token, a zero amount, and unapproved spends |
+| | token release pays the seller 99% in the same token; fees are tracked per asset |
+| | token refund returns the full amount |
+| | token dispute split pays both sides in the token |
+| Owner limits | the fee can never be set above the 5% ceiling |
+| | changing the fee does not change it for trades that are already open |
+| | withdrawFees moves only the fees — money held for open trades stays put |
+| | token fees are withdrawn separately, to the fee recipient |
+| | the auto-release window must stay between 1 and 90 days |
+| Safety | plain MON sent to the contract is rejected |
+
+## Receiver tests (7)
+
+| Test |
+|---|
+| constructor refuses a zero forwarder or a zero escrow |
+| a report from anyone but the trusted forwarder is rejected |
+| a report from the forwarder releases a due trade and pays the seller |
+| the receiver cannot release a trade early — the escrow's own checks still apply |
+| one bad trade in a batch does not block the rest |
+| only the owner can rotate the forwarder, and the old one stops working |
+| the receiver never holds funds |
+
+## Gaps worth adding
+
+<Note>
+  Suggested additional tests before mainnet: a refund-approved trade reaching `autoRelease` (documents current behaviour), reentrancy via a malicious ERC-20, a recipient contract that rejects MON (push-payment DoS), fuzzing `resolveDispute` splits for conservation of value, and an invariant test of `balance == Σ open + accruedFees`.
+</Note>
+
+## End-to-end money path
+
+See [Testing](/developers/testing) for `tests/e2e-pay.mjs`, which exercises the full card → mint → escrow flow against the live testnet (14 checks).

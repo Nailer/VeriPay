@@ -1,0 +1,96 @@
+---
+title: "Errors and status codes"
+description: "HTTP status codes, the error envelope, and every user-facing error message the API can return."
+icon: "circle-x"
+---
+
+## Envelope
+
+```json
+{ "error": "That seller link doesn't exist." }
+```
+
+Messages are written for end users and are safe to display directly.
+
+## Status codes
+
+| Code | Meaning in VeriPay |
+|---|---|
+| `200` | Success (including idempotent replays and "in progress" states) |
+| `400` | Validation failed, wrong state, or verification failed |
+| `401` | Not signed in (`Sign in first.`), bad signature, bad admin passcode, bad webhook signature |
+| `404` | Unknown seller, intent, order, or subscription |
+| `409` | Conflict: handle taken, account already has a link, order already moved on |
+| `500` | Unexpected server error |
+| `502` | Upstream failure after payment (mint failed — retryable), Paystack unreachable, reputation read failed |
+| `503` | Storage not configured, pricing unavailable |
+
+<Accordion title="In plain words" icon="lightbulb">
+  Numbers starting with 2 mean it worked; 4 means something about the request was wrong; 5 means something went wrong on VeriPay's side or with a service it depends on.
+</Accordion>
+
+## Messages by route
+
+### `/api/sellers`
+
+| Status | Message |
+|---|---|
+| 400 | `Missing handle or address` |
+| 400 | `Pick a link name of 3–30 letters, numbers, dashes or underscores.` |
+| 400 | `Enter your shop name.` |
+| 400 | `Invalid address.` / `Invalid request` |
+| 401 | `We couldn't confirm you control that account. Try again.` |
+| 409 | `This account already has a payment link.` |
+| 409 | `That link name is taken — try another.` |
+| 500 | `Couldn't save your link. Try again.` |
+| 503 | `Storage isn't configured.` |
+
+### `/api/pay/intent`
+
+| Status | Message |
+|---|---|
+| 400 | `The minimum is ₦100.` · `The maximum is ₦5,000,000.` |
+| 400 | `Say what you're buying, so you and the seller agree on it.` |
+| 400 | `Enter a valid email for your receipt.` |
+| 400 | `You can't pay your own link.` |
+| 401 | `Sign in first.` |
+| 404 | `That seller link doesn't exist.` |
+| 500 | `Couldn't start the payment. Try again.` |
+
+### `/api/pay/confirm`
+
+| Status | Message |
+|---|---|
+| 400 | `That payment reference doesn't belong to this payment.` |
+| 400 | `We couldn't verify that payment with Paystack.` |
+| 400 | `Card payment was not successful (…).` |
+| 400 | `Payment currency mismatch.` |
+| 400 | `Card payment was ₦X, but this order needs ₦Y.` |
+| 400 | `Could not reach the card processor to confirm your payment.` |
+| 401 | `Sign in first.` (resume) |
+| 404 | `Payment not found.` · `No earlier payment found.` |
+| 502 | `Your payment went through, but we couldn't finish setting up the escrow. Tap retry — you won't be charged again.` |
+
+### `/api/reputation/:address`
+
+| Status | Body |
+|---|---|
+| 400 | `{ "error": "Invalid address" }` |
+| 502 | `{ "configured": true, "source": null, "reputation": null }` |
+
+### `/api/exchange/orders`
+
+| Status | Message |
+|---|---|
+| 400 | `Invalid side` · `We don't support X yet.` · `Enter a valid wallet address (0x…).` |
+| 400 | `Minimum order is ₦1,000.` · `Maximum order is ₦5,000,000. Contact support for larger trades.` |
+| 400 | `Enter your bank, a 10-digit account number, and the account name.` |
+| 400 | `That's below our ₦… minimum payout.` · `That's above our ₦… limit. Contact support.` |
+| 400 | `Enter the account name you paid from, so we can match your transfer.` |
+| 400 | deposit verification reasons (+ `retryable`) |
+| 404 | `Order not found` |
+| 409 | `This quote expired…` · `This order has already moved on.` · `This order can no longer be cancelled — talk to support.` |
+
+### Admin
+
+`401 Invalid admin passcode`.

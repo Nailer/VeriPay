@@ -1,0 +1,57 @@
+---
+title: "Telemetry and trade log"
+description: "Fire-and-forget analytics tracking and the off-chain mirror of on-chain trade actions."
+icon: "activity"
+---
+
+Both routes are **best-effort**: they always return success on internal failure, because tracking must never break the user's experience or an on-chain flow they just completed.
+
+## `POST /api/track`
+
+<Tabs>
+  <Tab title="page_view">
+    <ParamField body="kind" type="&quot;page_view&quot;" required />
+    <ParamField body="path" type="string" required />
+    <ParamField body="walletAddress" type="string" />
+    <ParamField body="referrer" type="string" />
+    Inserts into `page_views`.
+  </Tab>
+  <Tab title="wallet_connect">
+    <ParamField body="kind" type="&quot;wallet_connect&quot;" required />
+    <ParamField body="walletAddress" type="string" required />
+    <ParamField body="userAgent" type="string" />
+    Inserts into `wallet_events` and upserts `app_users` (`connect_count + 1`, `last_seen_at`).
+  </Tab>
+</Tabs>
+
+Unknown `kind` → `400`. Sent by `src/components/Analytics.tsx`.
+
+## `POST /api/trades/log`
+
+Called by the client right after an on-chain escrow transaction confirms, to mirror state into Postgres for analytics and admin views.
+
+<ParamField body="tradeId" type="string | number" required />
+<ParamField body="action" type="string" required>`created · released · refund_approved · refund_claimed`</ParamField>
+<ParamField body="actorAddress" type="string" required />
+<ParamField body="txHash" type="string" />
+<ParamField body="buyerAddress" type="string">Required for `created`.</ParamField>
+<ParamField body="sellerAddress" type="string">Required for `created`.</ParamField>
+<ParamField body="amountWei" type="string">Required for `created` — base units of the asset.</ParamField>
+<ParamField body="metadata" type="string" />
+
+| Action | `escrow_trades` effect |
+|---|---|
+| `created` | upsert, `status = locked`, `create_tx_hash` |
+| `released` | `status = settled`, `release_tx_hash` |
+| `refund_approved` | `status = refund_ready`, `refund_approve_tx_hash` |
+| `refund_claimed` | `status = settled`, `refund_claim_tx_hash` |
+
+Every call also appends to `trade_activity`.
+
+<Warning>
+  Unauthenticated and client-reported. **Never** use `escrow_trades` as the source of truth for order status — read the contract.
+</Warning>
+
+<Accordion title="In plain words" icon="lightbulb">
+  These record which pages are visited and keep a convenience copy of order activity for VeriPay's internal dashboards. The real record is always the blockchain.
+</Accordion>

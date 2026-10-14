@@ -1,0 +1,81 @@
+---
+title: "Admin API"
+description: "Passcode-protected routes behind the admin console: exchange fulfilment, support chat and usage stats."
+icon: "lock-keyhole"
+---
+
+All admin routes require the header:
+
+```http
+x-admin-code: <ADMIN_PASSCODE>
+```
+
+Otherwise: `401 { "error": "Invalid admin passcode" }`.
+
+<Warning>
+  If `ADMIN_PASSCODE` is **not set**, the code falls back to a hard-coded default. **Always set `ADMIN_PASSCODE`** in every environment. The passcode never grants control of escrowed funds — dispute resolution requires the arbitrator wallet.
+</Warning>
+
+<Accordion title="In plain words" icon="lightbulb">
+  These are the back-office tools for VeriPay staff. They need a secret code. Even with the code, staff can't move money locked in orders — that needs the reviewer's own wallet.
+</Accordion>
+
+## Orders (exchange fulfilment)
+
+### `GET /api/admin/orders`
+
+Returns the fulfilment queue:
+
+| Field | Meaning |
+|---|---|
+| `orders[]` | Every order, each with `rateDriftPercent` = (current rate − locked rate) / locked rate × 100 |
+| `queue.actionable` | Orders in `payment_review` or `verified` |
+| `queue.awaitingBuyerFunds` | Orders in `awaiting_payment` |
+| `queue.ngnToCollect` | Σ `exactAmountNgn` of actionable buys |
+| `queue.ngnToPayOut` | Σ `amountNgn` of actionable sells |
+| `merchantBank`, `merchantAddress` | Configured receiving details |
+| `hotWallet` | Whether automatic MON payout is available |
+| `pricing` | Spread, NGN rate, source, timestamp |
+
+`GET /api/admin/orders?id=…` → `{ order, events }` (full audit log).
+
+### `POST /api/admin/orders`
+
+<ParamField body="id" type="string" required />
+<ParamField body="action" type="string" required>One of the actions below.</ParamField>
+
+| Action | Applies to | Extra fields | Effect |
+|---|---|---|---|
+| `confirm_payment` | buy | `note` (≤ 500, optional), `txHash` (optional manual payout hash) | Bank credit matched. Uses `txHash` if given; else pays out MON automatically when a hot wallet is configured; logs `crypto_released` or `payout_failed` |
+| `mark_paid_out` | sell | `payoutRef` (≥ 3 chars, required) | Naira sent; order `completed`. `400 Enter your bank transfer reference, so the payout is traceable.` · `409 This order has already been settled.` |
+| `reject` | any unsettled | `reason` (required — the customer sees it) | Order `rejected`. `400 Give a reason — the customer sees it.` · `409 This order can no longer be rejected.` |
+| `record_payout_tx` | order awaiting payout | `txHash` (valid hash) | Records a manual payout transaction. `409 This order isn't awaiting a payout.` |
+
+Unknown actions → `400 Unknown action`. Every transition uses `transitionOrder` with allowed prior states in the SQL `WHERE`, so concurrent clicks can't double-settle, and every action is written to `exchange_order_events`.
+
+## Chats (support inbox)
+
+| Route | Purpose |
+|---|---|
+| `GET /api/admin/chats` | List all threads |
+| `GET /api/admin/chats?thread=<id>` | Messages in one thread |
+| `POST /api/admin/chats` `{ threadId, text }` | Post as **Admin** (`isAdmin: true`) |
+
+## Stats
+
+`GET /api/admin/stats` — cached for 30 s (`STATS_TTL_MS`). Returns:
+
+| Field | Source |
+|---|---|
+| `uniqueWallets` | count of `app_users` |
+| `walletConnects24h` | `wallet_events` in the last 24 h |
+| `totalTrades`, `settledTrades`, `totalVolumeMon` | `escrow_trades` mirror |
+| `totalExchangeOrders`, `completedExchangeOrders`, `buyOrders`, `sellOrders`, `totalExchangeVolumeNgn` | `exchange_orders` |
+| `totalChatMessages` | `chat_messages` |
+| `pageViews7d` | `page_views` in the last 7 days |
+
+`503 Persistence not configured` without Supabase.
+
+## Console
+
+The `/admin` page has four tabs — **Orders**, **Disputes** (`ArbitrationPanel`, wallet-signed), **Stats**, **Chats** — polling the visible tab every 8 s (open chat thread every 4 s). The passcode is remembered for the browser tab session.

@@ -3,23 +3,25 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useActiveAccount } from "thirdweb/react";
-import { createPublicClient, http, formatEther } from "viem";
+import { createPublicClient, http } from "viem";
 import { prepareContractCall, sendTransaction, waitForReceipt } from "thirdweb";
-import { escrowContract, friendlyTxError } from "@/lib/monad";
-import { readTrade, type EscrowTrade } from "@/lib/escrow";
+import { escrowContract, friendlyTxError, MONAD_RPC_URL } from "@/lib/monad";
+import { readyToTransact } from "@/lib/gas";
+import { readTrade, formatTradeAmount, type EscrowTrade } from "@/lib/escrow";
 import {
   Loader2, ShieldAlert, CheckCircle2, ArrowLeft, Info, HelpCircle,
   AlertTriangle, Clock, Scale, RotateCcw,
 } from "lucide-react";
 import Link from "next/link";
+import ReputationBadge from "@/components/ReputationBadge";
 
 const MONAD_CHAIN = {
   id: 10143,
   name: "Monad Testnet",
   nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
   rpcUrls: {
-    default: { http: ["https://testnet-rpc.monad.xyz"] },
-    public: { http: ["https://testnet-rpc.monad.xyz"] },
+    default: { http: [MONAD_RPC_URL] },
+    public: { http: [MONAD_RPC_URL] },
   },
 };
 
@@ -44,20 +46,30 @@ export default function TradeDetail() {
   const [error, setError] = useState("");
   const [confirmDispute, setConfirmDispute] = useState(false);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  // The seller's shop, when they have a VeriPay link — a name beats an address.
+  const [shop, setShop] = useState<{ name: string; handle: string } | null>(null);
+  const sellerAddress = trade?.seller;
+  useEffect(() => {
+    if (!sellerAddress) return;
+    let cancelled = false;
+    fetch(`/api/sellers?address=${sellerAddress}`).then((r) => r.json())
+      .then((d) => { if (!cancelled) setShop(d.seller ?? null); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [sellerAddress]);
 
   const fetchTrade = useCallback(async () => {
     if (!idStr) return;
     try {
       const publicClient = createPublicClient({
         chain: MONAD_CHAIN as any,
-        transport: http("https://testnet-rpc.monad.xyz"),
+        transport: http(MONAD_RPC_URL),
       });
 
       // Handles both the old and new contract shapes.
       setTrade(await readTrade(publicClient as any, tradeId));
     } catch (err) {
       console.error(err);
-      setError("Failed to fetch trade details from Monad.");
+      setError("We couldn't load this order. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -73,7 +85,7 @@ export default function TradeDetail() {
 
   const executeAction = async (functionName: Action) => {
     if (!account) {
-      setError("Please connect your wallet first.");
+      setError("Please sign in first.");
       return;
     }
 
@@ -84,6 +96,10 @@ export default function TradeDetail() {
       // Sent through thirdweb's own pipeline — works for browser-extension
       // wallets, thirdweb's in-app (email/social) wallet, and mobile wallets
       // over WalletConnect alike. No window.ethereum needed.
+      // Covers the network fee for people who signed in with a fingerprint
+      // and have never held MON. Wallets that already have some skip this.
+      await readyToTransact(account.address);
+
       const transaction = prepareContractCall({
         contract: escrowContract,
         method: functionName,
@@ -119,7 +135,7 @@ export default function TradeDetail() {
             tradeId: idStr,
             sender: "System",
             address: account.address,
-            text: `A dispute was opened on this trade by ${account.address}. Funds are frozen until an agent reviews it.`,
+            text: `A problem was reported on this order by ${account.address}. The money is frozen until an agent reviews it.`,
           }),
         }).catch(() => {});
         setConfirmDispute(false);
@@ -137,15 +153,15 @@ export default function TradeDetail() {
   if (loading) return (
     <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh]">
       <Loader2 className="w-10 h-10 text-zinc-900 dark:text-white animate-spin mb-4" />
-      <p className="text-zinc-600 dark:text-zinc-500 font-bold uppercase tracking-widest text-[10px]">Loading Ledger State...</p>
+      <p className="text-zinc-600 dark:text-zinc-500 font-bold uppercase tracking-widest text-[10px]">Loading your order…</p>
     </div>
   );
 
   if (!trade) return (
     <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
       <HelpCircle className="w-16 h-16 text-zinc-300 dark:text-zinc-800 mb-4" />
-      <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Trade Record Not Found</h2>
-      <Link href="/dashboard" className="text-zinc-900 dark:text-white font-bold underline underline-offset-4">Return to Dashboard</Link>
+      <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Order not found</h2>
+      <Link href="/orders" className="text-zinc-900 dark:text-white font-bold underline underline-offset-4">Go to my orders</Link>
     </div>
   );
 
@@ -160,6 +176,8 @@ export default function TradeDetail() {
   const feePct = trade.feeBps / 100;
   const feeWei = (trade.amount * BigInt(trade.feeBps)) / BigInt(10000);
   const sellerNet = trade.amount - feeWei;
+  const { display: amountDisplay } = formatTradeAmount(trade);
+  const { display: sellerNetDisplay } = formatTradeAmount({ amount: sellerNet, token: trade.token });
 
   const secondsLeft = Number(trade.autoReleaseAt) - now;
   const windowPassed = secondsLeft <= 0;
@@ -175,12 +193,12 @@ export default function TradeDetail() {
   const statusLabel = trade.refunded
     ? "Refunded"
     : trade.released
-      ? "Settled"
+      ? "Completed"
       : trade.disputed
-        ? "In Dispute"
+        ? "Under review"
         : trade.sellerApprovedRefund
-          ? "Refund Ready"
-          : "Funds Escrowed";
+          ? "Refund ready"
+          : "Held safely";
 
   const busy = actionLoading !== "";
 
@@ -189,12 +207,12 @@ export default function TradeDetail() {
 
       {/* Top bar */}
       <div className="w-full mb-6 sm:mb-8 flex items-center justify-between">
-        <Link href="/dashboard" className="inline-flex items-center gap-2 text-zinc-600 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors font-bold uppercase tracking-widest text-[10px]">
-          <ArrowLeft className="w-4 h-4" /> Back to Ledger
+        <Link href="/orders" className="inline-flex items-center gap-2 text-zinc-600 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors font-bold uppercase tracking-widest text-[10px]">
+          <ArrowLeft className="w-4 h-4" /> My orders
         </Link>
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${settled ? "bg-zinc-400 dark:bg-zinc-500" : "bg-zinc-900 dark:bg-white animate-pulse"}`} />
-          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest hidden xs:block">Monad Live Status</span>
+          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest hidden xs:block">{settled ? "Closed" : "Live"}</span>
         </div>
       </div>
 
@@ -203,7 +221,7 @@ export default function TradeDetail() {
         {/* Status Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-7 sm:mb-10 gap-3 sm:gap-6">
           <div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-zinc-900 dark:text-white mb-1.5 transition-colors">Trade #00{idStr}</h2>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-zinc-900 dark:text-white mb-1.5 transition-colors">Order #{idStr}</h2>
             <div className="flex items-start gap-2 text-zinc-500 text-xs sm:text-sm italic">
               <Info className="w-4 h-4 shrink-0 mt-0.5" />
               <span className="leading-relaxed">{trade.metadata}</span>
@@ -228,6 +246,18 @@ export default function TradeDetail() {
           </div>
         )}
 
+        {settled && isParty && (
+          <div className="mb-6 sm:mb-8 p-5 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-black flex items-start gap-3">
+            <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
+            <p className="text-sm font-bold leading-relaxed">
+              {trade.released && trade.refunded ? "This order was settled after a review."
+                : trade.refunded ? (isBuyer ? "Your money was refunded in full." : "This order was refunded to the buyer.")
+                : isBuyer ? "Done — the seller has been paid. Thanks for confirming."
+                : `You've been paid ${sellerNetDisplay} for this order.`}
+            </p>
+          </div>
+        )}
+
         {/* Dispute banner */}
         {trade.disputed && !settled && (
           <div className="mb-6 sm:mb-8 p-5 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-black flex items-start gap-3">
@@ -235,8 +265,8 @@ export default function TradeDetail() {
             <div>
               <p className="text-sm font-black uppercase tracking-wide">Under review</p>
               <p className="text-xs mt-1 leading-relaxed opacity-80">
-                This trade is disputed, so the funds are frozen — nobody can move them until an
-                agent decides. Explain what happened in the chat below; that&apos;s what the
+                A problem was reported on this order, so the money is frozen — nobody can move it until
+                a VeriPay agent decides. Explain what happened in the chat below; that&apos;s what the
                 decision is based on.
               </p>
             </div>
@@ -247,20 +277,19 @@ export default function TradeDetail() {
           {/* Amount + Status grid */}
           <div className="grid grid-cols-2 gap-4 sm:gap-8">
             <div className="p-4 sm:p-6 md:p-8 rounded-[1.5rem] sm:rounded-[2rem] bg-white dark:bg-black/40 border border-zinc-200 dark:border-zinc-800 flex flex-col justify-center transition-colors">
-              <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest mb-1.5 transition-colors">Locked Value</span>
+              <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest mb-1.5 transition-colors">Amount</span>
               <span className="text-xl sm:text-3xl md:text-4xl font-black text-zinc-900 dark:text-white transition-colors leading-tight">
-                {formatEther(trade.amount)}{" "}
-                <span className="text-xs sm:text-sm font-normal text-zinc-500">MON</span>
+                {amountDisplay}
               </span>
               {trade.feeBps > 0 && !settled && (
                 <span className="text-[10px] text-zinc-500 mt-2 leading-relaxed">
-                  Seller receives {formatEther(sellerNet)} MON after the {feePct}% fee.
+                  The seller receives {sellerNetDisplay} after the {feePct}% fee.
                   Refunds are returned in full.
                 </span>
               )}
               {trade.legacy && !settled && (
                 <span className="text-[10px] text-zinc-500 mt-2 leading-relaxed">
-                  This trade is on the original contract — no fee, and disputes
+                  This is an older order — no fee, and problem reports
                   aren&apos;t available on it.
                 </span>
               )}
@@ -270,11 +299,11 @@ export default function TradeDetail() {
               <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest mb-1.5 transition-colors">Status</span>
               {trade.refunded ? (
                 <div className="flex items-center gap-2 text-zinc-900 dark:text-white font-black uppercase tracking-widest text-[10px] sm:text-xs">
-                  <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" /> Returned
+                  <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" /> Refunded
                 </div>
               ) : trade.released ? (
                 <div className="flex items-center gap-2 text-zinc-900 dark:text-white font-black uppercase tracking-widest text-[10px] sm:text-xs">
-                  <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" /> Concluded
+                  <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" /> Paid out
                 </div>
               ) : trade.disputed ? (
                 <div className="flex items-center gap-2 text-zinc-900 dark:text-white font-black uppercase tracking-widest text-[10px] sm:text-xs">
@@ -282,7 +311,7 @@ export default function TradeDetail() {
                 </div>
               ) : (
                 <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300 font-black uppercase tracking-widest text-[10px] sm:text-xs">
-                  <ShieldAlert className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse shrink-0" /> Protected
+                  <ShieldAlert className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse shrink-0" /> Held safely
                 </div>
               )}
             </div>
@@ -295,14 +324,14 @@ export default function TradeDetail() {
               <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
                 {windowPassed ? (
                   <>
-                    The buyer&apos;s confirmation window has passed. The seller can now claim the
-                    funds, unless someone opens a dispute first.
+                    The time for the buyer to confirm has passed. The seller is now paid
+                    automatically, unless a problem is reported first.
                   </>
                 ) : (
                   <>
                     <span className="font-bold text-zinc-900 dark:text-white">{countdown} left</span> for
-                    the buyer to confirm delivery. After that the seller can claim the funds, so a
-                    buyer who is unhappy should open a dispute before then.
+                    the buyer to confirm delivery. After that the seller is paid automatically, so
+                    a buyer who is unhappy should report a problem before then.
                   </>
                 )}
               </p>
@@ -313,15 +342,20 @@ export default function TradeDetail() {
           <div className="grid grid-cols-1 gap-3 sm:gap-4">
             <div className="p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-3 transition-colors">
               <div className="flex flex-col min-w-0">
-                <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest mb-1 transition-colors">Buyer (Payer)</span>
-                <span className="text-zinc-900 dark:text-white font-mono text-[11px] sm:text-xs transition-colors truncate">{truncAddr(trade.buyer)}</span>
+                <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest mb-1 transition-colors">Buyer</span>
+                {isBuyer
+                  ? <span className="text-zinc-900 dark:text-white font-bold text-sm">You</span>
+                  : <span className="text-zinc-900 dark:text-white font-mono text-[11px] sm:text-xs transition-colors truncate">{truncAddr(trade.buyer)}</span>}
               </div>
               {isBuyer && <span className="text-[10px] font-black bg-zinc-900 dark:bg-white text-white dark:text-black px-2.5 py-1 rounded-full shrink-0">YOU</span>}
             </div>
             <div className="p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-3 transition-colors">
-              <div className="flex flex-col min-w-0">
-                <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest mb-1 transition-colors">Seller (Vendor)</span>
-                <span className="text-zinc-900 dark:text-white font-mono text-[11px] sm:text-xs transition-colors truncate">{truncAddr(trade.seller)}</span>
+              <div className="flex flex-col min-w-0 gap-1.5">
+                <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-600 uppercase tracking-widest transition-colors">Seller</span>
+                {shop
+                  ? <span className="text-zinc-900 dark:text-white font-bold text-sm truncate">{shop.name} <span className="font-medium text-zinc-500">@{shop.handle}</span></span>
+                  : <span className="text-zinc-900 dark:text-white font-mono text-[11px] sm:text-xs transition-colors truncate">{truncAddr(trade.seller)}</span>}
+                <ReputationBadge address={trade.seller} />
               </div>
               {isSeller && <span className="text-[10px] font-black bg-zinc-900 dark:bg-white text-white dark:text-black px-2.5 py-1 rounded-full shrink-0">YOU</span>}
             </div>
@@ -331,7 +365,13 @@ export default function TradeDetail() {
         {/* Action Panel */}
         {!settled && isParty && (
           <div className="mt-8 sm:mt-12 p-5 sm:p-6 md:p-8 rounded-[2rem] sm:rounded-[2.5rem] bg-gradient-to-b from-zinc-100/50 dark:from-zinc-800/20 to-transparent border border-zinc-200 dark:border-zinc-800 transition-colors">
-            <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-[0.3em] mb-5 sm:mb-6 text-center transition-colors">Settlement Actions</h3>
+            <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed mb-5 sm:mb-6 text-center">
+              {isBuyer
+                ? (trade.sellerApprovedRefund
+                    ? "The seller agreed to a refund. Take it back whenever you're ready."
+                    : "Your money is held safely. When your order arrives and you're happy with it, confirm below and the seller is paid.")
+                : "The buyer has paid and the money is held for you. Deliver the order — you're paid as soon as they confirm."}
+            </p>
             <div className="flex flex-col gap-3 sm:gap-4">
 
               {isBuyer && !trade.sellerApprovedRefund && (
@@ -341,7 +381,7 @@ export default function TradeDetail() {
                   className="w-full flex items-center justify-center px-6 sm:px-8 py-4 sm:py-5 bg-zinc-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest rounded-xl sm:rounded-2xl hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all disabled:opacity-50 active:scale-[0.98] text-sm"
                 >
                   {actionLoading === "releaseToSeller" && <Loader2 className="w-5 h-5 animate-spin mr-3" />}
-                  Confirm Delivery &amp; Release MON
+                  I received my order — pay the seller
                 </button>
               )}
 
@@ -352,7 +392,7 @@ export default function TradeDetail() {
                   className="w-full flex items-center justify-center px-6 sm:px-8 py-4 sm:py-5 bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white font-black uppercase tracking-widest rounded-xl sm:rounded-2xl hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-all disabled:opacity-50 active:scale-[0.98] text-sm"
                 >
                   {actionLoading === "sellerApproveRefund" && <Loader2 className="w-5 h-5 animate-spin mr-3" />}
-                  Authorize Return of Funds
+                  Refund the buyer
                 </button>
               )}
 
@@ -363,7 +403,7 @@ export default function TradeDetail() {
                   className="w-full flex items-center justify-center px-6 sm:px-8 py-4 sm:py-5 bg-zinc-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest rounded-xl sm:rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 shadow-xl text-sm"
                 >
                   {actionLoading === "buyerClaimRefund" && <Loader2 className="w-5 h-5 animate-spin mr-3" />}
-                  Withdraw Refund
+                  Take my refund
                 </button>
               )}
 
@@ -375,7 +415,7 @@ export default function TradeDetail() {
                   className="w-full flex items-center justify-center px-6 sm:px-8 py-4 sm:py-5 bg-zinc-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest rounded-xl sm:rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 shadow-xl text-sm"
                 >
                   {actionLoading === "autoRelease" && <Loader2 className="w-5 h-5 animate-spin mr-3" />}
-                  Claim Funds (window elapsed)
+                  Collect my payment
                 </button>
               )}
 
@@ -383,7 +423,7 @@ export default function TradeDetail() {
                 href={`/trade/${idStr}/chat`}
                 className="w-full flex items-center justify-center px-6 sm:px-8 py-4 sm:py-5 bg-transparent border-2 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 font-black uppercase tracking-widest rounded-xl sm:rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-all text-sm"
               >
-                Message the other party
+                {isBuyer ? "Message the seller" : "Message the buyer"}
               </Link>
 
               {/* Dispute (v2 contract only) */}
@@ -393,8 +433,8 @@ export default function TradeDetail() {
                     <div className="flex items-start gap-2.5 mb-4">
                       <AlertTriangle className="w-4 h-4 text-zinc-900 dark:text-white shrink-0 mt-0.5" />
                       <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed">
-                        This freezes the funds. Neither of you can release or refund until an
-                        agent reviews the trade and decides how to split it. Use this when talking
+                        This freezes the money. Neither of you can release or refund it until a
+                        VeriPay agent reviews the order and decides who gets what. Use this when talking
                         it out hasn&apos;t worked.
                       </p>
                     </div>
@@ -422,7 +462,7 @@ export default function TradeDetail() {
                     disabled={busy}
                     className="w-full py-3 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-white underline underline-offset-4 transition-colors"
                   >
-                    Report a problem with this trade
+                    Report a problem with this order
                   </button>
                 )
               )}
@@ -433,7 +473,9 @@ export default function TradeDetail() {
         {/* Observer note */}
         {!isParty && (
           <p className="mt-8 text-center text-zinc-500 dark:text-zinc-600 text-xs italic">
-            You are viewing this trade as an observer.
+            {account
+              ? "You're viewing this order as a visitor — only its buyer and seller can act on it."
+              : "Sign in as the buyer or seller of this order to act on it."}
           </p>
         )}
       </div>

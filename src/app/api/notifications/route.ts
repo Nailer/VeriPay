@@ -103,10 +103,12 @@ export async function POST(request: Request) {
 
     // Best-effort real device notification — never blocks or fails the response.
     sendPushToAddress(key, {
-      title: type === "trade" ? "New Escrow Created" : `New Message · Trade #00${tradeId}`,
+      title: type === "trade" ? "Payment secured for you" : `New Message · Trade #00${tradeId}`,
       body:
         type === "trade"
-          ? `${fromAddress.slice(0, 8)}…${fromAddress.slice(-6)} opened a trade for ${amount ?? "?"} MON`
+          ? (/^[\d.]+$/.test(String(amount ?? ""))
+              ? `${fromAddress.slice(0, 8)}…${fromAddress.slice(-6)} opened a trade for ${amount} MON`
+              : `A buyer just locked ${amount ?? "a payment"} for you. Deliver, and it's yours.`)
           : (message as string) ?? "You have a new message",
       url: `/trade/${tradeId}`,
     }).catch(() => {});

@@ -1,0 +1,74 @@
+---
+title: "Confirm a payment"
+api: "POST https://veripay.store/api/pay/confirm"
+description: "Verify a card charge with Paystack, mint the exact amount to the buyer and cover gas — idempotently. Also resumes an earlier funded payment."
+---
+
+This endpoint has **two modes**, selected by the body.
+
+<Tabs>
+  <Tab title="Confirm a charge">
+    <ParamField body="id" type="string" required>Intent id (case-insensitive).</ParamField>
+    <ParamField body="reference" type="string">The Paystack reference — must start with `VP-<id>-`. Required while the intent is `awaiting_payment`.</ParamField>
+
+    **Behaviour**
+
+    | Intent status | What happens |
+    |---|---|
+    | `funded` | Idempotent: no mint; runs `ensureGas`; returns `gasReady` |
+    | `awaiting_payment` | Checks reference prefix → verifies with Paystack → claims (`→ paid`) |
+    | `paid` | Takes delivery slot → mints → `funded` → `ensureGas` |
+    | `paid` with slot taken | Returns `{ ok: true, intent, pending: true }` |
+  </Tab>
+  <Tab title="Resume (no charge)">
+    <ParamField body="buyerAddress" type="string" required>Buyer's address.</ParamField>
+    <ParamField body="handle" type="string" required>Seller link name.</ParamField>
+
+    Finds the most recent `funded` intent for this buyer and handle and runs `ensureGas`. **Moves no naira.** Used when a buyer returns already holding their vNGN.
+  </Tab>
+</Tabs>
+
+<ResponseField name="ok" type="boolean" />
+<ResponseField name="intent" type="object">Same shape as in [Create intent](/api/pay/intent); `status` reflects progress.</ResponseField>
+<ResponseField name="gasReady" type="boolean">Whether the buyer can now afford the lock transactions.</ResponseField>
+<ResponseField name="pending" type="boolean">Present when another request is delivering.</ResponseField>
+
+<Accordion title="In plain words" icon="lightbulb">
+  After the card popup says "done", the page calls this. VeriPay checks with Paystack, then gives the buyer exactly that much digital naira and a little network fuel. Calling it again is safe — it never pays out twice.
+</Accordion>
+
+## Guarantees
+
+- **Never trusts the browser**: Paystack verify is server-to-server with the secret key.
+- **No reference reuse**: prefix check + `UNIQUE(paystack_ref)`.
+- **No double mint**: SQL status guard + single delivery slot.
+- **Exact amount**: mints `intent.amount_ngn` × 10⁶ base units.
+- **Retryable**: on mint failure the slot is released and `502` is returned.
+
+<RequestExample>
+```bash Confirm
+curl -X POST https://veripay.store/api/pay/confirm \
+  -H "Content-Type: application/json" \
+  -d '{"id":"K7QH2MZP","reference":"VP-K7QH2MZP-MGQ3X1A2"}'
+```
+```bash Resume
+curl -X POST https://veripay.store/api/pay/confirm \
+  -H "Content-Type: application/json" \
+  -d '{"buyerAddress":"0xBuyer…","handle":"adaeze-thrift"}'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 funded
+{ "ok": true, "intent": { "id": "K7QH2MZP", "status": "funded", "amountNgn": 2500, "...": "..." }, "gasReady": true }
+```
+```json 200 in progress
+{ "ok": true, "intent": { "id": "K7QH2MZP", "status": "paid" }, "pending": true }
+```
+```json 400
+{ "error": "That payment reference doesn't belong to this payment." }
+```
+```json 502
+{ "error": "Your payment went through, but we couldn't finish setting up the escrow. Tap retry — you won't be charged again." }
+```
+</ResponseExample>

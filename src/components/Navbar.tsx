@@ -3,18 +3,19 @@
 import { ConnectButton } from "thirdweb/react";
 import { client } from "@/app/client";
 import { defineChain } from "thirdweb";
-import { createWallet, inAppWallet } from "thirdweb/wallets";
+import { wallets } from "@/lib/wallets";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import {
   Sun, Moon, Monitor, Bell, BellOff, BellRing, ShieldCheck, MessageSquare,
-  X, Check, Menu,
+  X, Check, Menu, Fingerprint, Loader2,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useActiveAccount } from "thirdweb/react";
+import { useActiveAccount, useSetActiveWallet } from "thirdweb/react";
 import Logo from "@/components/Logo";
 import { usePolling } from "@/lib/usePolling";
 import { isPushSupported, getExistingSubscription, subscribeToPush, unsubscribeFromPush } from "@/lib/pushClient";
+import { isPasskeySupported, connectWithPasskey, friendlyPasskeyError } from "@/lib/mera";
 
 type Notification = {
   id: number;
@@ -27,16 +28,6 @@ type Notification = {
   createdAt: string;
 };
 
-const wallets = [
-  inAppWallet({ auth: { options: ["email", "google", "apple", "facebook", "phone"] } }),
-  createWallet("io.metamask"),
-  createWallet("walletConnect"),
-  createWallet("com.coinbase.wallet"),
-  createWallet("me.rainbow"),
-  createWallet("com.walletconnect"),
-  createWallet("io.rabby"),
-  createWallet("io.zerion.wallet"),
-];
 
 // Compact styling for the thirdweb connect button so the mobile header stays slim
 const compactConnectStyle = {
@@ -48,10 +39,63 @@ const compactConnectStyle = {
   borderRadius: "9999px",
 } as const;
 
+// The original crypto-native screens. Kept, but one level down: the people this
+// is built for pay in naira and shouldn't have to parse "escrow" or "MON".
+const MORE_LINKS = [
+  { href: "/create", label: "Pay with crypto" },
+  { href: "/exchange", label: "Buy / sell crypto" },
+  { href: "/dashboard", label: "All trades" },
+];
+
 export default function Navbar() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const account = useActiveAccount();
+  const setActiveWallet = useSetActiveWallet();
+
+  // ─── Passkey sign-in (Mera) ───────────────────────────────────────────────
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
+  const [passkeyError, setPasskeyError] = useState<string | null>(null);
+  const passkeySupported = mounted && isPasskeySupported();
+
+  const handlePasskeySignIn = useCallback(async () => {
+    setPasskeyBusy(true);
+    setPasskeyError(null);
+    try {
+      const wallet = await connectWithPasskey();
+      await wallet.connect({ client } as Parameters<typeof wallet.connect>[0]);
+      await setActiveWallet(wallet);
+    } catch (err) {
+      setPasskeyError(friendlyPasskeyError(err));
+    } finally {
+      setPasskeyBusy(false);
+    }
+  }, [setActiveWallet]);
+
+  // ─── Who's signed in, in human terms ─────────────────────────────────────
+  // thirdweb's default button shows a wallet address and a MON balance, which
+  // means nothing to someone who signed in with a fingerprint to pay in naira.
+  const [shopName, setShopName] = useState<string | null>(null);
+  useEffect(() => {
+    setShopName(null);
+    if (!account?.address) return;
+    let cancelled = false;
+    fetch(`/api/sellers?address=${account.address}`).then((r) => r.json())
+      .then((d) => { if (!cancelled) setShopName(d.seller?.name ?? null); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [account?.address]);
+
+  const accountChip = useCallback(() => (
+    <button
+      aria-label="Your account"
+      className="flex items-center gap-2 h-9 pl-1.5 pr-3.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white text-[13px] font-bold max-w-[9.5rem] sm:max-w-[12rem]"
+    >
+      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black text-[11px] font-black shrink-0">
+        {shopName ? shopName.charAt(0).toUpperCase() : <Check className="w-3.5 h-3.5" />}
+      </span>
+      <span className="truncate">{shopName ?? "Signed in"}</span>
+    </button>
+  ), [shopName]);
 
   // ─── Mobile menu ─────────────────────────────────────────────────────────
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -152,16 +196,27 @@ export default function Navbar() {
 
         {/* Desktop nav links */}
         <div className="hidden sm:flex items-center gap-4 sm:gap-6">
-          <Link href="/dashboard" className="text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
-            Dashboard
+          <Link href="/orders" className="text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
+            My orders
           </Link>
-          <Link href="/create" className="text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
-            New Escrow
+          <Link href="/sell" className="text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
+            Sell
           </Link>
-          <Link href="/exchange" className="flex items-center gap-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
-            Exchange
-            <span className="px-1.5 py-0.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black text-[9px] font-black uppercase tracking-wider">New</span>
+          <Link href="/seller" className="text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
+            Check a seller
           </Link>
+          <a href="/docs" className="text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
+            Docs
+          </a>
+          {/* Crypto-native routes stay reachable, just not in a shopper's face */}
+          <div className="relative group">
+            <button className="text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors focus:outline-none">More</button>
+            <div className="absolute right-0 top-full mt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible translate-y-2 group-hover:translate-y-0 transition-all duration-200 flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-xl w-48 py-1 z-50">
+              {MORE_LINKS.map((l) => (
+                <Link key={l.href} href={l.href} className="px-4 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors">{l.label}</Link>
+              ))}
+            </div>
+          </div>
 
           {/* Theme switcher */}
           {mounted && (
@@ -187,12 +242,17 @@ export default function Navbar() {
 
           {/* Wallet connect + Bell */}
           <div className="flex items-center gap-2">
+            {!account && passkeySupported && (
+              <PasskeyButton busy={passkeyBusy} error={passkeyError} onClick={handlePasskeySignIn} dismissError={() => setPasskeyError(null)} />
+            )}
             <ConnectButton
               client={client} wallets={wallets}
               appMetadata={{ name: "VeriPay", url: "https://veripay.store" }}
               theme={mounted && isDark ? "dark" : "light"}
               connectModal={{ size: "wide" }}
               chain={defineChain(10143)}
+              connectButton={{ label: "Sign in" }}
+              detailsButton={{ render: accountChip }}
             />
             <NotificationBell
               bellRef={bellRef} panelRef={panelRef}
@@ -206,14 +266,17 @@ export default function Navbar() {
 
         {/* Mobile right side: connect + bell + hamburger */}
         <div className="flex sm:hidden items-center gap-1.5 shrink-0">
+          {!account && passkeySupported && (
+            <PasskeyButton busy={passkeyBusy} error={passkeyError} onClick={handlePasskeySignIn} dismissError={() => setPasskeyError(null)} isMobile />
+          )}
           <ConnectButton
             client={client} wallets={wallets}
             appMetadata={{ name: "VeriPay", url: "https://veripay.store" }}
             theme={mounted && isDark ? "dark" : "light"}
             connectModal={{ size: "compact" }}
             chain={defineChain(10143)}
-            connectButton={{ label: "Connect", style: compactConnectStyle }}
-            detailsButton={{ style: compactConnectStyle }}
+            connectButton={{ label: "Sign in", style: compactConnectStyle }}
+            detailsButton={{ render: accountChip }}
           />
           <NotificationBell
             bellRef={bellRef} panelRef={panelRef}
@@ -236,19 +299,17 @@ export default function Navbar() {
       {/* Mobile slide-down menu */}
       {mobileMenuOpen && (
         <div className="sm:hidden fixed inset-x-0 top-[calc(env(safe-area-inset-top)+53px)] z-40 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-4 py-5 flex flex-col gap-1 animate-in fade-in slide-in-from-top-2 duration-200 shadow-xl">
-          <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-semibold text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
-            Dashboard
-          </Link>
-          <Link href="/create" onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-semibold text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
-            New Escrow
-          </Link>
-          <Link href="/exchange" onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-2 px-4 py-3.5 rounded-xl text-base font-semibold text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
-            Buy / Sell Crypto
-            <span className="px-1.5 py-0.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black text-[9px] font-black uppercase tracking-wider">New</span>
-          </Link>
+          {[{ href: "/orders", label: "My orders" }, { href: "/sell", label: "Sell — get your payment link" }, { href: "/seller", label: "Check a seller" }].map((l) => (
+            <Link key={l.href} href={l.href} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-semibold text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">{l.label}</Link>
+          ))}
+          <a href="/docs" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-semibold text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">Docs — how VeriPay works</a>
+          <div className="border-t border-zinc-200 dark:border-zinc-800 mt-2 pt-3">
+            <p className="px-4 text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">More</p>
+            {MORE_LINKS.map((l) => (
+              <Link key={l.href} href={l.href} onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center px-4 py-2.5 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">{l.label}</Link>
+            ))}
+          </div>
           <div className="border-t border-zinc-200 dark:border-zinc-800 mt-2 pt-4 px-4">
             <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-3">Theme</p>
             <div className="flex gap-2">
@@ -271,6 +332,47 @@ export default function Navbar() {
         </div>
       )}
     </>
+  );
+}
+
+// ─── Passkey sign-in button (Face ID / fingerprint, no seed phrase) ──────────
+// Only rendered when no wallet is connected and this device's browser
+// supports WebAuthn. Sits beside "Sign in" as the frictionless first option
+// for someone who has never touched crypto before.
+function PasskeyButton({
+  busy, error, onClick, dismissError, isMobile = false,
+}: {
+  busy: boolean;
+  error: string | null;
+  onClick: () => void;
+  dismissError: () => void;
+  isMobile?: boolean;
+}) {
+  return (
+    <div className="relative">
+      <button
+        onClick={onClick}
+        disabled={busy}
+        aria-label="Sign in with Face ID or fingerprint"
+        title="Sign in with Face ID / fingerprint — no seed phrase"
+        className="flex items-center justify-center w-9 h-9 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors disabled:opacity-60"
+      >
+        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4" />}
+      </button>
+
+      {error && (
+        <div
+          className={`absolute top-full mt-2 z-[100] w-64 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl p-3.5 animate-in fade-in slide-in-from-top-2 duration-200 ${isMobile ? "right-0" : "left-0"}`}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">{error}</p>
+            <button onClick={dismissError} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-white shrink-0">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -370,11 +472,13 @@ function NotificationBell({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-wide leading-tight">
-                          {notif.type === "trade" ? "New Escrow Created" : `New Message · Trade #00${notif.tradeId}`}
+                          {notif.type === "trade" ? "New order" : `New message · Order #${notif.tradeId}`}
                         </p>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed line-clamp-2">
                           {notif.type === "trade"
-                            ? <>From <span className="font-mono">{notif.fromAddress.slice(0, 8)}…{notif.fromAddress.slice(-6)}</span> · <span className="text-zinc-900 dark:text-white font-bold">{notif.amount} MON</span></>
+                            ? (/^[\d.]+$/.test(notif.amount ?? "")
+                                ? <>A buyer locked <span className="text-zinc-900 dark:text-white font-bold">{notif.amount} MON</span> for you.</>
+                                : <>A buyer paid <span className="text-zinc-900 dark:text-white font-bold">{notif.amount}</span>. It&apos;s held for you — deliver, and it&apos;s yours.</>)
                             : <>&ldquo;{notif.message}&rdquo;</>}
                         </p>
                         <p className="text-[10px] text-zinc-400 mt-1 font-medium">{notif.createdAt}</p>

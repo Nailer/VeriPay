@@ -1,0 +1,73 @@
+---
+title: "Buy and sell crypto (exchange)"
+description: "VeriPay's naira ⇄ crypto on/off-ramp: how quotes work, how to buy by transfer or card, how to sell, and what happens at each status."
+icon: "arrow-left-right"
+---
+
+**Buy / sell crypto** (`/exchange`, under **More**) is a naira on-ramp and off-ramp built before the hackathon. It exists for one reason: using escrow directly in MON required owning MON, and almost nobody in Nigeria does. **The product is the escrow; the exchange is a feature.**
+
+<Accordion title="In plain words" icon="lightbulb">
+  This lets you swap naira for crypto and back. Most people won't need it — paying through a seller's link already handles naira for you.
+</Accordion>
+
+## Supported coins
+
+MON, USDT, BTC, ETH, SOL. Automatic delivery from the hot wallet is supported for **MON**; other coins are settled manually by an admin.
+
+## Quotes
+
+- Prices are computed **on the server** from live markets: coin → USD (Binance, CoinGecko fallback) × USD → NGN (median of the live **Bybit P2P** USDT/NGN book).
+- A **3.5% spread** is applied (buy above mid, sell below).
+- Your quote is **locked for 15 minutes** with a live countdown. Unpaid orders then **expire** — the only automatic status change, and it only moves an order backwards.
+- Limits: **₦1,000 – ₦5,000,000** per order (configurable).
+
+See [Exchange engine](/architecture/exchange-engine) for the full pricing model.
+
+## Buy crypto
+
+<Tabs>
+  <Tab title="By bank transfer">
+    <Steps>
+      <Step title="Create an order">Choose a coin, enter naira, paste the wallet address to receive the crypto.</Step>
+      <Step title="Transfer the exact amount">
+        You'll be shown an **exact** amount with a unique kobo suffix — e.g. **₦20,000.14**, not ₦20,000 — plus bank details and a reference. The suffix lets the admin match your transfer in the bank statement.
+      </Step>
+      <Step title="Declare payment">Tap that you've paid and enter the **name on the account you paid from**. Status → `payment_review`.</Step>
+      <Step title="Admin confirms">An admin matches the credit and confirms; crypto is sent. Status → `completed` (or `rejected` with a reason).</Step>
+    </Steps>
+  </Tab>
+  <Tab title="By card">
+    <Steps>
+      <Step title="Create an order">Choose **card**. Paystack's fee (1.5% + ₦100 above ₦2,500, capped ₦2,000) is shown as a separate line.</Step>
+      <Step title="Pay in the popup">Paystack charges the exact amount.</Step>
+      <Step title="Automatic verification">The server verifies with Paystack; status → `verified`. If the hot wallet is configured, MON is sent immediately → `completed`. A signed Paystack **webhook** settles the order even if you close the tab.</Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Sell crypto
+
+<Steps>
+  <Step title="Create a sell order">Choose the coin and amount, and enter your bank, 10-digit account number and account name.</Step>
+  <Step title="Send the crypto">Send exactly the quoted amount from the wallet you entered to VeriPay's deposit address.</Step>
+  <Step title="Submit the transaction hash">
+    The server reads the transaction from a Monad node and checks it **exists, succeeded, went to VeriPay's address, came from your wallet, and carries enough value**. A unique index on `lower(tx_hash)` stops one deposit settling two orders. Status → `verified`.
+  </Step>
+  <Step title="Get paid in naira">An admin sends the naira to your bank and marks the order paid out → `completed`.</Step>
+</Steps>
+
+## Order statuses
+
+| Status | Meaning |
+|---|---|
+| `awaiting_payment` | Quote locked; waiting for your payment/deposit |
+| `payment_review` | You declared a bank transfer; admin is matching it |
+| `verified` | Payment proven (card via Paystack, or deposit on-chain) |
+| `completed` | Settled |
+| `rejected` | Admin couldn't match the payment |
+| `expired` | Quote lapsed before payment |
+| `cancelled` | You cancelled an unpaid order |
+
+<Warning>
+  If you already sent money and the quote **expired**, don't create a new order — use the support chat on the order page and an agent will sort it out.
+</Warning>

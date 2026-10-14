@@ -1,0 +1,74 @@
+---
+title: "Deployments and addresses"
+description: "Every live contract address on Monad testnet, its configuration, and notable transactions."
+icon: "map-pin"
+---
+
+import Addresses from '/snippets/addresses.mdx';
+
+## Network
+
+| | |
+|---|---|
+| Network | Monad testnet |
+| Chain id | `10143` |
+| Native currency | MON (18 decimals) |
+| Public RPC | `https://testnet-rpc.monad.xyz` |
+| Explorer | [testnet.monadscan.com](https://testnet.monadscan.com) |
+| HyperSync | `monad-testnet.hypersync.xyz` |
+| CRE chain selector name | `monad-testnet` |
+
+## Addresses
+
+<Addresses />
+
+## VeriPayEscrow configuration (verified on-chain)
+
+| Getter | Value |
+|---|---|
+| `owner()` | `0xEfD0497f4557b49E84369cfb884B6c7446e11aBA` (founder) |
+| `arbitrator()` | `0xEfD0497f4557b49E84369cfb884B6c7446e11aBA` |
+| `feeRecipient()` | `0xEfD0497f4557b49E84369cfb884B6c7446e11aBA` |
+| `feeBps()` | `100` (1%) |
+| `autoReleaseDelay()` | `604800` (7 days) |
+| `MAX_FEE_BPS()` | `500` |
+| `BPS_DENOMINATOR()` | `10000` |
+| Deployment block | `63987883` |
+
+<Note>
+  The escrow was deployed with a throwaway key that then transferred every role to the founder's wallet; the throwaway key was deleted and has no remaining privilege. Values were read back from the chain, not trusted from the deploy script.
+</Note>
+
+## Token metadata
+
+| Token | `symbol()` | `decimals()` | Mint |
+|---|---|---|---|
+| vNGN | `vNGN` | 6 | Owner only (VeriPay demo/minter wallet) |
+| AUSD | `AUSD` | 6 | Agora only (no public faucet) |
+
+## Notable transactions
+
+| What | Transaction |
+|---|---|
+| Chainlink CRE auto-released order #2 (11 Oct 2026) | [`0xa5cf52aeac617514c10055bf703c2766eb5366f640958c171006681b9d87f823`](https://veripay.store/proof/0xa5cf52aeac617514c10055bf703c2766eb5366f640958c171006681b9d87f823) |
+| Every order ever placed | [Escrow on Monadscan](https://testnet.monadscan.com/address/0x00bdf9fbc9f59cc6814bbc7a91b19bbad1517e6d) |
+
+<Warning>
+  **About the orders on the contract.** Every order so far is one of VeriPay's own demo or test orders (orders #0–#2 by the demo wallet `0xeb1B…fd06` as buyer with the founder as seller; later naira orders from end-to-end testing and recording the demo video). They are real on-chain transactions, but they are **not customers**.
+</Warning>
+
+## Indexer
+
+| | |
+|---|---|
+| GraphQL | `https://indexer.dev.hyperindex.xyz/09eb2b1/v1/graphql` |
+| Project | `veripay-reputation` (Envio hosted, development tier) |
+| Source | `indexer/`, deploys from `hackathon/metropolis` |
+
+## Environment mapping
+
+| Env var | Address |
+|---|---|
+| `NEXT_PUBLIC_CONTRACT_ADDRESS` | VeriPayEscrow |
+| `NEXT_PUBLIC_NGN_TOKEN_ADDRESS` | vNGN (default baked in) |
+| `NEXT_PUBLIC_AUSD_ADDRESS` | AUSD (default baked in) |

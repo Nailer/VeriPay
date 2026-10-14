@@ -1,0 +1,58 @@
+---
+title: "Exchange card payments"
+description: "Initialise a Paystack charge for an exchange order, verify it, and receive Paystack's signed webhook."
+icon: "credit-card"
+---
+
+## Initialise
+
+```http
+POST /api/exchange/card/init
+```
+
+<ParamField body="id" type="string" required>Card buy order in `awaiting_payment`.</ParamField>
+<ParamField body="email" type="string" required>Receipt email.</ParamField>
+
+Initialises Paystack (`/transaction/initialize`) for the order's **stored** `exactAmountNgn` — never an amount from the request — with reference `VP-<orderId>-<ts36>` and `metadata.orderId`.
+
+Returns `{ ok, demo, reference, accessCode?, authorizationUrl?, publicKey, configured, amountNgn }`. Without a secret key: `demo: true`.
+
+## Verify
+
+```http
+POST /api/exchange/card/verify
+```
+
+<ParamField body="id" type="string" required />
+<ParamField body="reference" type="string" required />
+
+Asks Paystack whether the charge succeeded (status, NGN, amount ≥ expected − ₦1). Claims the order with `transitionOrder(["awaiting_payment","expired","payment_review"] → verified)`; the unique index on `paystack_ref` prevents reuse. If the hot wallet is configured and the coin is MON, pays out immediately → `completed`. Idempotent for completed orders.
+
+| Response | When |
+|---|---|
+| `{ order }` | Completed or already handled |
+| `{ order, warning: "Payment confirmed. Delivery is queued…" }` | Payout failed; left `verified` for an admin |
+| `{ order, warning: "Payment confirmed. Your crypto is being released now." }` | No hot wallet |
+| `400 { error }` | Verification failed |
+
+## Webhook
+
+```http
+POST /api/exchange/card/webhook
+```
+
+Configure in Paystack: `https://<your-domain>/api/exchange/card/webhook`.
+
+- Validates `x-paystack-signature` = **HMAC-SHA512(raw body, PAYSTACK_SECRET_KEY)**; otherwise `401`.
+- Handles `charge.success` only; reads `data.metadata.orderId`, `data.reference`, `data.amount`.
+- Ignores underpayment (logs `webhook_underpaid`).
+- Claims and pays out exactly like `verify`.
+- Always returns `200 { received: true }` for handled/ignored events so Paystack doesn't retry needlessly.
+
+<Accordion title="In plain words" icon="lightbulb">
+  These start a card payment for an exchange order, check it with Paystack, and accept Paystack's own signed "payment succeeded" message — a safety net if the customer closes the page too early.
+</Accordion>
+
+<Note>
+  The **pay-link** flow does **not** use these routes or the webhook; it uses [`/api/pay/intent`](/api/pay/intent) and [`/api/pay/confirm`](/api/pay/confirm) with the inline popup.
+</Note>

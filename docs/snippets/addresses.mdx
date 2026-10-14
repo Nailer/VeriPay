@@ -1,0 +1,9 @@
+| Contract | Address (Monad testnet, chain `10143`) | Role |
+|---|---|---|
+| **VeriPayEscrow** | [`0x00bdf9fbc9f59cc6814bbc7a91b19bbad1517e6d`](https://testnet.monadscan.com/address/0x00bdf9fbc9f59cc6814bbc7a91b19bbad1517e6d) | Holds every order's money and enforces the rules |
+| **AutoReleaseReceiver** | [`0x4bdff272df53a78887fd84a9ee9f4aa9a161a0b9`](https://testnet.monadscan.com/address/0x4bdff272df53a78887fd84a9ee9f4aa9a161a0b9) | Chainlink CRE consumer that triggers overdue payouts |
+| **vNGN** (VeriPay Test Naira) | [`0xdbb53d0a2d1b91ef6a41cf1128fef562ffc531eb`](https://testnet.monadscan.com/address/0xdbb53d0a2d1b91ef6a41cf1128fef562ffc531eb) | Testnet stand-in for a regulated naira stablecoin |
+| **AUSD** (Agora, testnet) | `0x333a12e2B519DA16EBE75012d54574C16ef4463f` | Optional US-dollar stablecoin asset |
+| Chainlink MockKeystoneForwarder | `0xB9F79d863261869B234c481D1f9A7af84AeAd192` | Forwarder the receiver currently trusts (simulator) |
+| Chainlink KeystoneForwarder (production) | `0xF8344CFd5c43616a4366C34E3EEE75af79a74482` | Forwarder to switch to for a scheduled deployment |
+| VeriPayEscrow v1 (legacy) | `0xd0cc532f55ce6849d5b70e24d6188073f8921621` | Original contract — read-only compatibility |

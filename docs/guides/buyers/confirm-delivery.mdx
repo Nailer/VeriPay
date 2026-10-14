@@ -1,0 +1,42 @@
+---
+title: "Confirm delivery"
+description: "Release the held money to the seller once your order has arrived and you're happy with it."
+icon: "package-check"
+---
+
+## Steps
+
+<Steps>
+  <Step title="Open the order">
+    Go to **My orders** and tap the order (or open `veripay.store/trade/<id>`). Its status reads **Held safely**.
+  </Step>
+  <Step title="Inspect your item first">
+    Make sure it's what you paid for and it works. Once you confirm, the seller is paid immediately.
+  </Step>
+  <Step title="Tap the button">
+    Tap **I received my order — pay the seller**. VeriPay covers the network fee if needed.
+  </Step>
+  <Step title="Done">
+    The order shows **Completed** — *"Done — the seller has been paid. Thanks for confirming."* The seller's record gains one **Paid out**.
+  </Step>
+</Steps>
+
+## Behind the button
+
+The button calls `releaseToSeller(id)` on `VeriPayEscrow` from your account. The contract checks `msg.sender == buyer` and that the order is still open (`!released && !refunded`), sets `released = true`, deducts the fee locked into this order (normally 1%) into `accruedFees[token]`, transfers the remainder to the seller, and emits `FeeCharged` and `FundsReleased(id, seller)`.
+
+<Accordion title="In plain words" icon="lightbulb">
+  Only you, the buyer, can press this button. It tells the safe locker to pay the seller what they're owed (minus VeriPay's 1%), and writes a permanent public note that the order was completed.
+</Accordion>
+
+<Warning>
+  **This cannot be undone.** There is no function to claw back a release. If a seller asks you to confirm *before* delivering, refuse — that removes your protection.
+</Warning>
+
+## Confirming during a dispute
+
+If a problem was reported but you've since received the item and are satisfied, you can still confirm delivery. The contract deliberately allows `releaseToSeller` during a dispute — it's the buyer conceding, and that should never be blocked.
+
+## If you do nothing
+
+After the confirmation window (default 7 days from payment) the seller can be paid automatically. See [automatic release](/architecture/auto-release).

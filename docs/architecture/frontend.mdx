@@ -1,126 +1,99 @@
 ---
-title: "Frontend Architecture"
-sidebarTitle: "Frontend"
-description: "How VeriPay's Next.js frontend is structured — routing, components, state management, and UI patterns."
+title: "Frontend"
+description: "Routes, components, state and polling, the transaction pipeline, contract-version compatibility and design rules of the Next.js app."
+icon: "layout-dashboard"
 ---
 
-## App Router Structure
+## Route map
 
-VeriPay uses Next.js 16's **App Router** for file-based routing. Every route is a directory under `src/app/` with a `page.tsx` file.
+| Route | Audience | Purpose | Data |
+|---|---|---|---|
+| `/` | Everyone | Landing: check the seller first, pay in naira, never stuck waiting | static |
+| `/pay/[handle]` | Buyer | Checkout for a seller link; receipt | sellers, reputation, pay API, chain |
+| `/sell` | Seller | Claim and share a link; incoming orders | sellers API, `OrdersList` |
+| `/orders` | Both | "My orders" — bought and sold | `OrdersList` |
+| `/trade/[id]` | Both | One order: release, refund, dispute, collect, chat | chain (`readTrade`), sellers, reputation |
+| `/trade/[id]/chat` | Both | Order chat | `/api/chat` (4 s poll) |
+| `/seller` | Everyone | Look up a seller by link name | sellers, reputation |
+| `/seller/[address]` | Everyone | Full public history | reputation `?trades=1` |
+| `/proof/[hash]` | Everyone | Transaction read live from Monad | RPC only |
+| `/install` | Everyone | PWA install guide + enable alerts | — |
+| `/create` | Crypto users | Direct escrow in MON / AUSD | chain, reputation |
+| `/dashboard` | Crypto users | Recent escrows | chain |
+| `/exchange`, `/exchange/buy`, `/exchange/sell`, `/exchange/order/[id]` | Crypto users | On/off-ramp | exchange API |
+| `/admin` | Operator | Orders, Disputes, Stats, Chats | admin API (passcode), chain |
 
-### Route Map
+## Navigation
 
-| Route | File | Description | Access |
-| --- | --- | --- | --- |
-| `/` | `src/app/page.tsx` | Landing page — hero section, features, CTAs | Public |
-| `/create` | `src/app/create/page.tsx` | Create new escrow form | Requires wallet |
-| `/dashboard` | `src/app/dashboard/page.tsx` | List of recent trades with live status | Public (reads blockchain) |
-| `/trade/[id]` | `src/app/trade/[id]/page.tsx` | Individual trade detail + settlement actions | Public (actions require wallet) |
-| `/trade/[id]/chat` | `src/app/trade/[id]/chat/` | In-trade messaging | Requires wallet |
-| `/api/notifications` | `src/app/api/notifications/` | Notification REST API | Internal |
-| `/api/chat` | `src/app/api/chat/` | Chat message REST API | Internal |
+Top bar: **My orders**, **Sell**, **Check a seller**; under **More**: **Pay with crypto** (`/create`), **Buy / sell crypto** (`/exchange`), **All trades** (`/dashboard`). The signed-in chip shows the shop name or **Signed in** — never an address or MON balance (`detailsButton.render`). Theme switcher: Light / Dark / System.
 
-### Component Architecture
+## Key components
 
-```
-src/
-├── app/
-│   ├── layout.tsx          # Root layout (Navbar, Providers, global styles)
-│   ├── providers.tsx       # ThemeProvider + ThirdwebProvider wrappers
-│   ├── client.ts           # Thirdweb client initialization
-│   ├── globals.css         # Global CSS (Tailwind directives)
-│   ├── page.tsx            # Landing page (server component)
-│   ├── create/page.tsx     # Create escrow (client component)
-│   ├── dashboard/page.tsx  # Trade dashboard (client component)
-│   ├── trade/[id]/
-│   │   ├── page.tsx        # Trade detail (client component)
-│   │   └── chat/           # Chat page
-│   └── api/                # REST API routes
-├── components/
-│   └── Navbar.tsx          # Navigation bar + notifications + theme switcher
-└── lib/
-    └── abi.ts              # Contract ABI + address constants
-```
+| Component | Role |
+|---|---|
+| `Navbar` | Navigation, sign-in (passkey button + thirdweb `ConnectButton`), notification bell, push toggle, theme |
+| `OrdersList` | Plain-language list of a person's trades; polls every 10 s while any are open |
+| `SellerReputationCard` | Record card on `/create` |
+| `ReputationBadge` | Compact record on the order page |
+| `ArbitrationPanel` | Dispute resolution (admin) |
+| `AdminOrderCard` | Exchange fulfilment card (admin) |
+| `InstallPrompt` | Dismissible install banner |
+| `ServiceWorkerRegister` | Registers `sw.js` in production |
+| `Analytics` | Fire-and-forget page-view / connect tracking |
+| `Logo` | Check-mark-in-rounded-square mark |
 
-## Key Patterns
+## Polling
 
-### Client vs. Server Components
+All polling goes through `usePolling(callback, intervalMs, enabled)` (`src/lib/usePolling.ts`): runs immediately, pauses when the tab is hidden, fires once on return, and stops when `enabled` is false (e.g. a settled order).
 
-| Component | Type | Reason |
-| --- | --- | --- |
-| Landing page (`/`) | Server | Static content, no wallet interaction needed |
-| Create page | Client (`"use client"`) | Wallet connection, form state, transaction signing |
-| Dashboard | Client | Reads from blockchain on mount, dynamic state |
-| Trade detail | Client | Wallet actions, dynamic data |
-| Navbar | Client | Theme state, wallet connection, notifications |
+| Where | Interval |
+|---|---|
+| Notifications bell | 20 s |
+| `OrdersList` | 10 s (while any order is open) |
+| Order / exchange chat | 4 s |
+| Exchange order | 5 s (until settled) |
+| Exchange rates (buy/sell) | 10 s |
+| Exchange landing | 30 s |
+| Admin visible tab | 8 s; open chat thread 4 s |
 
-### Blockchain Integration Pattern
+<Accordion title="In plain words" icon="lightbulb">
+  The app refreshes information regularly, but only while you're looking at it, so it doesn't drain your battery or data in the background.
+</Accordion>
 
-VeriPay uses a consistent pattern for reading from and writing to the smart contract:
+## Transaction pipeline
 
-**Reading (Public Client):**
-```typescript
-const publicClient = createPublicClient({
-  chain: MONAD_CHAIN,
-  transport: http("https://testnet-rpc.monad.xyz"),
-});
+Every write uses thirdweb's pipeline from `src/lib/monad.ts`:
 
-const result = await publicClient.readContract({
-  address: CONTRACT_ADDRESS,
-  abi: escrowAbi,
-  functionName: "trades",
-  args: [tradeId],
-});
-```
+```ts
+import { prepareContractCall, sendTransaction, waitForReceipt } from "thirdweb";
+import { escrowContract } from "@/lib/monad";
 
-**Writing (Wallet Client):**
-```typescript
-const walletClient = createWalletClient({
-  chain: MONAD_CHAIN,
-  transport: custom(window.ethereum),
-});
-
-const hash = await walletClient.writeContract({
-  address: CONTRACT_ADDRESS,
-  abi: escrowAbi,
-  functionName: "releaseToSeller",
-  args: [tradeId],
-  account: userAddress,
-});
+await readyToTransact(account.address);                     // gas sponsorship check
+const tx = prepareContractCall({ contract: escrowContract, method: "releaseToSeller", params: [id] });
+await waitForReceipt(await sendTransaction({ account, transaction: tx }));
 ```
 
-### Chain Switching
+<Warning>
+  **Never use `window.ethereum`.** It only exists for browser-extension wallets; it's `undefined` for thirdweb in-app wallets, WalletConnect and passkey accounts. Using it produced "No browser wallet detected" for most mobile users until it was removed. See [Sending transactions](/developers/sending-transactions).
+</Warning>
 
-Before any write transaction, VeriPay ensures the user's wallet is connected to Monad Testnet:
+## Contract-version compatibility
 
-1. Attempt `wallet_switchEthereumChain` to chain ID `0x279f` (10143)
-2. If the chain isn't added yet (error code 4902), call `wallet_addEthereumChain` to add Monad Testnet automatically
-3. Only then proceed with the contract interaction
+`src/lib/escrow.ts` normalises v1 (6-field `trades()`) and v2 (12-field) into one `EscrowTrade` shape with a `legacy` flag, detecting the version by calling `feeBps()` (reverts on v1) and caching per address. **Always read via `readTrade()` / `readNextTradeId()`.** v2-only UI (report a problem, countdown, fee line, arbitration) is gated on `!trade.legacy`.
 
-This makes the UX seamless — users never need to manually configure Monad Testnet.
+`formatTradeAmount(trade)` renders amounts by asset: vNGN → `₦25,000`, AUSD → `AUSD`, native → `MON`.
 
-### Theme System
+## Design rules
 
-VeriPay supports dark, light, and system themes using `next-themes`:
+- **Strict black and white.** No accent colours; zinc shades; inverted for dark mode.
+- `font-black` uppercase micro-labels with wide tracking; `rounded-3xl` cards.
+- **Max 2–3 buttons per screen.** Obvious to someone who has never used crypto.
+- **Mobile-first**, verified at 375 px.
+- Motion via `globals.css` keyframes (`anim-fade-up`, `anim-scale-in`, `anim-shimmer`), respecting `prefers-reduced-motion`.
 
-- Theme preference is stored in `localStorage`
-- The `resolvedTheme` value determines actual rendering
-- Tailwind's `dark:` modifier handles all dark mode styles
-- The Navbar includes a theme switcher with sun/moon/monitor icons
+### Performance rules
 
-## Responsive Design
-
-VeriPay is built **mobile-first** using Tailwind's responsive breakpoints:
-
-| Breakpoint | Width | Design |
-| --- | --- | --- |
-| Default | < 640px | Mobile — single column, hamburger menu, compact buttons |
-| `sm:` | ≥ 640px | Small tablet — two-column grids start |
-| `md:` | ≥ 768px | Tablet — more spacing, larger text |
-| `lg:` | ≥ 1024px | Desktop — full layout |
-
-Key responsive behaviors:
-- **Navbar:** Hamburger menu on mobile, horizontal nav on desktop
-- **Dashboard:** Single-column cards on mobile, 2-column grid on desktop
-- **Forms:** Full-width on mobile, centered with max-width on desktop
-- **Modals:** Bottom-sheet style on mobile, centered on desktop
+- No large blurred layers or `mix-blend` + `animate-pulse`; ambient glow uses cheap radial gradients (`.bg-ambient`).
+- Avoid `backdrop-blur-xl` on big cards.
+- Animate `transform`, not `background-position`.
+- No raw `setInterval` fetches; no full-page re-render per second for timestamps (the trade countdown ticks every 30 s).

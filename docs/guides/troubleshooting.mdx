@@ -1,0 +1,74 @@
+---
+title: "Troubleshooting"
+description: "Fixes for the most common problems buyers and sellers run into, with the exact messages you might see."
+icon: "wrench"
+---
+
+## Sign-in
+
+<AccordionGroup>
+  <Accordion title="The fingerprint button doesn't appear">
+    Your browser doesn't support WebAuthn. Update it, or use **Sign in** with email, Google, Apple or a wallet.
+  </Accordion>
+  <Accordion title="&quot;This device's biometric hardware doesn't support the passkey feature we need.&quot;">
+    Your device or password manager doesn't support the WebAuthn PRF extension. Use **Other ways to sign in**.
+  </Accordion>
+  <Accordion title="My orders / link disappeared after signing in">
+    You're on a different account — likely a different sign-in method or a different passkey. Sign out and use the original method.
+  </Accordion>
+</AccordionGroup>
+
+## Paying
+
+<AccordionGroup>
+  <Accordion title="I was charged but there's no receipt">
+    Reopen the seller's link, sign in the same way and enter the same amount. The page detects your payment and finishes locking it **without charging again**.
+  </Accordion>
+  <Accordion title="&quot;Your account isn't quite ready yet. Wait a few seconds and try again.&quot;">
+    Your network-fee top-up is still landing. Wait ~5 seconds and retry.
+  </Accordion>
+  <Accordion title="&quot;That payment reference doesn't belong to this payment.&quot;">
+    The card charge was for a different order. Start again from the seller's link.
+  </Accordion>
+  <Accordion title="&quot;The minimum is ₦100.&quot; / &quot;The maximum is ₦5,000,000.&quot;">
+    Pay-link payments must be between ₦100 and ₦5,000,000.
+  </Accordion>
+  <Accordion title="&quot;Say what you're buying, so you and the seller agree on it.&quot;">
+    The item description needs at least 3 characters.
+  </Accordion>
+  <Accordion title="&quot;Transaction cancelled.&quot;">
+    You (or your wallet) declined the signature. Try again.
+  </Accordion>
+</AccordionGroup>
+
+## After paying
+
+<AccordionGroup>
+  <Accordion title="The seller says they didn't get a notification">
+    They may not have enabled device alerts. Ask them to check **My orders** or the **Sell** page — every paid order is listed there, read from the chain.
+  </Accordion>
+  <Accordion title="The countdown is about to run out and my order hasn't arrived">
+    Report a problem **now**. Once the window passes and nobody has reported a problem, the seller can be paid automatically.
+  </Accordion>
+  <Accordion title="The order page says &quot;We couldn't load this order.&quot;">
+    A network read failed. Check your connection and refresh.
+  </Accordion>
+  <Accordion title="I don't see buttons on the order">
+    You're not signed in as the buyer or seller of that order. Visitors can only view.
+  </Accordion>
+</AccordionGroup>
+
+## Notifications
+
+<AccordionGroup>
+  <Accordion title="&quot;Blocked in Browser Settings&quot;">
+    You denied notification permission before. Re-allow notifications for `veripay.store` in your browser or phone settings.
+  </Accordion>
+  <Accordion title="No push on iPhone">
+    Install VeriPay to your home screen first, then enable alerts from inside the installed app.
+  </Accordion>
+</AccordionGroup>
+
+## Still stuck?
+
+Use the order chat (an agent sees disputes), or see [Community and support](/resources/community).

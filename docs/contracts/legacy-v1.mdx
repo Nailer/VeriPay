@@ -1,0 +1,43 @@
+---
+title: "Legacy contract (v1)"
+description: "The original VeriPay escrow, how the app stays compatible with it, and why trades on it lack fees, disputes and auto-release."
+icon: "archive"
+---
+
+| | v1 (legacy) | v2 (VeriPayEscrow) |
+|---|---|---|
+| Address | `0xd0cc532f55ce6849d5b70e24d6188073f8921621` | `0x00bdf9fbc9f59cc6814bbc7a91b19bbad1517e6d` |
+| `trades()` fields | 6 | 12 (incl. `token`) |
+| Fee | none | 1% success-only, ≤ 5% |
+| Disputes | none | yes |
+| Auto-release | none | 7-day default |
+| Assets | MON | MON + any ERC-20 |
+| Historical trades | ~14 | all current activity |
+
+<Accordion title="In plain words" icon="lightbulb">
+  VeriPay's very first contract was simpler: no fee, no way to settle disagreements, and no automatic payout. The app can still read orders made on it, but new orders use the improved contract.
+</Accordion>
+
+## v1 `Trade`
+
+```solidity
+struct Trade { address buyer; address seller; uint256 amount; bool released; bool sellerApprovedRefund; string metadata; }
+```
+
+## Compatibility layer — `src/lib/escrow.ts`
+
+- `isLegacyContract(client)` calls `feeBps()`; a revert means v1. Cached per contract address.
+- `readTrade(client, id)` decodes with `legacyEscrowAbi` on v1 or the v2 ABI on v2, and returns a normalised `EscrowTrade` with `legacy: true|false`. v1 trades get `feeBps = 0`, `token = address(0)`, `disputed = refunded = false`, `createdAt = autoReleaseAt = 0`.
+- `readNextTradeId(client)` works on both.
+
+<Warning>
+  **Always read trades through `readTrade()` / `readNextTradeId()`.** Decoding a v1 response with the v2 ABI fails outright; the dashboard once went silently blank because of this.
+</Warning>
+
+## UI gating
+
+v2-only features — **Report a problem**, the auto-release countdown, the fee line, **Collect my payment**, and the arbitration panel — are hidden when `trade.legacy` is true. Legacy orders show: *"This is an older order — no fee, and problem reports aren't available on it."*
+
+## Branch note
+
+On `main`, production historically ran against v1. On `hackathon/metropolis` (which now serves `veripay.store`), the app points at v2. Don't describe fees, disputes or AUSD as live on a deployment that still targets v1.

@@ -1,0 +1,44 @@
+---
+title: "Chat"
+description: "Read and post messages in an order's chat thread."
+icon: "message-circle"
+---
+
+## Get a thread
+
+```http
+GET /api/chat?tradeId=9
+```
+
+<ParamField query="tradeId" type="string" required>Order id, or `ex-<orderId>` for exchange support threads.</ParamField>
+
+<ResponseField name="messages" type="ChatMessage[]">
+  Chronological. If a thread has no stored messages, a default welcome message is returned (*"Welcome to the secure resolution channel for Trade #00[id]…"* or the exchange support greeting).
+</ResponseField>
+
+## Post a message
+
+```http
+POST /api/chat
+```
+
+<ParamField body="tradeId" type="string" required />
+<ParamField body="address" type="string" required>Sender address (or `"admin"` from the console).</ParamField>
+<ParamField body="text" type="string" required />
+<ParamField body="sender" type="string">Display name. Default `"User"`.</ParamField>
+<ParamField body="isAdmin" type="boolean">Marks an agent message.</ParamField>
+
+Returns `{ success: true, message }`.
+
+| Status | Body |
+|---|---|
+| 400 | `Missing required fields` |
+| 503 | `Chat storage is not configured on this server (SUPABASE_SERVICE_ROLE_KEY is missing).` — fails loudly rather than silently dropping messages |
+
+<Accordion title="In plain words" icon="lightbulb">
+  Read the messages for an order, or add a new one.
+</Accordion>
+
+<Warning>
+  The public route does not verify that the sender is a party to the order, and accepts `isAdmin` from the body. Reviewers should verify agent identity through the admin console, and the front-end should treat `isAdmin` messages from the public route with caution. Hardening (signed messages, server-side party checks) is listed in [Known limitations](/security/known-limitations).
+</Warning>

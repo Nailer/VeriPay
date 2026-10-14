@@ -1,0 +1,74 @@
+---
+title: "Install VeriPay on your phone"
+description: "Add VeriPay to your home screen as an app — no app store needed — on iPhone, Android and desktop."
+icon: "smartphone"
+---
+
+VeriPay is a **Progressive Web App (PWA)**: a website with a web app manifest and a service worker, so the browser can install it with its own icon, full-screen window and notifications.
+
+<Accordion title="In plain words" icon="lightbulb">
+  You can put VeriPay on your home screen like any other app, straight from the website. It opens full-screen and can send you notifications. You don't need an app store.
+</Accordion>
+
+<Tabs>
+  <Tab title="iPhone / iPad" icon="apple">
+    <Steps>
+      <Step title="Open in Safari">
+        Open `veripay.store` in **Safari** — installation only works from Safari on iOS.
+      </Step>
+      <Step title="Tap Share">
+        Tap the **Share** icon in the bottom toolbar.
+      </Step>
+      <Step title="Add to Home Screen">
+        Scroll down and tap **Add to Home Screen**.
+      </Step>
+      <Step title="Confirm">
+        Tap **Add** in the top-right corner. The VeriPay icon appears on your home screen.
+      </Step>
+    </Steps>
+    <Note>iOS never shows an automatic install prompt, so VeriPay shows these instructions in a small banner instead.</Note>
+  </Tab>
+  <Tab title="Android" icon="smartphone">
+    <Steps>
+      <Step title="Open in Chrome">
+        Open `veripay.store` in Chrome.
+      </Step>
+      <Step title="Install">
+        Tap **Install app** if a banner appears — or open the ⋮ menu and choose **Install app** / **Add to Home screen**.
+      </Step>
+      <Step title="Confirm">
+        VeriPay installs with its own icon and app-switcher entry.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Desktop" icon="monitor">
+    <Steps>
+      <Step title="Open the site">
+        Open `veripay.store` in Chrome or Edge.
+      </Step>
+      <Step title="Install">
+        Click the install icon at the right of the address bar, or ⋮ menu → **Install VeriPay**.
+      </Step>
+      <Step title="Done">
+        VeriPay opens in its own window, separate from your browser tabs.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## What installing changes
+
+| | In the browser | Installed |
+|---|---|---|
+| Opens from | A tab | Home-screen icon, own window |
+| Device notifications | Possible on desktop/Android | ✅ (required for iOS push) |
+| Offline | Browser error page | Friendly offline screen |
+| Your account | Same | Same (same domain) |
+
+<Accordion title="What the service worker does — and deliberately doesn't">
+  `public/sw.js` intercepts **only page navigations**, serving `/offline.html` when the network is unreachable. It never caches `/api/*` requests, so prices, order status and chat are always fresh — a stale cached price or order status could cause a real financial mistake.
+
+  **In plain words:** when you're offline, you see a friendly "you're offline" page. VeriPay never shows you old, saved information about your money.
+</Accordion>
+
+The guided walkthrough is also in the app at [veripay.store/install](https://veripay.store/install).

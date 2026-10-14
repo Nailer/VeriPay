@@ -1,0 +1,33 @@
+---
+title: "Order chat"
+description: "Message the other party on an order, and how VeriPay agents join when a problem is reported."
+icon: "message-circle"
+---
+
+Every order has a chat thread at `/trade/<id>/chat`, opened with **Message the seller** / **Message the buyer** on the order page.
+
+## Use it to
+
+- Agree delivery time, place and method.
+- Share tracking numbers or photos of the item.
+- Ask for or offer a refund.
+- Provide evidence if a problem is reported — the reviewer reads this thread.
+
+## How it works
+
+| Aspect | Detail |
+|---|---|
+| Storage | `chat_messages` table, keyed by `thread_id` = the order id |
+| Delivery | Polled every 4 s while the page is visible (via `usePolling`, paused in background tabs) |
+| Exchange support | Exchange orders use thread ids prefixed `ex-` (e.g. `ex-ab12cd34`) with a support welcome message |
+| Notifications | Each message creates a `chat` notification for the other party (bell + device push) |
+| Agents | Messages from the admin console are marked `is_admin` and shown as from VeriPay |
+| Disputes | Reporting a problem posts a system message: *"A problem was reported on this order by 0x…. The money is frozen until an agent reviews it."* |
+
+<Accordion title="In plain words" icon="lightbulb">
+  It's a simple message thread for each order. If you report a problem, a VeriPay agent can see the conversation and join it.
+</Accordion>
+
+<Warning>
+  **Never share card details, PINs, OTPs or passwords in chat.** VeriPay staff will never ask for them. The chat is not end-to-end encrypted; it's stored in VeriPay's database, readable by the server and by agents in the admin console.
+</Warning>

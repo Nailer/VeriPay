@@ -1,0 +1,277 @@
+---
+title: "Glossary"
+description: "Every technical term used in VeriPay's product, code and documentation — defined precisely, then explained simply."
+icon: "book-a"
+---
+
+Terms are grouped by area and listed alphabetically within each group. Each entry gives a precise definition followed by a plain-language explanation.
+
+## Product terms
+
+<AccordionGroup>
+  <Accordion title="Auto-release">
+    The `autoRelease(uint256)` function on `VeriPayEscrow`, callable by anyone once `block.timestamp ≥ trade.autoReleaseAt` on an open, undisputed trade. Pays the seller as if the buyer had confirmed. Triggered on a schedule by a Chainlink CRE workflow.
+
+    **In plain words:** if a buyer never confirms and never complains, the seller is paid automatically after 7 days, so honest sellers aren't left waiting forever.
+  </Accordion>
+  <Accordion title="Buyer protection">
+    The guarantee that a buyer's payment is held by a contract and only reaches the seller on the buyer's confirmation, the auto-release timeout, or an arbitration ruling.
+
+    **In plain words:** your money doesn't go to the seller until you've got your order (or a fair decision has been made).
+  </Accordion>
+  <Accordion title="Dispute (problem report)">
+    The state entered by `raiseDispute(uint256)`, callable once by either party of an open trade. Sets `disputed = true`, freezes auto-release and enables `resolveDispute` for the arbitrator. Labelled **Report a problem** in the UI.
+
+    **In plain words:** tapping "Report a problem" freezes the money so nobody can move it until a reviewer looks at what happened.
+  </Accordion>
+  <Accordion title="Handle / link name / payment link">
+    A unique identifier matching `^[a-z0-9][a-z0-9_-]{2,29}$` stored in the `sellers` table and mapped to exactly one payout address. Served at `veripay.store/pay/<handle>`.
+
+    **In plain words:** the seller's short web address, like `veripay.store/pay/adaeze-thrift`, that they share with customers.
+  </Accordion>
+  <Accordion title="Order (trade)">
+    One `Trade` struct in `VeriPayEscrow`, identified by an auto-incrementing `uint256` id (`nextTradeId`). The UI says "order"; the contract says "trade".
+
+    **In plain words:** one purchase protected by VeriPay. Each has an order number like #0009.
+  </Accordion>
+  <Accordion title="Pay intent">
+    A row in `pay_intents` representing one attempted card payment through a seller link: amount, item, buyer, seller, status (`awaiting_payment → paid → funded`, or `failed`), Paystack reference and mint transaction.
+
+    **In plain words:** VeriPay's internal note that says "this buyer is about to pay this seller this much for this item".
+  </Accordion>
+  <Accordion title="Proof page">
+    The `/proof/<txHash>` route, which fetches a transaction receipt and its block directly from a Monad RPC node and renders the decoded escrow events in natural language.
+
+    **In plain words:** a page that shows, straight from the blockchain, exactly what happened to a payment — so you don't have to take VeriPay's word for it.
+  </Accordion>
+  <Accordion title="Reputation (seller record)">
+    Four counters per address — `totalTrades`, `completedTrades` (shown as **Paid out**), `disputedTrades`, `refundedTrades` — derived exclusively from escrow events.
+
+    **In plain words:** a seller's track record, counted from real orders, that nobody can edit.
+  </Accordion>
+  <Accordion title="Refund">
+    The two-step path `sellerApproveRefund(id)` → `buyerClaimRefund(id)`, returning 100% of the amount to the buyer with no fee.
+
+    **In plain words:** the seller agrees to give your money back, then you collect it — all of it.
+  </Accordion>
+  <Accordion title="Release (confirm delivery)">
+    `releaseToSeller(uint256)`, callable only by the buyer of an open trade. Pays the seller `amount − fee` and books the fee to `accruedFees[token]`.
+
+    **In plain words:** the buyer's "I got it" button. The seller is paid immediately.
+  </Accordion>
+</AccordionGroup>
+
+## Blockchain terms
+
+<AccordionGroup>
+  <Accordion title="ABI (Application Binary Interface)">
+    The JSON description of a contract's functions, events and types used to encode calls and decode results. VeriPay's is in `src/lib/abi.ts` and `indexer/abis/VeriPayEscrow.json`.
+
+    **In plain words:** the "menu" that tells an app what buttons a smart contract has and how to press them.
+  </Accordion>
+  <Accordion title="Address">
+    A 20-byte identifier (`0x` + 40 hex characters) derived from a public key. Lower-cased throughout VeriPay's database.
+
+    **In plain words:** an account number on the blockchain.
+  </Accordion>
+  <Accordion title="Basis points (bps)">
+    One hundredth of a percent. `10,000 bps = 100%`. VeriPay's fee defaults to `100 bps` (1%) and is capped at `500 bps` (5%). Dispute splits are expressed as `_buyerBps`.
+
+    **In plain words:** a precise way to write percentages. 100 bps = 1%.
+  </Accordion>
+  <Accordion title="Block / block timestamp">
+    A batch of transactions finalised together. `block.timestamp` is the time recorded for that block and is what `autoReleaseAt` is compared against.
+
+    **In plain words:** a page in the blockchain's record book, stamped with a time.
+  </Accordion>
+  <Accordion title="Chain id 10143">
+    The EIP-155 chain identifier of Monad testnet, used to prevent transactions from being replayed on other networks.
+
+    **In plain words:** the "country code" of the test network VeriPay runs on.
+  </Accordion>
+  <Accordion title="ERC-20">
+    The standard fungible-token interface (`transfer`, `transferFrom`, `approve`, `balanceOf`, `allowance`). vNGN and AUSD are ERC-20 tokens.
+
+    **In plain words:** the standard format for digital money tokens, so any app can work with them.
+  </Accordion>
+  <Accordion title="Escrow">
+    A third party that holds funds until conditions are met. In VeriPay the third party is the `VeriPayEscrow` smart contract, not a company.
+
+    **In plain words:** a safe locker that only opens when the agreed thing happens.
+  </Accordion>
+  <Accordion title="Event / log">
+    Structured data emitted by a contract during a transaction (e.g. `TradeCreated`) and stored in the receipt. Cheap to write, impossible to alter after the fact.
+
+    **In plain words:** a permanent public note the contract writes whenever something happens.
+  </Accordion>
+  <Accordion title="Gas / network fee">
+    The fee paid in MON for executing a transaction. VeriPay sponsors it for fingerprint users by topping up their account with a small MON amount from a server wallet.
+
+    **In plain words:** a tiny processing fee for the blockchain. VeriPay pays it for you.
+  </Accordion>
+  <Accordion title="MON">
+    Monad's native currency, used to pay gas. On testnet it has no monetary value.
+
+    **In plain words:** the network's own coin, used for fees. On the test network it's free play money.
+  </Accordion>
+  <Accordion title="Monad">
+    A high-performance, EVM-compatible Layer 1 blockchain with parallel execution and ~sub-second block times. VeriPay is deployed on Monad testnet.
+
+    **In plain words:** the fast, cheap public blockchain VeriPay's safe locker lives on.
+  </Accordion>
+  <Accordion title="Non-custodial">
+    A design in which the operator never has unilateral control over user funds. VeriPay's owner key cannot move escrowed money.
+
+    **In plain words:** VeriPay never actually "has" your money, so it can't lose it or take it.
+  </Accordion>
+  <Accordion title="Reentrancy guard">
+    The `nonReentrant` modifier (a `_lock` flag set to 2 during execution) preventing a malicious token or recipient from calling back into the contract mid-payout.
+
+    **In plain words:** a lock on the door while money is being counted, so nobody can sneak back in halfway through.
+  </Accordion>
+  <Accordion title="RPC (Remote Procedure Call) node">
+    A server that exposes the blockchain over JSON-RPC (`eth_call`, `eth_sendRawTransaction`, …). VeriPay uses Alchemy's Monad endpoint, falling back to `https://testnet-rpc.monad.xyz`.
+
+    **In plain words:** the "phone line" apps use to talk to the blockchain.
+  </Accordion>
+  <Accordion title="Smart contract">
+    A program deployed at an address on a blockchain whose code and state are public and whose rules execute exactly as written.
+
+    **In plain words:** a computer program that holds money and follows its rules automatically — no human can bend them.
+  </Accordion>
+  <Accordion title="Stablecoin">
+    A token designed to hold a fixed value against a currency (e.g. AUSD ≈ $1). vNGN plays the role of a naira stablecoin on testnet.
+
+    **In plain words:** digital money that's meant to always be worth the same as normal money.
+  </Accordion>
+  <Accordion title="Testnet">
+    A public blockchain network for testing whose tokens have no real value.
+
+    **In plain words:** a practice version of the blockchain where nothing costs real money.
+  </Accordion>
+  <Accordion title="Transaction hash">
+    The 32-byte Keccak-256 identifier of a transaction (`0x` + 64 hex characters).
+
+    **In plain words:** a receipt number for anything that happened on the blockchain.
+  </Accordion>
+  <Accordion title="vNGN">
+    *VeriPay Test Naira*, an owner-mintable ERC-20 with 6 decimals at `0xdbb53d0a…31eb`. Minted 1:1 against verified test-mode card charges. Not money; not redeemable.
+
+    **In plain words:** pretend naira on the test network. On the real network this would be a licensed naira stablecoin.
+  </Accordion>
+  <Accordion title="AUSD">
+    Agora's US-dollar stablecoin (6 decimals). The escrow accepts it via `createTradeWithToken`; testnet AUSD can only be minted by Agora.
+
+    **In plain words:** a digital dollar. VeriPay can hold dollars as well as naira.
+  </Accordion>
+</AccordionGroup>
+
+## Identity and security terms
+
+<AccordionGroup>
+  <Accordion title="BIP-32 / BIP-39 / derivation path">
+    BIP-39 turns entropy into a mnemonic and seed; BIP-32 derives a tree of keys from that seed. VeriPay uses path `m/44'/60'/0'/0/0`, the standard first Ethereum account.
+
+    **In plain words:** standard recipes for turning one secret into a usable account key.
+  </Accordion>
+  <Accordion title="ECDSA signature / EIP-191">
+    An elliptic-curve signature proving the holder of a private key approved a message. EIP-191 "personal sign" prefixes messages so they can't be confused with transactions. Seller claims are EIP-191 signatures.
+
+    **In plain words:** a digital signature that proves "I, the owner of this account, approve this".
+  </Accordion>
+  <Accordion title="Passkey / WebAuthn">
+    A FIDO2 credential stored in the device's secure hardware and unlocked by biometrics or PIN, used through the browser's WebAuthn API.
+
+    **In plain words:** a login that uses your fingerprint or face instead of a password.
+  </Accordion>
+  <Accordion title="PRF extension">
+    A WebAuthn extension that returns a deterministic pseudo-random 32-byte output for a given credential and salt. VeriPay (via Mera) uses it as key material.
+
+    **In plain words:** a feature that lets your passkey produce the same secret every time — which becomes your account.
+  </Accordion>
+  <Accordion title="Row-level security (RLS)">
+    A Postgres feature restricting which rows a role can read or write. Every VeriPay table has RLS enabled with **no policies**, so only the server's service-role key can access data.
+
+    **In plain words:** the database is locked so the public can't read it; only VeriPay's server can.
+  </Accordion>
+  <Accordion title="VAPID">
+    *Voluntary Application Server Identification* — a key pair that authenticates an app server to browser push services for Web Push.
+
+    **In plain words:** the keys that let VeriPay send notifications to your phone.
+  </Accordion>
+  <Accordion title="Arbitrator">
+    The single address stored in `VeriPayEscrow.arbitrator` permitted to call `resolveDispute`. Currently a known centralisation point.
+
+    **In plain words:** the reviewer who decides how to split the money when there's a disagreement.
+  </Accordion>
+  <Accordion title="Owner">
+    The address in `VeriPayEscrow.owner` permitted to change the fee (≤ 5%), arbitrator, fee recipient, auto-release delay (1–90 days), withdraw fees and transfer ownership. Cannot touch escrowed funds.
+
+    **In plain words:** VeriPay's admin account. It can change settings and collect fees, but it can't take customers' money.
+  </Accordion>
+</AccordionGroup>
+
+## Infrastructure terms
+
+<AccordionGroup>
+  <Accordion title="Chainlink CRE (Chainlink Runtime Environment)">
+    Chainlink's platform for running decentralised workflows. VeriPay's workflow is a cron trigger that reads the escrow, builds a signed report of due trade ids, and writes it to `AutoReleaseReceiver` through a Keystone forwarder.
+
+    **In plain words:** a trusted automation service that checks every 15 minutes for sellers who are owed money and pays them.
+  </Accordion>
+  <Accordion title="Envio HyperIndex">
+    A blockchain indexing framework that runs event handlers over chain data and serves the resulting entities over GraphQL. VeriPay's indexer lives in `indexer/`.
+
+    **In plain words:** a fast search engine for VeriPay's order history.
+  </Accordion>
+  <Accordion title="Forwarder (Keystone forwarder)">
+    The Chainlink contract that verifies DON signatures on a report and calls `onReport` on the receiver. The receiver only accepts calls from its configured forwarder.
+
+    **In plain words:** Chainlink's official messenger. VeriPay's robot only listens to messages delivered by it.
+  </Accordion>
+  <Accordion title="GraphQL">
+    A query language for APIs where the client specifies exactly which fields it wants.
+
+    **In plain words:** a flexible way to ask a server for exactly the information you need.
+  </Accordion>
+  <Accordion title="Idempotent">
+    An operation that has the same effect whether performed once or many times. `POST /api/pay/confirm` is idempotent — replays never mint twice.
+
+    **In plain words:** pressing the button twice does the same as pressing it once.
+  </Accordion>
+  <Accordion title="Mera">
+    `@category-labs/mera`, Category Labs' passkey-to-signing-key library for Monad.
+
+    **In plain words:** the tool that turns your fingerprint login into a blockchain account.
+  </Accordion>
+  <Accordion title="Paystack">
+    A Nigerian payment processor accepting Verve, Mastercard and Visa naira cards. VeriPay uses its inline popup and its server-side verify API, in test mode.
+
+    **In plain words:** the card payment company VeriPay uses.
+  </Accordion>
+  <Accordion title="PWA (Progressive Web App)">
+    A website with a manifest and service worker that can be installed to a home screen and receive push notifications.
+
+    **In plain words:** a website you can install like an app, without an app store.
+  </Accordion>
+  <Accordion title="Service worker">
+    A background script (`public/sw.js`) that handles offline fallback for page navigations and displays push notifications. It never caches `/api/*`.
+
+    **In plain words:** a small helper that runs in the background so the app can show alerts and a friendly offline screen.
+  </Accordion>
+  <Accordion title="Supabase">
+    Hosted Postgres with an HTTP API. VeriPay stores sellers, pay intents, notifications, chat, push subscriptions, exchange orders and analytics there.
+
+    **In plain words:** VeriPay's database for everything that isn't money.
+  </Accordion>
+  <Accordion title="thirdweb">
+    A Web3 SDK used for wallet connection (`ConnectButton`, in-app wallets, WalletConnect) and the transaction pipeline (`prepareContractCall`, `sendTransaction`, `waitForReceipt`).
+
+    **In plain words:** the toolkit VeriPay uses to send actions to the blockchain from any kind of account.
+  </Accordion>
+  <Accordion title="viem">
+    A TypeScript library for Ethereum-compatible chains, used for reads, server-side writes, signature verification and ABI encoding.
+
+    **In plain words:** a programming toolkit for talking to the blockchain.
+  </Accordion>
+</AccordionGroup>

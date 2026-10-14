@@ -2,70 +2,317 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "VeriPay",
-  "description": "VeriPay is a decentralized escrow protocol on Monad. Funds are locked in a smart contract and released only when the buyer confirms delivery — trustless P2P commerce for Africa.",
+  "description": "VeriPay is buyer protection for social commerce, built on Monad. A seller shares one link; the buyer sees the seller's on-chain track record, pays in naira with a fingerprint, and the money is held in a smart contract until the order arrives.",
   "colors": {
-    "primary": "#FF007A",
-    "light": "#FF4DA6",
-    "dark": "#CC0062"
+    "primary": "#09090B",
+    "light": "#FAFAFA",
+    "dark": "#09090B"
   },
   "logo": {
     "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "dark": "/logo/dark.svg",
+    "href": "https://veripay.store"
   },
   "favicon": "/favicon.svg",
+  "appearance": {
+    "default": "system"
+  },
+  "fonts": {
+    "family": "Inter"
+  },
+  "icons": {
+    "library": "lucide"
+  },
+  "api": {
+    "playground": {
+      "display": "simple"
+    }
+  },
+  "contextual": {
+    "options": ["copy", "view", "chatgpt", "claude"]
+  },
+  "banner": {
+    "content": "VeriPay runs on **Monad testnet** (chain 10143). Card payments use Paystack test mode and the naira on-chain is a test token — no real money moves. [Read the honest status →](/security/known-limitations)",
+    "dismissible": true
+  },
   "navigation": {
     "tabs": [
       {
         "tab": "Documentation",
+        "icon": "book-open",
         "groups": [
           {
-            "group": "Getting Started",
+            "group": "Start here",
             "pages": [
-              "introduction",
-              "mission",
-              "features",
-              "competitive-edge"
+              "index",
+              "quickstart",
+              "how-it-works",
+              "glossary",
+              "faq"
             ]
           },
           {
-            "group": "User Guide",
+            "group": "The product",
             "pages": [
-              "user-guide/prerequisites",
-              "user-guide/connect-wallet",
-              "user-guide/create-escrow",
-              "user-guide/dashboard",
-              "user-guide/release-funds",
-              "user-guide/request-refund",
-              "user-guide/in-trade-chat",
-              "user-guide/get-mon-tokens"
+              "product/problem",
+              "product/features",
+              "product/use-cases",
+              "product/why-monad",
+              "product/fees-and-pricing",
+              "product/comparison"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "User guides",
+        "icon": "users",
+        "groups": [
+          {
+            "group": "Getting set up",
+            "pages": [
+              "guides/sign-in",
+              "guides/install-app",
+              "guides/notifications"
             ]
           },
           {
-            "group": "Architecture",
+            "group": "For buyers",
+            "pages": [
+              "guides/buyers/overview",
+              "guides/buyers/check-a-seller",
+              "guides/buyers/pay-through-a-link",
+              "guides/buyers/confirm-delivery",
+              "guides/buyers/report-a-problem",
+              "guides/buyers/refunds",
+              "guides/buyers/receipts-and-proof"
+            ]
+          },
+          {
+            "group": "For sellers",
+            "pages": [
+              "guides/sellers/overview",
+              "guides/sellers/get-your-link",
+              "guides/sellers/share-your-link",
+              "guides/sellers/deliver-and-get-paid",
+              "guides/sellers/refund-a-buyer",
+              "guides/sellers/your-record"
+            ]
+          },
+          {
+            "group": "Everything else",
+            "pages": [
+              "guides/my-orders",
+              "guides/order-chat",
+              "guides/pay-with-crypto",
+              "guides/exchange",
+              "guides/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Architecture",
+        "icon": "network",
+        "groups": [
+          {
+            "group": "System design",
             "pages": [
               "architecture/overview",
-              "architecture/tech-stack",
-              "architecture/smart-contract",
-              "architecture/frontend",
-              "architecture/notifications"
+              "architecture/layers-and-trust",
+              "architecture/order-journey",
+              "architecture/money-flow"
             ]
           },
           {
-            "group": "Security & Trust",
+            "group": "Core mechanisms",
+            "pages": [
+              "architecture/passkey-accounts",
+              "architecture/card-to-escrow",
+              "architecture/gas-sponsorship",
+              "architecture/reputation",
+              "architecture/auto-release",
+              "architecture/disputes-and-arbitration",
+              "architecture/proof-page"
+            ]
+          },
+          {
+            "group": "Platform services",
+            "pages": [
+              "architecture/notifications-and-pwa",
+              "architecture/exchange-engine",
+              "architecture/data-model",
+              "architecture/frontend",
+              "architecture/tech-stack"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Smart contracts",
+        "icon": "file-code",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "contracts/overview",
+              "contracts/deployments"
+            ]
+          },
+          {
+            "group": "VeriPayEscrow",
+            "pages": [
+              "contracts/escrow/overview",
+              "contracts/escrow/storage-and-types",
+              "contracts/escrow/functions",
+              "contracts/escrow/events",
+              "contracts/escrow/errors",
+              "contracts/escrow/fee-math",
+              "contracts/escrow/admin"
+            ]
+          },
+          {
+            "group": "Other contracts",
+            "pages": [
+              "contracts/auto-release-receiver",
+              "contracts/vngn",
+              "contracts/legacy-v1"
+            ]
+          },
+          {
+            "group": "Operating",
+            "pages": [
+              "contracts/deploy-with-remix",
+              "contracts/testing"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API reference",
+        "icon": "terminal",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/errors"
+            ]
+          },
+          {
+            "group": "Pay links",
+            "pages": [
+              "api/sellers/lookup",
+              "api/sellers/claim",
+              "api/pay/status",
+              "api/pay/intent",
+              "api/pay/confirm",
+              "api/pay/gas"
+            ]
+          },
+          {
+            "group": "Reputation",
+            "pages": [
+              "api/reputation",
+              "api/graphql"
+            ]
+          },
+          {
+            "group": "Messaging",
+            "pages": [
+              "api/notifications",
+              "api/chat",
+              "api/push"
+            ]
+          },
+          {
+            "group": "Exchange",
+            "pages": [
+              "api/exchange/rates",
+              "api/exchange/orders",
+              "api/exchange/card"
+            ]
+          },
+          {
+            "group": "Admin and telemetry",
+            "pages": [
+              "api/admin",
+              "api/telemetry"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Developers",
+        "icon": "code",
+        "groups": [
+          {
+            "group": "Get running",
+            "pages": [
+              "developers/local-setup",
+              "developers/environment-variables",
+              "developers/database",
+              "developers/project-structure"
+            ]
+          },
+          {
+            "group": "Build and extend",
+            "pages": [
+              "developers/integration-guide",
+              "developers/sending-transactions",
+              "developers/conventions",
+              "developers/contributing"
+            ]
+          },
+          {
+            "group": "Deploy and operate",
+            "pages": [
+              "developers/deploy-app",
+              "developers/deploy-indexer",
+              "developers/run-cre-workflow",
+              "developers/testing",
+              "developers/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Security",
+        "icon": "shield-check",
+        "groups": [
+          {
+            "group": "Security and trust",
             "pages": [
               "security/model",
-              "security/transparency",
+              "security/threat-model",
+              "security/invariants",
               "security/audit-status",
-              "security/risk-disclosures"
+              "security/known-limitations",
+              "security/risk-disclosures",
+              "security/responsible-disclosure"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Resources",
+        "icon": "library",
+        "groups": [
+          {
+            "group": "Project",
+            "pages": [
+              "resources/roadmap",
+              "resources/hackathon",
+              "resources/sponsors",
+              "resources/changelog",
+              "resources/team"
             ]
           },
           {
-            "group": "Product",
+            "group": "Brand and community",
             "pages": [
-              "roadmap",
-              "use-cases",
-              "faq",
-              "community"
+              "resources/brand",
+              "resources/community"
             ]
           },
           {
@@ -75,57 +322,63 @@
               "legal/privacy",
               "legal/disclaimer"
             ]
-          }
-        ]
-      },
-      {
-        "tab": "API Reference",
-        "groups": [
+          },
           {
-            "group": "API Reference",
+            "group": "About these docs",
             "pages": [
-              "api-reference/overview",
-              "api-reference/smart-contract-abi",
-              "api-reference/notifications-api",
-              "api-reference/chat-api",
-              "api-reference/integration-guide"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Developer Guide",
-        "groups": [
-          {
-            "group": "Developer Guide",
-            "pages": [
-              "developers/local-setup",
-              "developers/project-structure",
-              "developers/environment-variables",
-              "developers/contributing"
+              "resources/maintaining-docs"
             ]
           }
         ]
       }
-    ]
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Launch app",
+          "href": "https://veripay.store",
+          "icon": "rocket"
+        },
+        {
+          "anchor": "GitHub",
+          "href": "https://github.com/Nailer/VeriPay",
+          "icon": "github"
+        },
+        {
+          "anchor": "Escrow on Monadscan",
+          "href": "https://testnet.monadscan.com/address/0x00bdf9fbc9f59cc6814bbc7a91b19bbad1517e6d",
+          "icon": "external-link"
+        }
+      ]
+    }
   },
   "navbar": {
     "links": [
       {
+        "label": "Demo video",
+        "href": "https://youtu.be/dxhIg5WTRA0"
+      },
+      {
         "label": "GitHub",
-        "href": "https://github.com/Nailer/Monad-Pay-Lagos"
+        "href": "https://github.com/Nailer/VeriPay"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Launch App",
+      "label": "Launch app",
       "href": "https://veripay.store"
     }
   },
   "footer": {
     "socials": {
       "x": "https://x.com/VeriPayHQ",
-      "github": "https://github.com/Nailer/Monad-Pay-Lagos"
+      "github": "https://github.com/Nailer/VeriPay",
+      "youtube": "https://youtu.be/XqcZS5daLv8"
+    }
+  },
+  "seo": {
+    "metatags": {
+      "og:site_name": "VeriPay Docs"
     }
   }
 }

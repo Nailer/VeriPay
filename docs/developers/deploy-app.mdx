@@ -1,0 +1,47 @@
+---
+title: "Deploy the app"
+description: "Deploy VeriPay to Vercel, configure environments and domains, and verify the deployment."
+icon: "cloud-upload"
+---
+
+## Vercel
+
+<Steps>
+  <Step title="Import the repo">Vercel → New Project → import `Nailer/VeriPay`. Framework preset: **Next.js**. Build command `next build`, output default.</Step>
+  <Step title="Environment variables">Add every variable from [Environment variables](/developers/environment-variables) to **Production** and/or **Preview** as appropriate.</Step>
+  <Step title="Deploy">Push to the target branch; Vercel builds automatically.</Step>
+  <Step title="Domain">Add your custom domain in Vercel → Domains and point DNS at Vercel.</Step>
+</Steps>
+
+## Current setup
+
+| Domain | Branch | Vercel environment |
+|---|---|---|
+| `veripay.store` | `hackathon/metropolis` | **Preview** (domain assigned to the branch) — uses Preview env vars |
+| `www.veripay.store` | `main` | Production (older version) |
+| `monad-pay-lagos.vercel.app` | `main` | Production |
+| `monad-pay-lagos-git-hackathon-metropolis-nailer1s-projects.vercel.app` | `hackathon/metropolis` | Preview alias, updates on every push |
+
+<Warning>
+  **Passkeys are bound to the domain.** Accounts created on the long preview URL don't exist on `veripay.store`, and vice versa.
+</Warning>
+
+<Note>
+  Vercel SSO deployment protection was disabled project-wide so preview links are publicly viewable. Revisit this if private previews are needed — it applies to every preview on the project.
+</Note>
+
+## Post-deploy checklist
+
+- [ ] `GET /api/pay/intent` → `deliveryAddress` non-null, `cardProcessor: true`, `storage: true`.
+- [ ] Minter address owns vNGN and holds testnet MON.
+- [ ] `GET /api/reputation/<addr>` → `"source":"envio"` (if `ENVIO_GRAPHQL_URL` set).
+- [ ] `NEXT_PUBLIC_MONAD_RPC_URL` is restricted to your domain in Alchemy.
+- [ ] Your domain is on the thirdweb client id's allowed-domains list.
+- [ ] `ADMIN_PASSCODE` is set (no default fallback in use).
+- [ ] VAPID keys set and a test push arrives.
+- [ ] (Exchange) Paystack webhook points at `https://<domain>/api/exchange/card/webhook`.
+- [ ] Run `BASE_URL=https://<domain> node tests/e2e-pay.mjs` → 14/14.
+
+<Accordion title="In plain words" icon="lightbulb">
+  Publishing the app means connecting the code to Vercel, pasting in the settings, and checking a short list to make sure payments, the database, alerts and the admin console all work.
+</Accordion>

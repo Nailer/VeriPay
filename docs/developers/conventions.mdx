@@ -1,0 +1,71 @@
+---
+title: "Conventions"
+description: "Product, code, design and performance rules for working on VeriPay — the things that are easy to get wrong."
+icon: "ruler"
+---
+
+## Product positioning
+
+<Note>
+  **The product is the escrow. The exchange is a feature.** Lead with escrow in copy, docs and pitches; treat naira ↔ crypto as what makes escrow reachable. The market is Instagram/WhatsApp/Jiji commerce — not crypto traders.
+</Note>
+
+## Consumer language
+
+On `/pay`, `/sell`, `/orders`, `/trade`:
+
+| Don't say | Say |
+|---|---|
+| wallet, address, 0x… | account, *Signed in*, shop name |
+| MON, gas | network fee (only on the receipt), *paid for you* |
+| escrow, smart contract | *held safely*, *locked* |
+| trade | order |
+| release funds | *I received my order — pay the seller* |
+| raise dispute | *Report a problem* |
+
+## Code rules
+
+| Rule | Why |
+|---|---|
+| Write via thirdweb's pipeline only | `window.ethereum` breaks for most users |
+| Read trades via `readTrade()` / `readNextTradeId()` | v1/v2 compatibility |
+| Price server-side only | Tampered clients can't mint favourable rates |
+| Put concurrency guards in the SQL `WHERE` | Double-click safety |
+| Keep reputation rules identical in `reputation.ts` and `EventHandlers.ts` | Sources must never disagree |
+| Call `readyToTransact()` before consumer writes | Fingerprint users have no MON |
+| Keep gas sponsorship retried and capped | Best-effort failed silently in production |
+| Don't cache `/api/*` in the service worker | Stale prices/status are financial bugs |
+| Lowercase addresses at storage boundaries | Consistent joins with Envio ids |
+
+## Contract rules
+
+- The owner **must never** be able to touch escrowed funds. Don't add an admin withdrawal of trade money.
+- `MAX_FEE_BPS` stays a `constant`.
+- Fee rate stays snapshotted per trade.
+- Refunds are never charged a fee.
+- Wrap every ERC-20 call in `require(...)`.
+- Compile and run the local-EVM suite before handing over contract changes.
+
+## Design rules
+
+- **Strict black and white** (zinc shades; invert for dark). No accent colours — the old pink `#FF007A` was removed.
+- Logo: check-mark in a rounded square (`src/components/Logo.tsx`, `src/app/icon.svg`).
+- `font-black` uppercase micro-labels, wide tracking, `rounded-3xl` cards.
+- **Max 2–3 buttons per screen.**
+- **Mobile-first** — verify at 375 px.
+- Respect `prefers-reduced-motion`.
+
+## Performance rules
+
+- No large blurred layers, `mix-blend` or `animate-pulse` on big surfaces; use `.bg-ambient` radial gradients.
+- Avoid `backdrop-blur-xl` on big cards.
+- Animate `transform`, not `background-position`.
+- All polling through `usePolling()`; no raw `setInterval` fetches.
+- Don't re-render a whole page every second for relative timestamps.
+
+## Honesty rules
+
+- Never describe testnet demos as production, or vNGN as real money / cNGN.
+- Say demo trades are VeriPay's own when asked.
+- Don't claim fees/disputes/AUSD are live on a deployment still using the v1 contract.
+- Verify by exercising changes, not by assuming. Find the actual cause before changing code.

@@ -1,119 +1,76 @@
 ---
-title: "Security Model"
-sidebarTitle: "Security Model"
-description: "How VeriPay protects your funds — smart contract security, access control, and the trust model."
+title: "Security model"
+description: "What VeriPay protects, from whom, and how — the principles behind every safeguard."
+icon: "shield-check"
 ---
 
-## Trust Model
+## Assets
 
-VeriPay's security philosophy is simple: **trust code, not humans.**
+| Asset | Where | Primary protection |
+|---|---|---|
+| Escrowed funds | `VeriPayEscrow` | Contract rules; no admin withdrawal path |
+| Buyer's pre-lock balance | Buyer's own EOA | Passkey-derived key on device |
+| Seller payouts | Seller's EOA | Passkey-derived key on device |
+| Seller identity (handle → address) | `sellers` table | EIP-191 signature proof |
+| Payment integrity (charge ↔ mint) | `pay_intents` | Server-side Paystack verification, SQL guards |
+| Minter / gas wallet | Server env | Secret management; caps on spend |
+| Reputation integrity | Contract events | Event-sourcing; no editable store |
+| User data (emails, chat) | Supabase | RLS with no policies; service-role only on server |
 
-Your funds are protected by a smart contract — a piece of software that runs on the Monad blockchain exactly as programmed. No human, no company, no government can alter its behavior or access the funds it holds.
+<Accordion title="In plain words" icon="lightbulb">
+  These are the things worth protecting — mainly the money in the safe, but also the link between a shop and its account, the honesty of seller records, and personal data like emails and messages — and what keeps each one safe.
+</Accordion>
 
-### The Security Stack
+## Principles
 
-```mermaid
-graph TB
-    subgraph "Layer 1: Blockchain Security"
-        A[Monad Consensus<br/>Proof of Stake]
-        B[EVM Execution<br/>Deterministic]
-    end
+<CardGroup cols={2}>
+  <Card title="Custody by code, not company" icon="vault">
+    The escrow has no owner path to customer funds. VeriPay's compromise can't drain locked orders.
+  </Card>
+  <Card title="Verify, don't trust, the browser" icon="shield-alert">
+    Amounts, prices, payout addresses and payment success are decided server-side or on-chain.
+  </Card>
+  <Card title="Atomic state transitions" icon="lock">
+    Every value-moving DB transition is a compare-and-swap in SQL; contract state flips before transfers.
+  </Card>
+  <Card title="Least privilege" icon="key">
+    Each key holds exactly the power it needs; caps bound worst-case loss.
+  </Card>
+  <Card title="Fail safe, degrade gracefully" icon="life-buoy">
+    Dependency outages slow things down; they don't unlock funds.
+  </Card>
+  <Card title="Transparent by default" icon="eye">
+    Proof page, public events, open-source code, honest status disclosures.
+  </Card>
+</CardGroup>
 
-    subgraph "Layer 2: Smart Contract Security"
-        C[No Admin Keys]
-        D[Access Control per Trade]
-        E[Two-Party Consent for Refunds]
-        F[Immutable Contract Logic]
-    end
+## Defence summary
 
-    subgraph "Layer 3: Application Security"
-        G[Non-Custodial Wallets]
-        H[Client-Side Signing]
-        I[No Fund Storage]
-    end
+| Threat | Defence | Where |
+|---|---|---|
+| Browser lies about a card payment, or pays less | Server verifies status, currency and amount with Paystack directly | `src/lib/paystack.ts` |
+| One payment reused for another order | Reference generated server-side and bound to one intent; `UNIQUE(paystack_ref)` | `src/lib/payments.ts` |
+| Double-click or race delivers twice | Status guard in SQL `WHERE`; single delivery slot | `src/lib/payments.ts` |
+| Someone registers a link that pays another account | Claim must be signed by that account; verified server-side | `src/lib/sellers.ts` |
+| VeriPay (the owner) takes customers' money | No such function; `withdrawFees` moves only fees | `contracts/VeriPayEscrow.sol` |
+| Fee raised on orders already placed | Fee rate stored per order at creation | `contracts/VeriPayEscrow.sol` |
+| Fee raised without limit | `MAX_FEE_BPS = 500` constant | `contracts/VeriPayEscrow.sol` |
+| Forged auto-release report | Receiver accepts reports only from the configured forwarder | `contracts/cre/ReceiverTemplate.sol` |
+| Gas sponsorship farmed as a faucet | Eligibility; cap 3; counted before sending | `src/lib/payments.ts` |
+| Token returning `false` instead of reverting | Every ERC-20 transfer wrapped in `require` | `contracts/VeriPayEscrow.sol` |
+| Reentrancy via token/recipient | `nonReentrant`; flags set before transfers | `contracts/VeriPayEscrow.sol` |
+| Database read by the public | RLS on every table, no public policies | `supabase/schema.sql` |
+| Tampered exchange price | Server-side pricing; client sends intent only | `src/lib/pricing.ts` |
+| Fake sell-side deposit | On-chain verification of to/from/value/status; unique tx hash | `src/lib/chainVerify.ts` |
+| Forged Paystack webhook | HMAC-SHA512 signature check | `src/lib/paystack.ts` |
+| Phishing for credentials | Passkeys are origin-bound | WebAuthn |
+| Stale cached financial data | Service worker never caches `/api/*` | `public/sw.js` |
 
-    A --> C
-    B --> D
-    C --> G
-    D --> H
-```
+## Where to go next
 
-## Smart Contract Security Properties
-
-### No Admin Keys
-
-The escrow contract has **no `owner` function, no admin role, and no privileged access**. This means:
-
-- ❌ VeriPay cannot drain funds from the contract
-- ❌ VeriPay cannot pause, modify, or upgrade the contract
-- ❌ No single wallet has special permissions over the contract
-- ✅ The contract operates autonomously based on its code alone
-
-### Per-Trade Access Control
-
-Every function that moves funds checks `msg.sender` against the trade's recorded participants:
-
-| Function | Required Caller | What It Checks |
-| --- | --- | --- |
-| `releaseToSeller()` | Buyer | `msg.sender == trade.buyer` |
-| `sellerApproveRefund()` | Seller | `msg.sender == trade.seller` |
-| `buyerClaimRefund()` | Buyer | `msg.sender == trade.buyer` AND `sellerApprovedRefund == true` |
-
-No third party can take any action on a trade they're not involved in.
-
-### Two-Party Consent for Refunds
-
-Refunds require **explicit consent from the seller**. This is a critical security property:
-
-- **Prevents buyer fraud:** A buyer cannot claim a refund after receiving goods
-- **Prevents unilateral action:** Neither party can move funds without the other's involvement
-- **Creates accountability:** The seller must actively approve, creating an auditable on-chain action
-
-### Immutability
-
-The contract is **not upgradeable**. There is no proxy pattern, no admin upgrade function, and no way to change the deployed code. This eliminates:
-
-- Malicious upgrade attacks
-- "Rug pull" scenarios where contract logic is changed
-- Governance attacks on upgrade mechanisms
-
-## Application Security
-
-### Non-Custodial Architecture
-
-VeriPay **never has access to your private keys or funds**:
-
-- All transaction signing happens in your wallet (MetaMask, etc.)
-- Social login wallets (email/Google) use Thirdweb's non-custodial in-app wallet — keys are encrypted and only accessible to you
-- VeriPay's servers never see, store, or process private keys
-
-### No Fund Storage
-
-VeriPay's API layer handles only **notifications and chat messages** — non-financial data. The application never:
-
-- Holds or transfers funds
-- Stores wallet balances
-- Has access to contract functions that move money
-
-All fund movements happen directly between the user's wallet and the smart contract.
-
-### Client-Side Transaction Signing
-
-Every blockchain transaction is:
-1. Constructed in the user's browser
-2. Signed by the user's wallet (requires explicit approval)
-3. Submitted directly to the Monad RPC
-4. Confirmed on-chain
-
-VeriPay's servers are never in the transaction path.
-
-## What VeriPay Cannot Do
-
-| Action | Possible? | Reason |
-| --- | --- | --- |
-| Access your funds | ❌ | No admin keys, non-custodial architecture |
-| Change contract rules | ❌ | Contract is immutable (not upgradeable) |
-| Freeze your escrow | ❌ | No pause function in the contract |
-| Release funds without your approval | ❌ | Only the buyer can release, only the buyer can claim refund |
-| See your private keys | ❌ | Keys never leave your wallet |
-| Rug pull | ❌ | No owner, no admin, no privileged functions |
+<CardGroup cols={2}>
+  <Card title="Threat model" icon="crosshair" href="/security/threat-model">Attackers, capabilities, attack trees and residual risk.</Card>
+  <Card title="Contract invariants" icon="sigma" href="/security/invariants">Properties the escrow must always satisfy.</Card>
+  <Card title="Known limitations" icon="triangle-alert" href="/security/known-limitations">What isn't solved yet.</Card>
+  <Card title="Audit status" icon="file-check" href="/security/audit-status">What has and hasn't been reviewed.</Card>
+</CardGroup>

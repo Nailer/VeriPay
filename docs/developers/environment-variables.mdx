@@ -1,128 +1,94 @@
 ---
-title: "Environment Variables"
-sidebarTitle: "Environment Variables"
-description: "All environment variables used by VeriPay and how to configure them."
+title: "Environment variables"
+description: "Every environment variable VeriPay reads: what it does, whether it's required, whether it reaches the browser, defaults and gotchas."
+icon: "key-round"
 ---
 
-## Overview
+<Note>
+  Only variables prefixed **`NEXT_PUBLIC_`** reach the browser. Everything else is server-only. `.env` is gitignored — never commit secrets, and never print them in logs or chat.
+</Note>
 
-VeriPay uses environment variables to configure blockchain addresses and third-party API keys. These are set in a `.env.local` file at the project root.
+<Accordion title="In plain words" icon="lightbulb">
+  These are the settings and secret keys the app needs. Ones starting with `NEXT_PUBLIC_` are visible to anyone's browser, so they must never be secret. The rest stay on the server.
+</Accordion>
 
-<Warning>
-  Never commit `.env.local` to Git. It is already listed in `.gitignore`. Exposing your Thirdweb Client ID publicly can allow others to misuse your API quota.
-</Warning>
+## Required
 
-## Variable Reference
+| Variable | Scope | Purpose |
+|---|---|---|
+| `NEXT_PUBLIC_CONTRACT_ADDRESS` | public | Deployed `VeriPayEscrow` (`0x00bdf9fb…1517e6d` on testnet) |
+| `NEXT_PUBLIC_THIRDWEB_CLIENT_ID` | public | thirdweb client for sign-in and transactions |
+| `SUPABASE_URL` | server | Your Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | **secret** | Service-role key; bypasses RLS — server only |
+| `ADMIN_PASSCODE` | **secret** | Gates `/admin` and `/api/admin/*` (falls back to a hard-coded default if unset — always set it) |
 
-### `NEXT_PUBLIC_CONTRACT_ADDRESS`
+## Pay links (card → naira → escrow)
 
-The deployed smart contract address on Monad.
+| Variable | Scope | Purpose |
+|---|---|---|
+| `PAYSTACK_SECRET_KEY` | **secret** | Server-side verification. Without it, card flow runs in labelled TEST MODE |
+| `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | public | Inline popup. `pk_test_…` shows the test-card hint |
+| `PAY_MINTER_PRIVATE_KEY` | **secret** | Testnet-only key that owns vNGN, mints after verified charges, and sponsors gas. Falls back to `EXCHANGE_PAYOUT_PRIVATE_KEY` |
+| `NEXT_PUBLIC_NGN_TOKEN_ADDRESS` | public | vNGN address (default `0xdbb53d0a…31eb`) |
 
-```env
-NEXT_PUBLIC_CONTRACT_ADDRESS=0xd0cc532f55ce6849d5b70e24d6188073f8921621
-```
+## Network and indexing
 
-| Property | Value |
-| --- | --- |
-| **Required** | Yes |
-| **Prefix** | `NEXT_PUBLIC_` — exposed to the browser |
-| **Default** | Falls back to the testnet address in `src/lib/abi.ts` |
+| Variable | Scope | Purpose |
+|---|---|---|
+| `NEXT_PUBLIC_MONAD_RPC_URL` | public | RPC for client **and** server (e.g. Alchemy `https://monad-testnet.g.alchemy.com/v2/KEY`). Falls back to `https://testnet-rpc.monad.xyz`. Client-exposed by design — **restrict it to your domain in Alchemy's dashboard** |
+| `MONAD_RPC_URL` | server | Optional server-only override |
+| `ENVIO_GRAPHQL_URL` | server | Envio endpoint. Without it, reputation reads the chain |
+| `NEXT_PUBLIC_AUSD_ADDRESS` | public | Override AUSD (default `0x333a12e2…463f`) |
 
-### `NEXT_PUBLIC_THIRDWEB_CLIENT_ID`
+## Push notifications
 
-Your Thirdweb project Client ID — required for wallet connection, social login, and in-app wallets.
+| Variable | Scope | Purpose |
+|---|---|---|
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | public | Browser subscription key |
+| `VAPID_PRIVATE_KEY` | **secret** | Server signing key |
+| `VAPID_SUBJECT` | server | Contact URI (default `mailto:support@veripay.store`) |
 
-```env
-NEXT_PUBLIC_THIRDWEB_CLIENT_ID=your_client_id_here
-```
+Generate keys with `npx web-push generate-vapid-keys`. Without both, push silently no-ops.
 
-| Property | Value |
-| --- | --- |
-| **Required** | Yes (for wallet features) |
-| **Prefix** | `NEXT_PUBLIC_` — exposed to the browser |
-| **How to get it** | Sign up at [thirdweb.com](https://thirdweb.com/dashboard) → Create a project → Copy the Client ID |
+## Exchange (pre-hackathon)
 
-### `SUPABASE_URL`
+| Variable | Default | Purpose |
+|---|---|---|
+| `EXCHANGE_SPREAD_PERCENT` | `3.5` | Margin (clamped 0–25) |
+| `EXCHANGE_NGN_USD_RATE` | — | Pin true cost of funds; overrides Bybit |
+| `EXCHANGE_QUOTE_TTL_MINUTES` | `15` | Quote lock (1–120) |
+| `EXCHANGE_MIN_NGN` / `EXCHANGE_MAX_NGN` | `1000` / `5000000` | Order limits |
+| `EXCHANGE_MERCHANT_BANK_NAME` | — | Bank buyers pay into |
+| `EXCHANGE_MERCHANT_ACCOUNT_NUMBER` | — | Account number |
+| `EXCHANGE_MERCHANT_ACCOUNT_NAME` | — | Account name |
+| `EXCHANGE_MERCHANT_ADDRESS` | — | Where sellers send crypto |
+| `EXCHANGE_PAYOUT_PRIVATE_KEY` | — | **Secret** hot wallet; enables automatic MON delivery |
 
-The API URL for VeriPay's Supabase project. Used server-side to persist chat messages, notifications, exchange orders, and usage analytics (wallet connects, page views, trade activity).
+## CRE workflow (`cre/.env`)
 
-```env
-SUPABASE_URL=https://gwruqdpbugqjrkyfvipa.supabase.co
-```
+| Variable | Purpose |
+|---|---|
+| `CRE_ETH_PRIVATE_KEY` | Funded testnet key that pays gas for `simulate.sh --broadcast` |
 
-| Property | Value |
-| --- | --- |
-| **Required** | Only for persistence/analytics features |
-| **Prefix** | None — server-only |
-| **Default** | Falls back to the project URL hardcoded in `src/lib/supabase.ts` |
+## Indexer
 
-### `SUPABASE_SERVICE_ROLE_KEY`
+| Variable | Purpose |
+|---|---|
+| `CONTRACT_ADDRESS` (shell) | Used when following `indexer/README.md` setup |
 
-The Supabase **service role** secret key. This bypasses Row Level Security, so every database table it touches has RLS enabled with zero policies — meaning the public/anon key can't read or write any of this data, only the server can.
+## Gotchas
 
-```env
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_secret_here
-```
-
-| Property | Value |
-| --- | --- |
-| **Required** | Only for persistence/analytics features |
-| **Prefix** | None — server-only. **Never** prefix this with `NEXT_PUBLIC_`. |
-| **How to get it** | Supabase Dashboard → your project → Settings → API → `service_role` secret |
-
-<Warning>
-  `SUPABASE_SERVICE_ROLE_KEY` has full read/write access to every table in the database. Treat it like a root password — never commit it, never log it, and never expose it to the browser.
-</Warning>
-
-### `ADMIN_PASSCODE`
-
-Shared passcode that gates the `/admin` console (chats, exchange orders, usage stats).
-
-```env
-ADMIN_PASSCODE=choose-a-strong-passcode
-```
-
-| Property | Value |
-| --- | --- |
-| **Required** | Recommended — defaults to `lagos-admin` if unset |
-| **Prefix** | None — server-only |
-
-## Full `.env.local` Template
-
-```env
-# ─── Smart Contract ────────────────────────────────────────────
-# VeriPay Escrow contract address on Monad Testnet
-NEXT_PUBLIC_CONTRACT_ADDRESS=0xd0cc532f55ce6849d5b70e24d6188073f8921621
-
-# ─── Thirdweb ─────────────────────────────────────────────────
-# Get yours at: https://thirdweb.com/dashboard
-NEXT_PUBLIC_THIRDWEB_CLIENT_ID=your_thirdweb_client_id_here
-
-# ─── Supabase (chat, notifications, exchange orders, analytics) ─
-SUPABASE_URL=https://gwruqdpbugqjrkyfvipa.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_secret_here
-
-# ─── Admin console ──────────────────────────────────────────────
-ADMIN_PASSCODE=choose-a-strong-passcode
-```
-
-## Adding New Variables
-
-When adding new environment variables:
-
-1. **Prefix with `NEXT_PUBLIC_`** if the variable needs to be accessible in the browser (client-side components)
-2. **No prefix** for server-only variables (only accessible in API routes and server components)
-3. **Restart the dev server** after changing `.env.local` — Next.js reads env vars at startup
-
-## Vercel Deployment
-
-When deploying to Vercel, add your environment variables in the Vercel dashboard:
-
-1. Go to your project → **Settings** → **Environment Variables**
-2. Add each variable from your `.env.local`
-3. Set them for **Production**, **Preview**, and **Development** environments
-4. Redeploy after adding variables
-
-<Tip>
-  For production deployments, update `NEXT_PUBLIC_CONTRACT_ADDRESS` to your mainnet contract address when you're ready to go live.
-</Tip>
+<AccordionGroup>
+  <Accordion title="Missing NEXT_PUBLIC_ prefix">
+    Setting `CONTRACT_ADDRESS` instead of `NEXT_PUBLIC_CONTRACT_ADDRESS` silently does nothing for client code. This bug existed in production once.
+  </Accordion>
+  <Accordion title="Near-miss names">
+    A past bug used `_ACCOUNT_NUMBER` / `_ACCOUNT_NAME` instead of `EXCHANGE_MERCHANT_ACCOUNT_NUMBER` / `EXCHANGE_MERCHANT_ACCOUNT_NAME`, which fell back to placeholder bank details shown to real buyers. If bank details look wrong, check exact names.
+  </Accordion>
+  <Accordion title="Local vs Vercel drift">
+    `.env` and Vercel's environment settings (Production vs Preview) are separate and can drift. `veripay.store` currently serves the `hackathon/metropolis` branch as a **Preview** domain, so it uses **Preview** env vars.
+  </Accordion>
+  <Accordion title="Minter must own vNGN">
+    If only `EXCHANGE_PAYOUT_PRIVATE_KEY` is set, that wallet must be made vNGN's owner and hold MON, or delivery fails after the card is charged. Check `GET /api/pay/intent`.
+  </Accordion>
+</AccordionGroup>

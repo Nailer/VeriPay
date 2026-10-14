@@ -1,145 +1,128 @@
 ---
-title: "Architecture Overview"
-sidebarTitle: "Overview"
-description: "A high-level view of VeriPay's system architecture — frontend, smart contracts, APIs, and blockchain infrastructure."
+title: "Architecture overview"
+description: "The full system: people, the Next.js app, off-chain services, sponsor infrastructure and the Monad contracts — and how every request flows between them."
+icon: "network"
 ---
 
-## System Architecture
+VeriPay is a **Next.js 16 (App Router) application** deployed on Vercel, backed by **Supabase Postgres** for off-chain state, integrating **Paystack** for card acquiring, and settling on **Monad testnet** through three contracts. Identity is a **passkey-derived EOA**; reads and writes go through **Alchemy RPC**; reputation is served by an **Envio HyperIndex** deployment; liveness is provided by a **Chainlink CRE** cron workflow.
 
-VeriPay is a **full-stack decentralized application** with three core layers: a Next.js frontend, a Solidity smart contract on Monad, and a lightweight API layer for off-chain features.
+<Accordion title="In plain words" icon="lightbulb">
+  VeriPay is a website (built with Next.js) that talks to a database (Supabase) for ordinary information like shop names, a card company (Paystack) for payments, and the Monad blockchain where the money is actually held. Some helper services make sign-in easy (Mera), make lookups fast (Envio), connect to the blockchain (Alchemy) and run automatic payouts (Chainlink).
+</Accordion>
 
-### Architecture Diagram
+## System diagram
 
 ```mermaid
-graph TB
-    subgraph "Client Layer"
-        A[Next.js Frontend<br/>React 19 + Tailwind CSS]
-        B[Thirdweb SDK<br/>Wallet Connection]
-        C[viem Client<br/>Blockchain Reads/Writes]
+flowchart TB
+    subgraph People["People — never see crypto"]
+        direction LR
+        S["Seller<br/>phone browser"]
+        B["Buyer<br/>phone browser"]
+        V["Anyone<br/>checking a seller"]
     end
 
-    subgraph "API Layer"
-        D[Notifications API<br/>/api/notifications]
-        E[Chat API<br/>/api/chat]
+    subgraph App["VeriPay app · Next.js on Vercel · veripay.store"]
+        direction TB
+        UI["Pages<br/>/sell · /pay/handle · /orders<br/>/trade/id · /seller · /proof/hash"]
+        API["Server API routes<br/>/api/sellers · /api/pay/intent<br/>/api/pay/confirm · /api/pay/gas<br/>/api/reputation/address"]
+        MINT["Delivery wallet<br/>issues test naira + covers fees"]
     end
 
-    subgraph "Blockchain Layer"
-        F[Monad Testnet<br/>Chain ID 10143]
-        G[Escrow Smart Contract<br/>0xd0cc...1621]
+    subgraph Off["Off-chain services"]
+        direction LR
+        PS["Paystack<br/>card payments · test mode"]
+        DB[("Supabase Postgres<br/>sellers · pay_intents<br/>notifications · chat")]
     end
 
-    subgraph "External Services"
-        H[Monad RPC<br/>testnet-rpc.monad.xyz]
-        I[Block Explorer<br/>SocialScan]
+    subgraph Sponsors["Sponsor infrastructure"]
+        direction LR
+        MERA["Mera<br/>passkey → account"]
+        ALC["Alchemy<br/>Monad RPC"]
+        ENV["Envio HyperIndex<br/>reputation indexer"]
+        CRE["Chainlink CRE<br/>auto-release workflow"]
     end
 
-    A --> B
-    A --> C
-    A --> D
-    A --> E
-    C --> H
-    H --> F
-    F --> G
-    G --> I
+    subgraph Monad["Monad testnet · chain 10143"]
+        direction LR
+        ESC["VeriPayEscrow<br/>holds the money"]
+        NGN["vNGN<br/>test naira token"]
+        ARR["AutoReleaseReceiver"]
+    end
+
+    S & B & V --> UI
+    UI <--> API
+    UI -- "fingerprint sign-in" --> MERA
+    UI -- "card checkout" --> PS
+    API -- "verify charge" --> PS
+    API <--> DB
+    API --> MINT
+    MINT -- "mint + fee top-up" --> ALC
+    UI -- "approve · lock · release" --> ALC
+    ALC --> NGN & ESC
+    ESC -- "every trade event" --> ENV
+    ENV -- "seller records" --> API
+    CRE -- "signed report" --> ARR
+    ARR -- "autoRelease()" --> ESC
 ```
 
-### Layer Breakdown
+**Reading the diagram:** people only ever touch the app's pages. The app's server talks to Paystack and the database. Every blockchain read and write goes to Monad through Alchemy. The escrow contract is where the money lives; Envio turns its events into seller records; Chainlink's workflow pays sellers whose buyers went silent.
 
-<CardGroup cols={3}>
-  <Card title="Client Layer" icon="browser">
-    **Next.js 16 + React 19**
+## Components
 
-    The user-facing application. Handles all UI rendering, wallet connections, form inputs, and transaction signing. Runs in the user's browser.
-  </Card>
-  <Card title="Smart Contract" icon="file-contract">
-    **Solidity on Monad**
+| Component | Technology | Responsibility | Code |
+|---|---|---|---|
+| Web app (client) | Next.js 16, React 19, Tailwind 4, thirdweb v5, viem | UI, passkey derivation, transaction signing, polling | `src/app/**/page.tsx`, `src/components/` |
+| Web app (server) | Next.js route handlers on Vercel (Node runtime) | Seller claims, payment intents, Paystack verification, minting, gas sponsorship, reputation, notifications | `src/app/api/**`, `src/lib/` |
+| Database | Supabase Postgres, RLS on, service-role only | Sellers, intents, notifications, chat, push subscriptions, exchange orders, analytics, trade mirror | `supabase/schema.sql` |
+| Card acquiring | Paystack inline JS + REST verify + webhook | Naira card charges | `src/lib/paystack.ts` |
+| Identity | `@category-labs/mera` + `@scure/bip32/bip39` | Passkey PRF → secp256k1 key | `src/lib/mera.ts` |
+| RPC | Alchemy Monad testnet (fallback: public node) | All chain I/O | `src/lib/monad.ts` |
+| Escrow | Solidity 0.8.24 | Custody and settlement rules | `contracts/VeriPayEscrow.sol` |
+| Test naira | Solidity 0.8.24 ERC-20 | On-chain naira representation on testnet | `contracts/test/VeriPayTestNaira.sol` |
+| Automation | Chainlink CRE TS SDK + receiver contract | Scheduled `autoRelease` | `cre/`, `contracts/cre/` |
+| Indexer | Envio HyperIndex (hosted) | Event-sourced reputation over GraphQL | `indexer/` |
+| Push | Web Push (VAPID) + service worker | Device notifications | `src/lib/push.ts`, `public/sw.js` |
 
-    The on-chain escrow logic. Holds funds, enforces trade rules, and emits events. Fully immutable and permissionless.
-  </Card>
-  <Card title="API Layer" icon="server">
-    **Next.js API Routes**
+## Design principles
 
-    Lightweight REST APIs for off-chain features: notifications and chat messages. These don't handle funds — they only facilitate communication.
-  </Card>
+<AccordionGroup>
+  <Accordion title="1. The chain is the source of truth for money and status" icon="link">
+    Order status is always read from the contract (`readTrade`), never from the database. `escrow_trades` / `trade_activity` exist only as a convenience mirror for analytics.
+
+    **In plain words:** whatever the blockchain says is the truth. VeriPay's database never overrides it.
+  </Accordion>
+  <Accordion title="2. Never trust the browser about money" icon="shield">
+    Prices, amounts, payout destinations and payment success are decided server-side. The browser sends *intent* (which seller handle, how much naira), never a rate, an address to pay, or a "paid" flag that is trusted.
+
+    **In plain words:** the website on your phone can be tampered with, so anything involving money is double-checked by VeriPay's server.
+  </Accordion>
+  <Accordion title="3. Concurrency guards live in the database" icon="lock">
+    Every state transition that moves value uses an optimistic-concurrency update with the expected prior state in the SQL `WHERE` clause (`.eq("status", "awaiting_payment")`, `.is("mint_tx", null)`, `.eq("gas_topups", n)`). A losing concurrent request matches zero rows and does nothing.
+
+    **In plain words:** if two requests try to do the same thing at the same time, only one can win. Double-clicks can't pay twice.
+  </Accordion>
+  <Accordion title="4. Every external dependency has a fallback" icon="life-buoy">
+    Envio → direct chain scan. Alchemy → public RPC. Binance → CoinGecko → constant. Bybit P2P → CoinGecko → constant. Paystack keys missing → labelled test mode.
+
+    **In plain words:** if a helper service goes down, VeriPay keeps working, just a bit slower.
+  </Accordion>
+  <Accordion title="5. Blockchain invisible on consumer surfaces" icon="eye-off">
+    No addresses, "MON", "escrow" or "wallet" on `/pay`, `/sell`, `/orders`, `/trade`. Crypto surfaces (`/create`, `/exchange`, `/dashboard`) are under **More**.
+
+    **In plain words:** normal shoppers never see crypto words.
+  </Accordion>
+  <Accordion title="6. Minimal on-chain privilege" icon="key">
+    The owner can't move escrowed funds; the CRE receiver has no special permission; the minter can only mint vNGN. Each key can do only what it must.
+
+    **In plain words:** every account in the system has the smallest power it needs, so a single compromised key can't drain customers' money.
+  </Accordion>
+</AccordionGroup>
+
+## Where to go next
+
+<CardGroup cols={2}>
+  <Card title="Layers and trust boundaries" icon="layers" href="/architecture/layers-and-trust">What each layer is trusted with — and what it isn't.</Card>
+  <Card title="Order journey" icon="route" href="/architecture/order-journey">Every flow as a sequence diagram.</Card>
+  <Card title="Money flow" icon="banknote" href="/architecture/money-flow">Where the money is at every moment.</Card>
+  <Card title="Data model" icon="database" href="/architecture/data-model">Every table, column and constraint.</Card>
 </CardGroup>
-
-## Data Flow
-
-### Creating an Escrow
-
-```mermaid
-sequenceDiagram
-    participant B as Buyer (Browser)
-    participant W as Wallet (MetaMask)
-    participant R as Monad RPC
-    participant SC as Smart Contract
-    participant API as VeriPay API
-
-    B->>W: Sign createTrade() transaction
-    W->>R: Submit signed transaction
-    R->>SC: Execute createTrade()
-    SC-->>R: TradeCreated event emitted
-    R-->>B: Transaction receipt (success)
-    B->>API: POST /api/notifications (notify seller)
-    API-->>B: 200 OK
-    B->>B: Show success modal
-```
-
-### Releasing Funds
-
-```mermaid
-sequenceDiagram
-    participant B as Buyer
-    participant W as Wallet
-    participant R as Monad RPC
-    participant SC as Smart Contract
-
-    B->>W: Sign releaseToSeller() transaction
-    W->>R: Submit signed transaction
-    R->>SC: Execute releaseToSeller()
-    SC->>SC: Transfer MON to seller
-    SC-->>R: FundsReleased event emitted
-    R-->>B: Transaction receipt
-    B->>B: Refresh trade status → "Settled"
-```
-
-## Key Design Decisions
-
-### Why On-Chain for Escrow?
-
-| Decision | Rationale |
-| --- | --- |
-| Funds held by smart contract | Eliminates need to trust VeriPay (or any company) with user funds |
-| No admin keys on contract | Prevents rug pulls, insider theft, or unauthorized fund access |
-| Two-party refund consent | Prevents unilateral abuse by either buyer or seller |
-| On-chain metadata | Trade descriptions are permanently recorded and verifiable |
-
-### Why Off-Chain for Chat & Notifications?
-
-| Decision | Rationale |
-| --- | --- |
-| Chat via API routes | On-chain messages would be expensive (gas) and slow for real-time conversation |
-| Notifications via polling | Simple, reliable, no WebSocket complexity; 5-second polling interval |
-| No user accounts | Wallet address = identity. No signup, no passwords, no databases of personal info |
-
-## Security Architecture
-
-```mermaid
-graph LR
-    subgraph "Trusted (On-Chain)"
-        A[Escrow Funds]
-        B[Trade State]
-        C[Settlement Logic]
-    end
-
-    subgraph "Untrusted (Off-Chain)"
-        D[Chat Messages]
-        E[Notifications]
-        F[UI Rendering]
-    end
-
-    A -.->|"Immutable, auditable"| A
-    D -.->|"Convenience, not security-critical"| D
-```
-
-The critical security boundary is clear: **anything involving money happens on-chain**. Off-chain features (chat, notifications) are convenience layers that don't affect fund safety.

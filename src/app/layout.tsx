@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VeriPay | Secure Escrow & Exchange",
-  description: "VeriPay — trustless escrow and simple Naira-to-crypto exchange, built on Monad.",
+  title: "VeriPay — pay only when it arrives",
+  description: "Buy from anyone online and pay only when your order arrives. Sellers get one payment link; buyers see the seller's real track record first.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

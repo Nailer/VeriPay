@@ -1,0 +1,61 @@
+---
+title: "Errors (revert reasons)"
+description: "Every revert string VeriPayEscrow can produce, what causes it, and how the app presents it."
+icon: "octagon-x"
+---
+
+`VeriPayEscrow` uses `require(condition, "reason")` strings. The table lists every one.
+
+| Revert reason | Function(s) | Cause | Fix |
+|---|---|---|---|
+| `send the payment with this call` | `createTrade` | `msg.value == 0` | Send MON with the call |
+| `seller required` | `createTrade*` | `_seller == address(0)` | Provide a seller |
+| `buyer cannot be the seller` | `createTrade*` | `_seller == msg.sender` | Use a different account |
+| `use createTrade for native MON` | `createTradeWithToken` | `_token == address(0)` | Call `createTrade` |
+| `amount required` | `createTradeWithToken` | `_amount == 0` | Non-zero amount |
+| `token transfer failed` | `createTradeWithToken`, payouts, `withdrawFees` | ERC-20 returned `false` | Check balance/allowance/token |
+| `transfer failed` | payouts, `withdrawFees` (MON) | Recipient rejected native transfer | Recipient must accept MON |
+| `reentrant call` | guarded functions | Reentrancy attempt | — |
+| `no such trade` | all trade actions | `amount == 0` (unknown id) | Check the id |
+| `already settled` | all trade actions | `released` or `refunded` | Nothing to do |
+| `only the buyer can release` | `releaseToSeller` | caller ≠ buyer | Sign as the buyer |
+| `trade is disputed` | `autoRelease` | dispute open | Wait for arbitration |
+| `release window not reached` | `autoRelease` | `now < autoReleaseAt` | Wait |
+| `only the seller can approve` | `sellerApproveRefund` | caller ≠ seller | Sign as the seller |
+| `only the buyer can claim` | `buyerClaimRefund` | caller ≠ buyer | Sign as the buyer |
+| `seller has not approved a refund` | `buyerClaimRefund` | no approval | Ask the seller |
+| `not a party to this trade` | `raiseDispute` | caller not buyer/seller | — |
+| `already disputed` | `raiseDispute` | second dispute | — |
+| `only the arbitrator can resolve` | `resolveDispute` | caller ≠ arbitrator | Sign as arbitrator |
+| `share out of range` | `resolveDispute` | `_buyerBps > 10000` | 0–10000 |
+| `trade is not disputed` | `resolveDispute` | no dispute | — |
+| `not owner` | admin functions | caller ≠ owner | Sign as owner |
+| `nothing to withdraw` | `withdrawFees` | `accruedFees[token] == 0` | — |
+| `above the 5% ceiling` | `setFeeBps` | `_bps > 500` | ≤ 500 |
+| `arbitrator required` | `setArbitrator` | zero address | — |
+| `recipient required` | `setFeeRecipient` | zero address | — |
+| `must be 1-90 days` | `setAutoReleaseDelay` | out of range | 86400–7776000 s |
+| `owner required` | `transferOwnership` | zero address | — |
+| `use createTrade to send funds` | `receive()` | plain MON transfer | Use `createTrade` |
+
+<Accordion title="In plain words" icon="lightbulb">
+  When something isn't allowed, the contract refuses and says why — for example "only the buyer can release". Nothing changes when it refuses.
+</Accordion>
+
+## vNGN token errors
+
+`not owner`, `zero address`, `allowance exceeded`, `insufficient balance`.
+
+## How the app shows errors
+
+`friendlyTxError()` in `src/lib/monad.ts`:
+
+| Raw error contains | Shown as |
+|---|---|
+| code `4001`, "reject", "denied", "cancelled" | *Transaction cancelled.* |
+| "insufficient balance" / "insufficient funds" | *Your account isn't quite ready yet. Wait a few seconds and try again.* |
+| anything else | `shortMessage` / `reason` / `message` |
+
+## Receiver errors
+
+`AutoReleaseReceiver` (via `ReceiverTemplate`) uses custom errors: `InvalidForwarderAddress()`, `InvalidSender(sender, expected)`, `InvalidAuthor(received, expected)`, `InvalidWorkflowName(received, expected)`, `InvalidWorkflowId(received, expected)`, `WorkflowNameRequiresAuthorValidation()`. Per-trade failures inside a batch don't revert; they emit `AutoReleaseFailed(id, reason)`.

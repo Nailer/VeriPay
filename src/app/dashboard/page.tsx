@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useActiveWalletChain } from "thirdweb/react";
-import { createPublicClient, http, formatEther } from "viem";
-import { readNextTradeId, readTrade } from "@/lib/escrow";
+import { createPublicClient, http } from "viem";
+import { readNextTradeId, readTrade, formatTradeAmount } from "@/lib/escrow";
+import { MONAD_RPC_URL } from "@/lib/monad";
 import Link from "next/link";
 import { Loader2, ArrowRight, AlertCircle } from "lucide-react";
 
@@ -12,8 +13,8 @@ const MONAD_CHAIN = {
   name: "Monad Testnet",
   nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
   rpcUrls: {
-    default: { http: ["https://testnet-rpc.monad.xyz"] },
-    public: { http: ["https://testnet-rpc.monad.xyz"] },
+    default: { http: [MONAD_RPC_URL] },
+    public: { http: [MONAD_RPC_URL] },
   },
 };
 
@@ -27,6 +28,7 @@ type TradeData = {
   disputed: boolean;
   refunded: boolean;
   metadata: string;
+  token: string;
 };
 
 export default function Dashboard() {
@@ -42,7 +44,7 @@ export default function Dashboard() {
     try {
       const publicClient = createPublicClient({
         chain: MONAD_CHAIN as any,
-        transport: http("https://testnet-rpc.monad.xyz"),
+        transport: http(MONAD_RPC_URL),
       });
 
       // readTrade handles both the old and new contract shapes.
@@ -158,7 +160,7 @@ export default function Dashboard() {
 
               <div className="mb-5 sm:mb-8">
                 <h3 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white transition-colors">
-                  {formatEther(trade.amount)} <span className="text-sm font-normal text-zinc-500">MON</span>
+                  {formatTradeAmount(trade).formatted} <span className="text-sm font-normal text-zinc-500">{formatTradeAmount(trade).symbol}</span>
                 </h3>
                 <p className="text-zinc-600 dark:text-zinc-400 mt-1.5 line-clamp-1 italic font-medium transition-colors text-sm">&quot;{trade.metadata}&quot;</p>
               </div>

@@ -1,0 +1,74 @@
+---
+title: "Get your payment link"
+description: "Claim veripay.store/pay/your-shop in under a minute, and understand the rules for link names."
+icon: "link"
+---
+
+## Steps
+
+<Steps>
+  <Step title="Go to the Sell page">
+    Open [veripay.store/sell](https://veripay.store/sell) or tap **Sell** in the menu → **Get your payment link**.
+  </Step>
+  <Step title="Sign in">
+    Tap **Use Face ID / fingerprint** (recommended) or **Other ways to sign in**. This account is where you'll be paid — keep using the same sign-in method.
+  </Step>
+  <Step title="Enter your shop name">
+    What customers see, e.g. *Adaeze Thrift*. 2–60 characters.
+  </Step>
+  <Step title="Choose your link name">
+    The part after `/pay/`, e.g. `adaeze-thrift`.
+  </Step>
+  <Step title="Approve">
+    Your account signs a short claim message to prove the link is yours. With a fingerprint account, this happens silently.
+  </Step>
+  <Step title="Copy and share">
+    You'll see *"Your payment link"* with **Copy link** and **Share on WhatsApp**: *"Put this in your Instagram bio or send it on WhatsApp. Buyers pay through it; you're paid when they confirm delivery."*
+  </Step>
+</Steps>
+
+## Link name rules
+
+| Rule | Detail |
+|---|---|
+| Length | 3–30 characters |
+| Characters | lowercase `a–z`, `0–9`, `-`, `_` |
+| First character | a letter or number |
+| Case | converted to lowercase; a leading `@` is stripped |
+| Unique | one shop per link name — *"That link name is taken — try another."* |
+| One per account | *"This account already has a payment link."* |
+| Reserved | `admin`, `api`, `pay`, `sell`, `seller`, `veripay`, `support`, `help`, `dashboard`, `exchange`, `create`, `trade`, `install`, `orders` |
+
+The exact pattern is `^[a-z0-9][a-z0-9_-]{2,29}$`, enforced both in the API and as a database `CHECK` constraint.
+
+<Accordion title="In plain words" icon="lightbulb">
+  Pick a short, simple name using small letters, numbers, dashes or underscores. It has to be unique, and you get one per account.
+</Accordion>
+
+## Why you sign a message
+
+The claim request includes an **EIP-191 signature** over this exact text:
+
+```text
+VeriPay: I am claiming the payment link "adaeze-thrift" for 0xabc…def.
+```
+
+The server recovers the signer with viem's `verifyMessage` and only saves the link if the signer equals the payout address. This prevents two attacks:
+
+1. **Hijacking** — registering a link that pays out to an address the registrant controls while impersonating your shop.
+2. **Squatting** — claiming a link under an address the registrant doesn't control.
+
+<Accordion title="In plain words">
+  Signing proves the account receiving the money is really yours. Without it, someone could create a fake "adaeze-thrift" link that sends your customers' money to them.
+</Accordion>
+
+## Errors you might see
+
+| Message | Cause |
+|---|---|
+| *Pick a link name of 3–30 letters, numbers, dashes or underscores.* | Invalid or reserved name |
+| *Enter your shop name.* | Name shorter than 2 or longer than 60 characters |
+| *We couldn't confirm you control that account. Try again.* | Signature check failed |
+| *This account already has a payment link.* | One link per account |
+| *That link name is taken — try another.* | Unique-constraint violation |
+| *Storage isn't configured.* | Operator issue (no database key) |

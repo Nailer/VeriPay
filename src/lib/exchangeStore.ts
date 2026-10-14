@@ -161,7 +161,7 @@ export const MERCHANT_BANK: BankDetails = {
   accountName: process.env.EXCHANGE_MERCHANT_ACCOUNT_NAME || "VERIPAY LIQUIDITY LTD",
 };
 
-const MONAD_RPC = process.env.MONAD_RPC_URL || "https://testnet-rpc.monad.xyz";
+const MONAD_RPC = process.env.MONAD_RPC_URL || process.env.NEXT_PUBLIC_MONAD_RPC_URL || "https://testnet-rpc.monad.xyz";
 const MONAD_CHAIN = {
   id: 10143,
   name: "Monad Testnet",

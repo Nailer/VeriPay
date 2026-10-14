@@ -1,82 +1,51 @@
 ---
-title: "Terms of Service"
-sidebarTitle: "Terms of Service"
-description: "VeriPay Terms of Service — the rules governing your use of the platform."
+title: "Terms of use"
+description: "Draft terms governing use of VeriPay during its testnet phase."
+icon: "scale"
 ---
 
-*Last updated: July 2026*
+<Warning>
+  **Draft.** These terms are a plain-language draft for the testnet phase and have **not** been reviewed by a lawyer. VeriPay has no registered legal entity yet. They must be replaced by lawyer-reviewed terms before any real-money launch.
+</Warning>
 
-## 1. Acceptance of Terms
+_Last updated: October 2026_
 
-By accessing or using VeriPay ("the Platform", "we", "us", or "our"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, please do not use the Platform.
+## 1. What VeriPay is
 
-## 2. Description of Service
+VeriPay is experimental software that lets buyers lock payments in a smart contract on Monad **testnet** until delivery. During the testnet phase no real money is moved: card payments run in Paystack test mode and on-chain naira (vNGN) is a test token with no value.
 
-VeriPay is a decentralized escrow protocol that enables peer-to-peer transactions through smart contracts deployed on the Monad blockchain. The Platform provides a user interface to interact with these smart contracts.
+## 2. Non-custodial service
 
-## 3. Testnet Status
+Funds locked in an order are held by the `VeriPayEscrow` smart contract, not by VeriPay. VeriPay cannot move money held for open orders. Outcomes are determined by the contract's rules: buyer confirmation, seller-approved refund, arbitration of a reported problem, or automatic release after the confirmation window.
 
-VeriPay is currently operating on the **Monad Testnet**. Tokens used on the testnet have **no real monetary value**. By using the testnet version:
+## 3. Your responsibilities
 
-- You acknowledge that all transactions are for testing purposes only
-- You understand that testnet data may be reset or lost at any time
-- You agree not to use the testnet for real financial transactions
+- Keep your sign-in method (passkey, wallet) secure; VeriPay cannot recover lost accounts.
+- Only confirm delivery once you have received what you paid for — confirmation is irreversible.
+- Report problems before the confirmation window ends.
+- Describe items accurately and keep order communication in the order chat.
+- Don't use VeriPay for illegal goods or services, fraud, or to evade law.
 
-## 4. Non-Custodial Nature
+## 4. Fees
 
-VeriPay is a **non-custodial** platform. This means:
+A fee (currently 1%, never more than 5%) is deducted from the seller's payout when the seller is paid. Refunds carry no fee. Network fees may be sponsored by VeriPay at its discretion.
 
-- We never have access to your private keys or funds
-- You are solely responsible for the security of your wallet and private keys
-- We cannot recover lost funds or reverse blockchain transactions
-- Smart contract interactions are irreversible once confirmed on-chain
+## 5. Disputes
 
-## 5. User Responsibilities
+If a problem is reported, an arbitrator designated in the contract may split the locked amount between buyer and seller. The arbitrator's on-chain decision is final as far as the contract is concerned.
 
-You agree that you will:
+## 6. No warranty
 
-- Verify all wallet addresses before creating escrows
-- Only use VeriPay for lawful transactions
-- Not use the Platform to facilitate fraud, money laundering, or illegal activity
-- Comply with all applicable laws in your jurisdiction regarding cryptocurrency use
-- Take responsibility for the accuracy of trade descriptions and metadata
+VeriPay is provided "as is", without warranties of any kind. Smart contracts have not been independently audited and may contain bugs.
 
-## 6. Prohibited Activities
+## 7. Limitation of liability
 
-You may not use VeriPay to:
+To the maximum extent permitted by law, VeriPay and its contributors are not liable for any loss arising from use of the software, the blockchain, third-party services, or test tokens.
 
-- Engage in fraudulent transactions or misrepresentation
-- List illegal goods or services in trade metadata
-- Attempt to exploit, hack, or disrupt the smart contract or Platform
-- Violate any applicable laws or regulations
+## 8. Changes
 
-## 7. Limitation of Liability
+These terms may change. Material changes will be noted in the [Changelog](/resources/changelog).
 
-TO THE MAXIMUM EXTENT PERMITTED BY LAW, VERIPAY AND ITS DEVELOPERS SHALL NOT BE LIABLE FOR:
+## 9. Contact
 
-- Loss of funds due to smart contract bugs or vulnerabilities
-- Loss of funds due to lost private keys or compromised wallets
-- Failed or reverted blockchain transactions
-- Disputes between buyers and sellers
-- Downtime of the Monad network or VeriPay's frontend
-- Any indirect, incidental, or consequential damages
-
-## 8. No Financial Advice
-
-Nothing on VeriPay constitutes financial, investment, legal, or tax advice. Cryptocurrency values are volatile and you may lose funds. Consult a qualified professional before making financial decisions.
-
-## 9. Intellectual Property
-
-The VeriPay frontend codebase is open source under the [MIT License](https://opensource.org/licenses/MIT). The VeriPay name, logo, and brand assets are proprietary.
-
-## 10. Changes to Terms
-
-We reserve the right to modify these Terms at any time. Continued use of the Platform after changes constitutes acceptance of the new Terms.
-
-## 11. Governing Law
-
-These Terms shall be governed by the laws of the Federal Republic of Nigeria, without regard to its conflict of law provisions.
-
-## 12. Contact
-
-For questions about these Terms, contact the team at [ajeemmanuel221@gmail.com](mailto:ajeemmanuel221@gmail.com) or via [@VeriPayHQ](https://x.com/VeriPayHQ) on X.
+`support@veripay.store`

@@ -1,0 +1,81 @@
+---
+title: "Monad Metropolis submission"
+description: "VeriPay's entry to Monad Metropolis (Track 02 · Consumer Products & Payments): what was built during the hackathon, how to evaluate it, and the rules disclosures."
+icon: "trophy"
+---
+
+| | |
+|---|---|
+| **Hackathon** | Monad Metropolis |
+| **Track** | 02 · Consumer Products & Payments — *make blockchain invisible to the end user* |
+| **Build window** | 1 Sep – 13 Oct 2026 |
+| **Live demo** | [veripay.store](https://veripay.store) |
+| **Demo video** | [youtu.be/dxhIg5WTRA0](https://youtu.be/dxhIg5WTRA0) (2:17) |
+| **Pitch video** | [youtu.be/XqcZS5daLv8](https://youtu.be/XqcZS5daLv8) (1:45) |
+| **Code** | [github.com/Nailer/VeriPay](https://github.com/Nailer/VeriPay) — branch `hackathon/metropolis`, MIT |
+| **Write-up** | `HACKATHON.md` in the repo |
+
+<Accordion title="In plain words" icon="lightbulb">
+  VeriPay was entered into Monad's Metropolis hackathon in the "consumer products and payments" category, whose whole theme is making blockchain invisible to everyday users — exactly VeriPay's idea.
+</Accordion>
+
+## One line
+
+Buyer protection for Instagram and WhatsApp shopping. A seller puts one link in their bio; the buyer taps it, sees the seller's real track record, and pays in naira with a fingerprint. The money is held until the order arrives. The buyer never sees a wallet, a token or a gas fee.
+
+## Pre-existing vs built during Metropolis
+
+VeriPay was started on **11 April 2026**. Everything dated before 1 September 2026 is foundation; everything after is the submission.
+
+<Tabs>
+  <Tab title="Pre-existing (not judged)">
+    - Basic escrow on Monad testnet: create a trade in MON, release, refund (`/create`, `/dashboard`, `/trade/[id]`) with wallet-connect.
+    - Earlier escrow source with fees, disputes and auto-release (native MON only; never deployed).
+    - Naira ↔ crypto exchange with admin console (`/exchange`, `/admin`).
+    - Per-trade chat, in-app notifications, PWA install and web push.
+  </Tab>
+  <Tab title="Built during Metropolis">
+    | What | Where |
+    |---|---|
+    | Seller payment links (signed claim) | `src/app/sell`, `src/lib/sellers.ts`, `src/app/api/sellers` |
+    | Naira card payments straight into escrow | `src/app/pay/[handle]`, `src/lib/payments.ts`, `src/app/api/pay` |
+    | Network fees paid for the user (capped) | `src/lib/payments.ts`, `src/lib/gas.ts`, `src/app/api/pay/gas` |
+    | Fingerprint sign-in (Mera) | `src/lib/mera.ts`, `src/lib/useSignIn.ts` |
+    | On-chain reputation + seller lookup | `src/lib/reputation.ts`, `src/app/seller`, `SellerReputationCard` |
+    | Envio reputation indexer (deployed) | `indexer/` |
+    | Chainlink CRE automatic payout (run for real) | `cre/`, `contracts/cre/AutoReleaseReceiver.sol` |
+    | ERC-20 escrow (`createTradeWithToken`, per-asset fees) — deployed | `contracts/VeriPayEscrow.sol` |
+    | Plain-language consumer surface | `src/app/orders`, `src/app/trade/[id]`, `Navbar`, `OrdersList` |
+    | Proof page | `src/app/proof/[hash]` |
+    | vNGN test token | `contracts/test/VeriPayTestNaira.sol` |
+    | 30-test contract suite | `contracts/test/` |
+    | End-to-end payment test incl. fraud attempts | `tests/e2e-pay.mjs` |
+    | Alchemy RPC, naira everywhere, new landing page | `src/lib/monad.ts`, `src/lib/escrow.ts`, `src/app/page.tsx` |
+  </Tab>
+</Tabs>
+
+## How to evaluate (5 minutes)
+
+<Steps>
+  <Step title="Main flow">Follow the [Quickstart](/quickstart): claim a link, pay it from a second browser with the test card, confirm delivery.</Step>
+  <Step title="Check a seller">Type `adaeze-thrift` at `/seller`.</Step>
+  <Step title="Passkey">Tap the fingerprint icon next to **Sign in**.</Step>
+  <Step title="Auto-release">Open the [proof of order #2's Chainlink release](https://veripay.store/proof/0xa5cf52aeac617514c10055bf703c2766eb5366f640958c171006681b9d87f823).</Step>
+  <Step title="Tests">`cd contracts/test && npm test` (30) and `node tests/e2e-pay.mjs` (14).</Step>
+</Steps>
+
+## Judging criteria mapping
+
+| Criterion (20% each) | Evidence |
+|---|---|
+| Product quality | Plain-language consumer flow; receipts; proof page; PWA |
+| Technical excellence | Server-verified money path, CAS guards, event-sourced reputation with parity fallback, tests |
+| Monad integration | ~1 s locks, < ₦1 fees sponsored, event per order — [Why Monad](/product/why-monad) |
+| Track fit | No wallet, token, seed phrase or gas fee visible to users |
+| Innovation & impact | Unfakeable seller records for social commerce; escrow for ₦2,000 orders |
+
+## Disclosures
+
+- **AI tools:** Claude Code (Anthropic) was used throughout to write and refactor code, tests, docs and the demo videos, under the founder's direction; such commits carry `Co-Authored-By: Claude`. Product decisions, design direction, deployment and device testing were the founder's.
+- **Third-party code:** Chainlink `ReceiverTemplate.sol`, `IReceiver.sol`, `IERC165.sol` (verbatim, MIT); OpenZeppelin `Ownable` (MIT).
+- **Demo data:** every order on the contract is VeriPay's own demo/test order.

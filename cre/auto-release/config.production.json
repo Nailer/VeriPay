@@ -1,0 +1,8 @@
+{
+  "schedule": "0 */15 * * * *",
+  "chainSelectorName": "monad-testnet",
+  "escrowAddress": "0x00bdf9fbc9f59cc6814bbc7a91b19bbad1517e6d",
+  "receiverAddress": "0x4bdff272df53a78887fd84a9ee9f4aa9a161a0b9",
+  "gasLimit": "500000",
+  "scanLimit": 150
+}

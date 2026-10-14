@@ -1,0 +1,54 @@
+---
+title: "Known limitations"
+description: "An honest list of what VeriPay doesn't do yet, design trade-offs, and issues found while writing these docs — with severity and recommended fixes."
+icon: "triangle-alert"
+---
+
+## Status limitations
+
+| Limitation | Detail |
+|---|---|
+| **Testnet only** | No real money has moved; no real customers yet. Every order on the contract is VeriPay's own. |
+| **Test money end to end** | Paystack test mode; vNGN is VeriPay's own test token. Sellers can't withdraw to a bank. |
+| **Not audited** | 30-test suite + e2e test, no independent review. |
+| **Single arbitrator** | Disputes resolved by one address (also the owner). |
+| **Chainlink CRE via simulator** | Real testnet writes via mock forwarder; scheduled deployment needs Chainlink access. Switch is one `setForwarderAddress` call. |
+| **Envio dev tier** | Endpoint may change on redeploy; chain fallback covers it. |
+| **AUSD not demonstrated** | Supported by contract and UI; testnet AUSD can only be issued by Agora. |
+| **No legal entity yet** | Blocks Paystack live mode and real fundraising close. |
+| **Naira payouts manual** | Exchange payouts settled by an admin; no bank API. |
+
+<Accordion title="In plain words" icon="lightbulb">
+  VeriPay is a working prototype on a test network. It's not yet ready for real money: it hasn't had an independent security check, sellers can't cash out to a bank, and disagreements are decided by one person.
+</Accordion>
+
+## Design trade-offs
+
+| Trade-off | Consequence | Planned fix |
+|---|---|---|
+| **Push payments** | A recipient contract that rejects transfers makes that trade's settlement revert | Pull-payment fallback (credit + `claim()`) |
+| **Fee-on-transfer / rebasing tokens unsupported** | Escrow records `_amount`, not actual received | Allow-list of supported tokens |
+| **EOA derived in the page** | XSS or a compromised dependency could read a signed-in user's key | Isolated signer or passkey-native smart account (P-256) |
+| **Bounded scans** | CRE checks last 150 trades; chain fallback last 1,000 | Event-driven due-list from the indexer |
+| **Wash trading possible via second account** | Reputation can be inflated at a cost | Sybil resistance (verified sellers, buyer diversity metrics) |
+| **Dispute counted against both parties** | Doesn't show who was at fault | Ruling-aware metrics |
+
+## Issues found while writing these docs
+
+<Warning>
+  These were identified from the source during documentation. They're listed so they can be fixed; none affects testnet safety materially.
+</Warning>
+
+| # | Issue | Severity | Detail | Recommendation |
+|---|---|---|---|---|
+| 1 | **Refund-approved orders can still auto-release to the seller** | Medium | `autoRelease` (and the CRE workflow and **Collect my payment** button) don't check `sellerApprovedRefund`. If a seller approves a refund and the buyer doesn't claim it within the window, the order can be released to the seller. | Add `require(!t.sellerApprovedRefund)` to `autoRelease` in a future contract version, or make auto-release *refund* the buyer when approved; until then, filter in the workflow and hide the button. |
+| 2 | **Admin passcode has a hard-coded default** | Medium | If `ADMIN_PASSCODE` is unset, `/api/admin/*` falls back to a default value present in the public source. | Fail closed when unset; add rate limiting. |
+| 3 | **Unauthenticated display routes** | Low | `/api/notifications`, `/api/chat`, `/api/track`, `/api/trades/log` accept writes without proving the caller's identity; `/api/chat` accepts `isAdmin` from the body. Notification lists are readable by address. | Require a signed message (or session) for writes; ignore `isAdmin` from public routes; restrict reads. |
+| 4 | **Supabase URL fallback** | Low | `src/lib/supabase.ts` defaults `SUPABASE_URL` to a specific project URL when unset. | Require explicit configuration. |
+| 5 | **Proof-page fee sentence hard-codes "1%"** | Info | Wrong if `feeBps` changes. | Render the actual fee amount. |
+
+## Operational limitations
+
+- Sponsor wallet must be manually kept funded (~0.15 MON per new buyer).
+- No monitoring/alerting on stuck intents (`status = 'paid'`) or failed top-ups.
+- No rate limiting on public APIs.

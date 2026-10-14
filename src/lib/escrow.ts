@@ -3,16 +3,21 @@
 // There are two versions of the contract in the wild:
 //
 //   v1 — the original. `trades()` returns 6 fields. No fee, no disputes.
-//   v2 — VeriPayEscrow. `trades()` returns 11 fields, with a fee, disputes,
-//        and an auto-release deadline.
+//   v2 — VeriPayEscrow. `trades()` returns 12 fields, with a fee, disputes,
+//        an auto-release deadline, and the asset the trade was opened in
+//        (native MON, or an ERC-20 like Agora's AUSD).
 //
 // Decoding a v1 response with the v2 ABI fails outright, which is how the
 // dashboard silently went blank. Rather than force a redeploy before the app
 // works again, this module detects which version is deployed and normalises
 // both into one shape.
 
-import type { PublicClient } from "viem";
+import { formatEther, formatUnits, type PublicClient } from "viem";
 import { CONTRACT_ADDRESS, escrowAbi } from "@/lib/abi";
+import { AUSD_ADDRESS, AUSD_DECIMALS, NGN_TOKEN_ADDRESS, NGN_TOKEN_DECIMALS } from "@/lib/monad";
+
+/** address(0) in the Trade struct means the trade escrows native MON. */
+export const NATIVE_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 /** The original contract's `trades` getter, kept only for reading old data. */
 export const legacyEscrowAbi = [
@@ -51,6 +56,8 @@ export type EscrowTrade = {
   disputed: boolean;
   refunded: boolean;
   feeBps: number;
+  /** address(0) = native MON. Otherwise an ERC-20 address (e.g. AUSD). */
+  token: string;
   /** True when this came from the old contract, which has no fee or disputes. */
   legacy: boolean;
 };
@@ -118,6 +125,7 @@ export async function readTrade(client: PublicClient, id: number | bigint): Prom
       disputed: false,
       refunded: false,
       feeBps: 0,
+      token: NATIVE_TOKEN_ADDRESS,
       legacy: true,
     };
   }
@@ -127,7 +135,7 @@ export async function readTrade(client: PublicClient, id: number | bigint): Prom
     abi: escrowAbi,
     functionName: "trades",
     args: [tradeId],
-  })) as readonly [string, string, bigint, boolean, boolean, string, bigint, bigint, boolean, boolean, number];
+  })) as readonly [string, string, bigint, boolean, boolean, string, bigint, bigint, boolean, boolean, number, string];
 
   return {
     buyer: r[0],
@@ -141,6 +149,28 @@ export async function readTrade(client: PublicClient, id: number | bigint): Prom
     disputed: r[8],
     refunded: r[9],
     feeBps: Number(r[10]),
+    token: r[11],
     legacy: false,
   };
+}
+
+/**
+ * Formats a raw trade amount for display, using the right decimals and
+ * symbol for whichever asset the trade actually used. `formatEther` alone
+ * is wrong for an AUSD trade — AUSD uses 6 decimals, not 18 — so every page
+ * showing a trade amount should go through this rather than call
+ * formatEther directly.
+ */
+export function formatTradeAmount(trade: Pick<EscrowTrade, "amount" | "token">): { formatted: string; symbol: string; display: string } {
+  const token = trade.token?.toLowerCase();
+  if (token === NGN_TOKEN_ADDRESS.toLowerCase()) {
+    const formatted = Number(formatUnits(trade.amount, NGN_TOKEN_DECIMALS)).toLocaleString("en-NG", { maximumFractionDigits: 2 });
+    return { formatted, symbol: "NGN", display: `₦${formatted}` };
+  }
+  if (token === AUSD_ADDRESS.toLowerCase()) {
+    const formatted = formatUnits(trade.amount, AUSD_DECIMALS);
+    return { formatted, symbol: "AUSD", display: `${formatted} AUSD` };
+  }
+  const formatted = formatEther(trade.amount);
+  return { formatted, symbol: "MON", display: `${formatted} MON` };
 }

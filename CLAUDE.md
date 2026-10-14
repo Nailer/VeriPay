@@ -10,6 +10,31 @@ This gets confused easily because the exchange code is larger and newer. It isn'
 
 The market is Instagram / WhatsApp / Jiji commerce — people buying from strangers with no buyer protection — not crypto traders.
 
+## Hackathon branch — `hackathon/metropolis`
+
+VeriPay is entering Monad's **Metropolis** hackathon (build window Sep 1 – Oct 13, deadline **Oct 13 11:59 PM ET = 4:59 AM Oct 14 Lagos**; $145K pool: $25K overall + $10K to each of the top three per track; judged on five equal 20% criteria — Product Quality, Technical Excellence, Monad Integration, Track Fit, Innovation & Impact; testnet is allowed; track: **Consumer Products & Payments** — "make blockchain invisible to the end user," which is VeriPay's whole premise). All hackathon-specific work happens on `hackathon/metropolis`, kept deliberately separate from `main` — `main` is what's live at veripay.store for real (if early) users, and nothing here should reach production without a deliberate decision to merge it.
+
+Rule the hackathon requires: since VeriPay already existed before the hackathon, only work *actually built during the Sep 1 – Oct 13 window* counts toward the submission. The demo has to show what's new, not just what already existed.
+
+**The core hackathon thesis — "why does this need Monad specifically":** before this branch, Monad was infrastructure detail — the app didn't visibly need Monad's speed or near-zero fees over any other chain. The fix is a public, on-chain **reputation** feed (see "Reputation" below): it's only viable because Monad's fees are cheap enough to write a real event on every trade, and it's only trustworthy because it's derived from those events rather than a number VeriPay could quietly edit.
+
+Five sponsor bounty integrations, chosen for genuine product fit over easy bounty-chasing:
+1. **Agora (AUSD stablecoin)** — contract deployed and live (see "Contract versions" below), and wired all the way into the UI: a MON/AUSD toggle on the create-escrow page does the real two-step approve-then-escrow flow, and every page that displays a trade amount (`formatTradeAmount()` in `escrow.ts`) is asset-aware, not just the create form.
+2. **Monad Foundation (Mera passkey)** — done. Face ID/fingerprint sign-in, no seed phrase. See "Passkey sign-in" below.
+3. **Envio (HyperIndex)** — live on Envio's hosted service (development tier, project `veripay-reputation`, deploys from `hackathon/metropolis`, root `indexer/`, needs `indexer/pnpm-lock.yaml`). GraphQL endpoint: `https://indexer.dev.hyperindex.xyz/09eb2b1/v1/graphql` — set as `ENVIO_GRAPHQL_URL`. Checked 2026-10-09: every address's numbers match the direct chain read exactly. `src/lib/reputation.ts` still falls back to the chain if Envio doesn't answer. The endpoint path may change if the indexer is redeployed from scratch — re-check `/api/reputation/<addr>` reports `"source":"envio"` after any Envio change.
+4. **Chainlink (CRE)** — done and proven on-chain. `AutoReleaseReceiver` is live, and on 2026-10-11 `cre workflow simulate --broadcast` released demo trade #2 through Chainlink's forwarder (tx `0xa5cf52aeac617514c10055bf703c2766eb5366f640958c171006681b9d87f823`). See "CRE auto-release automation" below for the three things that had to be fixed to get there.
+5. **Alchemy** — live. `NEXT_PUBLIC_MONAD_RPC_URL` is set to the founder's real Alchemy Monad-testnet endpoint (verified directly — `eth_chainId` returns `10143`, and it correctly reads the deployed escrow contract) on this branch's Preview deployments and in local `.env`. Not set on `main`/production, which still uses the public node.
+
+**Rules compliance (checked against the official T&Cs, 2026-10-05):** the repo is **public**, default branch `hackathon/metropolis`, MIT `LICENSE`. The README is the judged document and must keep: the pre-existing vs built-during table (rule 4.1.4 — VeriPay predates the hackathon, so this disclosure is what makes it eligible), the AI-tools disclosure, third-party credits, contract addresses, and setup steps a stranger can follow (`.env.example`, `supabase/schema.sql`). Never backdate or rewrite commit history. Because the repo is public, nothing private belongs in any tracked file. Tests judges can run: `contracts/test` (30 local-EVM tests, `npm test`) and `tests/e2e-pay.mjs`.
+
+**Submission doc:** `HACKATHON.md` — the write-up, before/after table, sponsor evidence, live addresses, test steps, honest limitations. Keep it current; it's what judges read.
+
+**Demo data:** (trades #3–#4 are naira test trades from the pay-link work — see "Pay links" below.) Trades #0–#2 on the live escrow were created by our own demo wallet (`0xeb1B…fd06`, buyer) with the founder's wallet as seller, so reputation has real numbers to show (with #3, the founder wallet now reads 3 paid out, 0 disputes, 4 total). #2 was left open on purpose and was auto-released by the CRE workflow on 2026-10-11 (founder wallet now reads 4 paid out of 4). The demo wallet's key is in `.deploy-tmp/demo-wallet.json` and `cre/.env` (both gitignored); it's a testnet throwaway with no privilege on the escrow, and owns `AutoReleaseReceiver` (owner powers there are harmless — `autoRelease` is callable by anyone anyway). Say these are our demo trades if asked; never present them as customer trades.
+
+**AUSD test tokens:** testnet AUSD (`0x333a…463f`) mints owner-only — there's no public faucet. Getting some means asking Agora. `NEXT_PUBLIC_AUSD_ADDRESS` overrides the address without a contract redeploy if Agora names a different official token.
+
+**`veripay.store` now serves this branch** (since 2026-10-10 the founder pointed the domain at `hackathon/metropolis` as a Preview-environment domain, so it uses the Preview env vars; `main` is unchanged and the old version is still at `monad-pay-lagos.vercel.app`). `www.veripay.store` was NOT moved and still shows the old version. Passkey accounts are bound to the domain, so anything created on the long preview URL does not exist on `veripay.store`. The long preview URL still works: `https://monad-pay-lagos-git-hackathon-metropolis-nailer1s-projects.vercel.app` — a stable alias that updates automatically on every push to this branch, entirely separate from veripay.store/production. Vercel's SSO/login protection was disabled project-wide (`vercel project protection disable monad-pay-lagos --sso`) so this link is openly viewable — worth knowing if that project-level setting ever needs revisiting, since it now applies to every preview deployment on this project, not just this branch's.
+
 ## Commands
 
 ```bash
@@ -78,25 +103,30 @@ contracts/VeriPayEscrow.sol   the escrow contract (deploy via Remix)
 
 ## Contract versions — important
 
-Two versions exist in the wild:
+On `main`, two versions exist in the wild:
 
 - **v1 (legacy)** — `0xd0cc532f55ce6849d5b70e24d6188073f8921621` on Monad testnet. `trades()` returns **6 fields**. No fee, no disputes, no auto-release. Has ~14 historical trades.
 - **v2 (`VeriPayEscrow.sol`)** — `trades()` returns **11 fields**. 1% fee on successful release only, disputes with arbitration, 7-day auto-release, 5% hard-coded fee ceiling.
+
+**On `hackathon/metropolis`, `VeriPayEscrow.sol` has a third field appended — field 11, `token`** (`address(0)` = native MON, otherwise an ERC-20 like Agora's AUSD — see `createTradeWithToken`). `accruedFees`, `escrowedBalance` and `withdrawFees` all take a token address now, tracked per-asset so a MON fee and an AUSD fee never mix. The native-MON path is byte-for-byte unchanged — verified by the local-EVM suite in `contracts/test` (30 tests: `cd contracts/test && npm install && npm test`). `abi.ts` and `escrow.ts` on this branch are updated to match; don't merge this branch's contract changes back to `main` without also carrying those two files.
 
 `src/lib/escrow.ts` detects which is deployed (by calling `feeBps()`, which reverts on v1) and normalises both into one `EscrowTrade` shape with a `legacy: boolean` flag. **Always read trades through `readTrade()` / `readNextTradeId()` — never decode `trades()` directly**, or v1 data will fail to decode and the UI will silently render empty.
 
 UI gates v2-only features (`Report a problem`, auto-release countdown, fee line, arbitration panel) behind `!trade.legacy`.
 
-**As of now, v2 is NOT deployed.** `NEXT_PUBLIC_CONTRACT_ADDRESS` is unset, so the live site runs on the v1 fallback address — no fee, no disputes, no arbitration, even though all of that UI exists and is fully wired. Deploying v2 and setting the env var is what turns it on; nothing else needs to change. Don't tell anyone (users, investors, docs) that fees or disputes are live until this is actually done — see `contracts/README.md` for the Remix steps.
+**On `hackathon/metropolis`, the AUSD-extended contract is now deployed and live**, at `0x00bdf9fbc9f59cc6814bbc7a91b19bbad1517e6d` on Monad testnet — `NEXT_PUBLIC_CONTRACT_ADDRESS` in `.env` points at it (this also fixed a real pre-existing bug: the var was named `CONTRACT_ADDRESS`, missing the `NEXT_PUBLIC_` prefix, so nothing had ever actually been read from it by client code before this). Deployed via a throwaway key generated for this one purpose; independently verified on-chain (not just trusted the deploy script's own output) — `owner()`, `arbitrator()`, `feeRecipient()` all read back as the founder's real wallet (`0xEfD0497f4557b49E84369cfb884B6c7446e11aBA`), `feeBps()` reads `100` (1%), `autoReleaseDelay()` reads `604800` (7 days). The throwaway key has been deleted from disk — it holds no privilege on the contract anymore and its leftover testnet MON is inconsequential.
+
+**On `main`, nothing past v1 is deployed** — that branch's `NEXT_PUBLIC_CONTRACT_ADDRESS` is still unset, so production (veripay.store) still runs on the v1 fallback with no fee, no disputes, no AUSD. Don't conflate the two branches: don't tell anyone (users, investors, docs) that fees/disputes/AUSD are live on the actual product until this branch's contract work is deliberately merged to `main` — that's a separate decision from getting it working for the hackathon demo.
 
 Deployment is via **Remix only** — there's no Hardhat/Foundry here.
 
-### v2 safety properties worth preserving
+### Contract safety properties worth preserving
 
 - The owner **cannot** touch escrowed funds. `withdrawFees` only moves `accruedFees`. Don't add an admin withdrawal of trade money.
 - `MAX_FEE_BPS = 500` is a constant. Don't make it settable.
 - Fee rate is locked per-trade at creation, so changing the global fee can't affect open trades.
 - Refunds are never charged a fee. The platform earns only when a trade succeeds.
+- ERC-20 trades pull funds via `transferFrom` (buyer must approve first) and pay out via `transfer` — both checked with `require(...)`, since some tokens return `false` instead of reverting on failure.
 
 ## Sending transactions — use thirdweb, never `window.ethereum`
 
@@ -105,6 +135,53 @@ Every write (create trade, release, refund, raise/resolve dispute, sell-side MON
 This used to be done with `window.ethereum.request(...)` + a raw viem `createWalletClient`. **That silently breaks for most real users** — `window.ethereum` only exists for browser-extension wallets. It's `undefined` for thirdweb's in-app (email/social login) wallet and for wallets connected over WalletConnect, which covers most people on mobile. The symptom was "No browser wallet detected. Please install MetaMask." on every write action, for anyone not using a desktop extension — found and fixed across `create/page.tsx`, `trade/[id]/page.tsx`, `exchange/order/[id]/page.tsx`, and `ArbitrationPanel.tsx`.
 
 thirdweb's own pipeline works uniformly across every connection type and switches/adds Monad Testnet on the wallet automatically — the manual `wallet_switchEthereumChain` / `wallet_addEthereumChain` dance is gone and shouldn't come back. **If you add a new write action, use `escrowContract` + `prepareContractCall` from `monad.ts`, not `window.ethereum`.**
+
+## Passkey sign-in (`hackathon/metropolis` only)
+
+`src/lib/mera.ts` wraps Category Labs' `@category-labs/mera` (Monad Foundation's passkey-onboarding bounty) into a thirdweb `Wallet`, surfaced as a fingerprint-icon button beside "Sign in" in the Navbar (`PasskeyButton`, only rendered when no wallet is connected and the browser supports WebAuthn). The account is derived deterministically from the passkey's WebAuthn PRF output — same passkey, same 32-byte seed, same address, on any device that has it. No seed phrase, no email/OTP hop.
+
+**Don't use `viemAdapter.wallet.fromViem` to wrap it**, even though that's what mera's own docs and thirdweb's docs both point to — it proxies raw EIP-1193 `.request()` calls straight to the transport, which is correct for a real injected provider (MetaMask) but not for a derived local key over a plain RPC transport, which doesn't understand wallet-specific methods like `eth_sendTransaction`. That's the exact "No browser wallet detected" bug class this project already hit once (see "Sending transactions" above) — it would silently fail to sign anything. The working pattern, verified by reading thirdweb's own adapter source rather than trusting the docs: build the `Account` object by hand using viem's proper signing Actions (`walletClient.sendTransaction(...)`, `.signMessage(...)`, `.signTypedData(...)`), then wrap that with `createWalletAdapter` from `thirdweb/wallets`. `mera.ts`'s doc comment has the full reasoning.
+
+## Pay links + naira card flow (`hackathon/metropolis` only)
+
+The headline consumer flow for the hackathon: a seller claims `/pay/<handle>` at `/sell`; a buyer opens it, sees the seller's on-chain record, types an amount **in naira**, signs in with a passkey, pays by card, and the money is locked in escrow. No wallet address, token name or gas fee appears anywhere.
+
+How the money path works (`src/lib/payments.ts`, `/api/pay/intent`, `/api/pay/confirm`):
+
+1. `createIntent` stores a `pay_intents` row and returns a reference `VP-<id>-…`. **It deliberately does not call Paystack's initialize** — the inline popup opens the charge itself under that reference, and Paystack rejects a reference that was already registered ("Duplicate Transaction Reference"). An end-to-end test caught exactly that.
+2. `confirmIntent` asks Paystack (never the browser) whether the charge succeeded and for how much, requires the reference to start with `VP-<that intent's id>-`, claims the row with the status guard in the SQL `WHERE`, takes a single delivery slot (`mint_tx = 'pending'`), then mints exactly that many **vNGN** to the buyer plus a 0.12 MON gas top-up if they hold under 0.06. Idempotent — replaying it never mints twice.
+3. The browser then does approve + `createTradeWithToken(seller, item, NGN_TOKEN_ADDRESS, amount)` through thirdweb as usual.
+
+**vNGN** (`contracts/test/VeriPayTestNaira.sol`, live at `0xdbb53d0a2d1b91ef6a41cf1128fef562ffc531eb`, 6 decimals, owner-only mint) is a testnet stand-in for a regulated naira stablecoin. It exists because 1 MON ≈ ₦44, so a ₦25,000 order would need ~570 testnet MON of liquidity nobody has. Never describe it as real money or as cNGN. `formatTradeAmount()` renders it as `₦25,000` everywhere.
+
+Minting key: `PAY_MINTER_PRIVATE_KEY` (the demo wallet, which owns vNGN), falling back to `EXCHANGE_PAYOUT_PRIVATE_KEY`. If a deployment only has the fallback, that wallet must be made vNGN's owner (`transferOwnership`) and hold MON for gas, or delivery fails after the card is charged. `GET /api/pay/intent` reports `{deliveryAddress, cardProcessor, storage}` without secrets — check it first when a deploy misbehaves.
+
+**Network fees are always paid for the user.** Fingerprint accounts have never held MON. Three places cover it, all in `src/lib/payments.ts`, all capped at 3 top-ups (`gas_topups` column on `pay_intents` and `sellers`) so it can't be farmed as a faucet: `ensureGas()` after a card payment and on every re-confirm; `resumeForBuyer()` when a buyer returns already holding their naira (the page then skips the card — this fixed a real double-charge); and `sponsorGas()` behind `POST /api/pay/gas` for later actions (buyer release/dispute, seller refund), which only serves a card-funded buyer or a registered seller who has at least one trade. Browser side, call `readyToTransact(address)` from `src/lib/gas.ts` before any write on a consumer page. The first version was a single best-effort send and failed silently for a real user ("Signer had insufficient balance") — don't make it best-effort again. The minter wallet (`0xeb1B…fd06`) pays for all of this at ~0.15 MON per new buyer; keep it funded from the faucet.
+
+**Consumer surface vs crypto surface.** The navbar shows `My orders` (`/orders`), `Sell`, `Check a seller`; `/create`, `/exchange` and `/dashboard` sit under "More". The signed-in chip shows the shop name or "Signed in" — never an address or a MON balance (`detailsButton.render` in `Navbar.tsx`). `OrdersList` (`src/components/OrdersList.tsx`) renders a person's trades in plain words and is used on `/orders` and `/sell`. Keep addresses, "MON", "escrow" and "wallet" out of anything a buyer or seller sees on these pages.
+
+Seller links (`src/lib/sellers.ts`, `sellers` table): a handle is claimed by signing `claimMessage()` from `sellerShared.ts`, verified server-side, one link per address. Supabase tables `sellers` and `pay_intents` have RLS on and are only touched with the service role.
+
+Verified with `tests/e2e-pay.mjs` (run it against localhost or, with `BASE_URL=…`, against the live preview) — 14/14 on both: real Paystack test-mode charge, exact mint, gas top-up, ~1.2s escrow lock, wrong-signer claim rejected, replay doesn't double-mint, a ₦2,500 payment can't fund a ₦50,000 intent. Trades #3, #4 and #5 on the live escrow are from this testing. As of 2026-10-09 no real user has completed a pay-link payment — every trade on the contract is ours.
+
+## Reputation indexer (`hackathon/metropolis` only)
+
+`indexer/` is a separate Envio HyperIndex project (own `package.json`, deploys independently — see `indexer/README.md`) that turns the escrow contract's own events into a public, per-address reputation figure: completed trades, disputes, refunds. It's the answer to "why does this need Monad" for the hackathon — Monad's near-zero fees make writing a real event on every trade affordable regardless of trade size, and because the numbers are derived purely from those events (not a score VeriPay stores and could edit), anyone can independently re-verify them straight from the chain.
+
+`src/lib/reputation.ts` is the single source: Envio first (when `ENVIO_GRAPHQL_URL` is set and answers), otherwise a direct contract scan (all trades, cached 30s), with counting rules identical to `indexer/src/EventHandlers.ts` so the two never disagree. `/api/reputation/[address]` serves it (`?trades=1` adds the address's trade list, always chain-read). Surfaced in three places: `SellerReputationCard` under the seller field on `/create` (the "check before you pay" moment), `/seller` + `/seller/[address]` (public lookup with full history), and `ReputationBadge` on the trade page's seller card.
+
+## CRE auto-release automation (`hackathon/metropolis` only)
+
+Closes a real reliability gap: today, `autoRelease()` on the escrow only fires if a human remembers to call it after a buyer's confirmation window passes. A Chainlink CRE cron workflow checks recent trades every 15 minutes and triggers release for anything genuinely due.
+
+Two halves, on-chain and off-chain:
+
+- **`contracts/cre/`** — `AutoReleaseReceiver.sol` receives a signed CRE report (a batch of trade ids) and calls `autoRelease(id)` on each via try/catch, so one already-settled trade in a batch never blocks the rest. `ReceiverTemplate.sol`/`IReceiver.sol`/`IERC165.sol` are vendored **verbatim** from Chainlink's own `cre-templates` repo (`starter-templates/keeper-bot`) — that's the security-critical signature/sender-verification layer, not something to hand-roll from a docs description. Locally EVM-tested, 10/10 passing: authorized-forwarder success, unauthorized-sender rejection, batch partial-failure resilience, forwarder rotation. Holds no funds and needs no special permission on VeriPayEscrow — `autoRelease()` is already `external`, callable by anyone; this contract just calls it on a schedule instead of by hand.
+- **`cre/`** — the workflow itself (`workflow.ts` + `main.ts`), written against `@chainlink/cre-sdk`'s real installed types (verified by reading `node_modules`, not guessed from docs — the docs' own suggested high-level pattern turned out to need a CLI codegen step this was built without, so this uses the lower-level `evmClient.callContract`/`runtime.report`/`evmClient.writeReport` primitives directly). Passes `tsc --noEmit` against the real SDK.
+
+**Getting it to actually run took three fixes — don't undo them:** (1) run it with `cre/simulate.sh`, not `cre workflow simulate` in place — inside this repo the compiled workflow traps at start-up ("failed to execute subscribe … wasm unreachable") while the identical source works from a copy outside it; cause unknown, the script makes the copy. (2) Build the report with `prepareReportRequest(payload)`, not a hand-built request with `hexToBase64`. (3) Pass `receiver` as a hex string and `gasLimit` as a string to `evmClient.writeReport` — the bytes/bigint forms pass `tsc` but fail at run time with "not a function". Dependencies are installed with Bun (`bun.lock`); the CLI is v1.38.0, old binary kept at `~/.cre/bin/cre-1.36.0.bak`.
+
+**Deployed:** `AutoReleaseReceiver` at `0x4bdff272df53a78887fd84a9ee9f4aa9a161a0b9`, trusting Chainlink's MockKeystoneForwarder for Monad testnet (`0xB9F79d863261869B234c481D1f9A7af84AeAd192`) — the forwarder `cre workflow simulate --broadcast` uses. Production would be `setForwarderAddress(0xF8344CFd5c43616a4366C34E3EEE75af79a74482)` after Chainlink grants deploy access; no redeploy. The CRE CLI is installed at `~/.cre/bin/cre` (needs Bun, present); `cre workflow build auto-release --target staging-settings` from `cre/` compiles cleanly without login. Simulating needs `cre login` (free account). Layout and commands in `cre/README.md`.
 
 ## PWA — install + push notifications
 
@@ -167,7 +244,10 @@ Only `NEXT_PUBLIC_*` reaches the browser. Setting `CONTRACT_ADDRESS` instead of 
 | `EXCHANGE_MERCHANT_ADDRESS` | no | where sellers send crypto |
 | `EXCHANGE_PAYOUT_PRIVATE_KEY` | no | hot wallet; enables automatic crypto delivery |
 | `PAYSTACK_SECRET_KEY` / `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | no | live card payments |
-| `MONAD_RPC_URL` | no | override testnet RPC |
+| `NEXT_PUBLIC_MONAD_RPC_URL` | no | RPC endpoint for both client and server (e.g. Alchemy's `https://monad-testnet.g.alchemy.com/v2/KEY` — Alchemy hackathon bounty). Falls back to the public node. Client-exposed by design; restrict it to veripay.store in Alchemy's dashboard. |
+| `MONAD_RPC_URL` | no | server-only override, if the server ever needs a different endpoint than the client — otherwise leave unset and just set the `NEXT_PUBLIC_` one |
+| `PAY_MINTER_PRIVATE_KEY` | no | pay links: testnet key that owns vNGN and delivers it after a verified card charge (falls back to `EXCHANGE_PAYOUT_PRIVATE_KEY`) |
+| `NEXT_PUBLIC_NGN_TOKEN_ADDRESS` | no | override the vNGN token address |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | no | web push (device notifications); without both, push silently no-ops |
 | `VAPID_SUBJECT` | no (`mailto:support@veripay.store`) | contact URI push services may use to reach the app owner |
 
@@ -196,7 +276,7 @@ Without Paystack keys the card flow runs in labelled TEST MODE and tags the orde
 
 - Live at **veripay.store** (custom domain, DNS on Namecheap pointed at Vercel, valid SSL, confirmed HTTP 200). The `.vercel.app` URL still works alongside it. All hardcoded references to the old `monad-pay-lagos.vercel.app` URL have been fixed and pushed (`README.md`, `docs/docs.json` navbar "Launch App" button, `src/components/Navbar.tsx` thirdweb `ConnectButton` `appMetadata.url` on both desktop and mobile). If a thirdweb client-ID allowed-domains list exists on the thirdweb dashboard, confirm `veripay.store` is on it — not yet verified either way.
 - Monad **testnet** only. No real money has moved.
-- **v2 contract (fee + disputes + arbitration) is built, locally EVM-tested (27/27 passing), and fully wired into the UI — but not deployed.** `NEXT_PUBLIC_CONTRACT_ADDRESS` is still unset, so the live site runs on the v1 fallback address with no fee and no disputes. See the "Contract versions" section above — deploying v2 via Remix and setting the env var is the single next step that turns all of this on.
+- **On `main`/veripay.store:** still the v1 contract — no fee, no disputes. **On `hackathon/metropolis`:** the AUSD-extended contract is deployed and live (see "Contract versions"). Two different states; don't conflate them.
 - Card payments via Paystack are confirmed working end-to-end in **test mode** (real checkout URL, real access code returned). Going live needs a live-mode Paystack application, which needs a registered business — not done yet.
 - Mobile wallet transactions (in-app/email-login wallets, WalletConnect) were broken until the `window.ethereum` → thirdweb fix described above; now fixed and verified across all four write-action pages.
 - No real users, no revenue, no live transactions yet on either the escrow or the exchange.

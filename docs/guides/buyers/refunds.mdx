@@ -1,0 +1,48 @@
+---
+title: "Refunds"
+description: "How to get your money back in full when a seller can't fulfil an order."
+icon: "rotate-ccw"
+---
+
+A refund is a **two-step, consent-based** flow: the seller approves, then the buyer claims. Refunds always return **100%** of the amount with **no fee**.
+
+<Accordion title="In plain words" icon="lightbulb">
+  The seller has to agree to give the money back, and then you collect it. You always get every naira back — VeriPay takes nothing.
+</Accordion>
+
+## Steps
+
+<Steps>
+  <Step title="Ask the seller">
+    Message them in the [order chat](/guides/order-chat) and ask for a refund.
+  </Step>
+  <Step title="Seller approves">
+    The seller taps **Refund the buyer** on the order page. The order shows **Refund ready**: *"The seller agreed to a refund. Take it back whenever you're ready."*
+  </Step>
+  <Step title="You claim it">
+    Tap **Take my refund**. The full amount returns to your account and the order shows **Refunded**.
+  </Step>
+</Steps>
+
+## Behind the buttons
+
+| Step | Call | Checks | Event |
+|---|---|---|---|
+| Seller approves | `sellerApproveRefund(id)` | caller is the seller; order open | `RefundAuthorized(id)` |
+| Buyer claims | `buyerClaimRefund(id)` | caller is the buyer; order open; `sellerApprovedRefund == true` | `FundsReleased(id, buyer)` |
+
+`_payout(id, amount, 0)` sends the whole amount to the buyer. Because `toSeller == 0`, no fee is computed.
+
+<Accordion title="Why two steps instead of one?">
+  The seller can't push money to the buyer and the buyer can't pull it without consent. Splitting it means a seller can't be forced into a refund, and the buyer stays in control of when it happens. If the seller refuses, the buyer's remedy is [Report a problem](/guides/buyers/report-a-problem).
+
+  **In plain words:** the seller says "yes, refund", and you decide when to collect. If the seller won't agree, you can ask for a review instead.
+</Accordion>
+
+## Where does the refunded money go?
+
+Back to the account you paid from, as the same asset (vNGN on pay links). On testnet it can't be withdrawn to a bank. On mainnet, the plan is a regulated naira stablecoin with a cash-out partner — see the [Roadmap](/resources/roadmap).
+
+## Record effects
+
+Your record gets **+1 Refunds** (as a buyer). The seller's **Paid out** does not change.

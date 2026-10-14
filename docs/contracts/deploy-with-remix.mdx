@@ -1,0 +1,69 @@
+---
+title: "Deploy with Remix"
+description: "Deploy VeriPayEscrow, vNGN and AutoReleaseReceiver yourself on Monad testnet, then point the app, indexer and workflow at them."
+icon: "rocket"
+---
+
+VeriPay deliberately uses **Remix** for deployment — no Hardhat or Foundry project is needed. `VeriPayEscrow.sol` has no imports and no constructor arguments.
+
+<Accordion title="In plain words" icon="lightbulb">
+  Remix is a website for compiling and publishing smart contracts. You paste the code, click compile, click deploy, approve in your wallet, and copy the address.
+</Accordion>
+
+## Prerequisites
+
+- A browser wallet (e.g. MetaMask) on **Monad testnet** (chain id `10143`, RPC `https://testnet-rpc.monad.xyz`).
+- Testnet MON from the faucet.
+
+## 1. Deploy the escrow
+
+<Steps>
+  <Step title="Open Remix">Go to [remix.ethereum.org](https://remix.ethereum.org).</Step>
+  <Step title="Create the file">File explorer → new file `VeriPayEscrow.sol` → paste `contracts/VeriPayEscrow.sol`.</Step>
+  <Step title="Compile">
+    Solidity compiler tab: version **0.8.24** or newer, **optimization on, 200 runs**, EVM version default (Monad accepts Shanghai/Cancun output, including `PUSH0`). Click **Compile**.
+  </Step>
+  <Step title="Deploy">
+    Deploy & run tab: Environment **Injected Provider — MetaMask**, contract `VeriPayEscrow`, no constructor arguments → **Deploy** → approve.
+  </Step>
+  <Step title="Record">Copy the address and the deployment block number.</Step>
+</Steps>
+
+On deployment you are owner, arbitrator and fee recipient, with a 1% fee and a 7-day window. Change them afterwards — see [Admin operations](/contracts/escrow/admin). Consider moving arbitrator and fee recipient to dedicated wallets.
+
+## 2. Deploy vNGN (optional)
+
+Paste `contracts/test/VeriPayTestNaira.sol`, compile, deploy (no arguments). Use the deployer's **testnet-only** key as `PAY_MINTER_PRIVATE_KEY`.
+
+## 3. Deploy the CRE receiver (optional)
+
+`AutoReleaseReceiver.sol` imports `ReceiverTemplate.sol`, which imports OpenZeppelin `Ownable`. In Remix, add all files from `contracts/cre/` (Remix resolves `@openzeppelin/contracts` imports from npm). Deploy with:
+
+```text
+_forwarder = 0xB9F79d863261869B234c481D1f9A7af84AeAd192   // MockKeystoneForwarder (simulation)
+_escrow    = <your VeriPayEscrow address>
+```
+
+## 4. Point everything at your contracts
+
+| Where | Setting |
+|---|---|
+| App `.env` | `NEXT_PUBLIC_CONTRACT_ADDRESS=0xYourEscrow` · `NEXT_PUBLIC_NGN_TOKEN_ADDRESS=0xYourVNGN` |
+| Indexer `indexer/config.yaml` | `address:` and `start_block:` |
+| CRE `cre/auto-release/config.staging.json` | `escrowAddress`, `receiverAddress` |
+| Proof page | `RECEIVER` constant in `src/app/proof/[hash]/page.tsx` |
+| E2E test | `ESCROW`, `TOKEN` constants in `tests/e2e-pay.mjs` |
+
+Then restart cleanly:
+
+```bash
+rm -rf .next && npm run dev
+```
+
+<Warning>
+  The app will not read a v1 contract's data with only the v2 ABI — `src/lib/escrow.ts` handles detection. Trades on an old contract stay there; the app lists only the configured contract's trades.
+</Warning>
+
+## Verify behaviour
+
+Before trusting a deployment, read back `owner()`, `arbitrator()`, `feeRecipient()`, `feeBps()`, `autoReleaseDelay()` from the chain, and run the [contract test suite](/contracts/testing) against the same source.

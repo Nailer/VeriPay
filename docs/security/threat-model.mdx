@@ -1,0 +1,78 @@
+---
+title: "Threat model"
+description: "Adversaries, their capabilities, concrete attack scenarios against VeriPay, the mitigation for each, and the residual risk."
+icon: "crosshair"
+---
+
+## Adversaries
+
+| Adversary | Capabilities | Goal |
+|---|---|---|
+| **Scam seller** | Controls their own accounts; can create many | Get paid without delivering; fake reputation |
+| **Scam buyer** | Controls their own accounts and browser | Get goods without paying; claw back payment |
+| **External attacker** | Can call any public API and contract function; can tamper with requests | Steal funds, mint free tokens, drain sponsor wallet, deface data |
+| **Malicious token / recipient contract** | Arbitrary code on transfer | Reenter, block settlement |
+| **Compromised dependency / XSS** | Script execution on `veripay.store` | Steal derived keys, redirect payments |
+| **Insider / compromised operator key** | Owner, arbitrator, minter, admin passcode, service-role key | Take funds, bias disputes, leak data |
+| **Infrastructure failure** | Envio, Alchemy, Supabase, Paystack, Chainlink outages | — (availability) |
+
+<Accordion title="In plain words" icon="lightbulb">
+  This lists the kinds of people or failures that could try to cause harm — dishonest sellers or buyers, hackers, broken code, or even someone inside VeriPay — and how each is stopped.
+</Accordion>
+
+## Scenarios
+
+### Scam seller
+
+| Attack | Mitigation | Residual |
+|---|---|---|
+| Take payment, never deliver | Funds held; buyer reports problem before window | Buyer must act within 7 days |
+| Wash-trade to inflate record | Can't pay own link; contract rejects buyer = seller; each fake order costs 1% + effort | Sybil with a second account still possible |
+| Register a look-alike handle | Handles unique; record shown on every link | Social engineering via similar names |
+| Ask buyer to "confirm first" | Consumer copy and guides warn against it | User education |
+
+### Scam buyer
+
+| Attack | Mitigation | Residual |
+|---|---|---|
+| Claim non-delivery after receiving goods | Arbitrator reviews chat/evidence; disputes count on buyer's record too | Arbitrator judgement |
+| Pay less than the order | Server compares Paystack amount to intent | — |
+| Reuse a receipt for a bigger order | Reference bound to intent; `UNIQUE(paystack_ref)` | — |
+| Reverse the card charge after the lock | On testnet no real money; in production, a chargeback after release is the card processor's domain | **Open for mainnet** (chargeback policy needed) |
+
+### External attacker
+
+| Attack | Mitigation | Residual |
+|---|---|---|
+| Call `/api/pay/confirm` with a fake reference | Paystack verification server-side | — |
+| Race two confirms to mint twice | SQL status guard + single delivery slot | — |
+| Drain the gas sponsor | Eligibility (card-funded buyer / seller with trades), cap 3, CAS counter | Many genuine card payments still cost MON each |
+| Register a handle for someone else's address | Signature verification | — |
+| Spoof notifications or chat messages | Display-only data; on-chain state authoritative | Unauthenticated routes allow spam/spoofed text (see limitations) |
+| Read the database | RLS, no policies | — |
+| Forge an auto-release report | Forwarder check; escrow's own checks | — |
+| Forge a Paystack webhook | HMAC-SHA512 | — |
+| Brute-force admin passcode | Passcode required | No rate limiting; default passcode if unset |
+
+### Contract-level
+
+| Attack | Mitigation |
+|---|---|
+| Reentrancy from token/recipient | `nonReentrant`, effects before interactions |
+| Settle twice | `_requireOpen` |
+| Arbitrator gives > 100% | `_buyerBps ≤ 10000` |
+| Owner raises fee on open trades | Snapshot per trade |
+| Owner withdraws customer funds | No path; `accruedFees` only |
+| Recipient contract rejects transfer | **Not mitigated** — push payments revert (DoS on that trade) |
+| Fee-on-transfer / rebasing token | **Not supported** — escrow records `_amount`, not actual received |
+
+### Key compromise
+
+| Key | Impact | Mitigation / plan |
+|---|---|---|
+| Owner | Change fee (≤ 5%) for new trades, change arbitrator, redirect future fees | Multisig + timelock before mainnet |
+| Arbitrator | Bias outcomes of **disputed** trades only | Separate key; multi-party review |
+| Minter | Mint unlimited vNGN (worthless on testnet); drain minter's MON | Replace vNGN with regulated issuer on mainnet |
+| Service-role key | Read/modify off-chain data (emails, chat, handles) | Secret hygiene; rotate on suspicion |
+| Admin passcode | Exchange fulfilment actions, chat | Strong passcode; future auth upgrade |
+| User device / XSS | That user's funds | Minimal third-party JS; future signer isolation |

@@ -1,0 +1,45 @@
+---
+title: "Exchange rates"
+api: "GET https://veripay.store/api/exchange/rates"
+description: "Live naira prices for supported coins, with spread, sources and quote parameters."
+---
+
+<ResponseField name="coins" type="object[]">
+  <Expandable title="coin">
+    <ResponseField name="symbol" type="string">`MON · USDT · BTC · ETH · SOL`</ResponseField>
+    <ResponseField name="name" type="string" />
+    <ResponseField name="usd" type="number">Coin → USD.</ResponseField>
+    <ResponseField name="ngn" type="number">Mid-market NGN.</ResponseField>
+    <ResponseField name="buyNgn" type="number">What a user pays per coin (mid + spread).</ResponseField>
+    <ResponseField name="sellNgn" type="number">What VeriPay pays per coin (mid − spread).</ResponseField>
+    <ResponseField name="source" type="string">`binance · coingecko · fallback`</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="ngnPerUsd" type="number">Street USD/NGN rate used.</ResponseField>
+<ResponseField name="ngnRateSource" type="string">`bybit-p2p · coingecko · env · fallback`</ResponseField>
+<ResponseField name="spreadPercent" type="number">Default 3.5.</ResponseField>
+<ResponseField name="quoteTtlMs" type="number">Default 900000 (15 min).</ResponseField>
+<ResponseField name="minNgn" type="number">Default 1000.</ResponseField>
+<ResponseField name="maxNgn" type="number">Default 5000000.</ResponseField>
+<ResponseField name="at" type="number">Snapshot time (ms).</ResponseField>
+<ResponseField name="live" type="boolean">`true` if no fallback constants were used.</ResponseField>
+
+Header: `Cache-Control: no-store`. Served from a stale-while-revalidate cache (fresh < 8 s, background refresh to 120 s). `503 { "error": "Pricing temporarily unavailable" }` if nothing can be computed.
+
+<Accordion title="In plain words" icon="lightbulb">
+  Today's buy and sell prices in naira for each supported coin, and where those prices came from.
+</Accordion>
+
+<ResponseExample>
+```json 200
+{
+  "coins": [
+    { "symbol": "MON", "name": "Monad", "usd": 0.031, "ngn": 43.4, "buyNgn": 44.92, "sellNgn": 41.88, "source": "coingecko" }
+  ],
+  "ngnPerUsd": 1400.5, "ngnRateSource": "bybit-p2p", "spreadPercent": 3.5,
+  "quoteTtlMs": 900000, "minNgn": 1000, "maxNgn": 5000000, "at": 1760000000000, "live": true
+}
+```
+</ResponseExample>
+
+<Note>Example numbers are illustrative.</Note>

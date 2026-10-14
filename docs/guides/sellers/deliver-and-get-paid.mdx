@@ -1,0 +1,54 @@
+---
+title: "Deliver and get paid"
+description: "See new orders, deliver with confidence, and understand every path by which an order pays out to you."
+icon: "banknote"
+---
+
+## See new orders
+
+- **Device alert / bell:** *"Payment secured for you — A buyer just locked ₦25,000 for you. Deliver, and it's yours."*
+- **Sell page:** your orders list under **Your orders**.
+- **My orders:** everything you've sold and bought.
+
+An order that's ready to fulfil is labelled **Paid — deliver this order**.
+
+## Deliver
+
+Open the order to see the amount, what the buyer said they're buying, the buyer and a message button. The order page reads: *"The buyer has paid and the money is held for you. Deliver the order — you're paid as soon as they confirm."* It also shows what you'll receive after the fee, e.g. *"The seller receives ₦24,750 after the 1% fee."*
+
+<Tip>
+  Agree delivery details in the order chat (**Message the buyer**). If there's ever a dispute, the reviewer sees that conversation.
+</Tip>
+
+## The four ways an order ends
+
+<Tabs>
+  <Tab title="Buyer confirms">
+    The buyer taps **I received my order — pay the seller**. You receive **99%** immediately. Your **Paid out** count goes up.
+  </Tab>
+  <Tab title="Buyer goes silent">
+    After the window (default **7 days** from payment) with no confirmation and no problem report, the order becomes eligible for automatic release:
+    - A **Chainlink** workflow checks every 15 minutes and pays you automatically, **or**
+    - you can tap **Collect my payment** on the order page yourself.
+
+    Either way you receive **99%**, and **Paid out** goes up. The order page shows *"The time for the buyer to confirm has passed. The seller is now paid automatically, unless a problem is reported first."*
+  </Tab>
+  <Tab title="You refund">
+    You tap **Refund the buyer**; they tap **Take my refund**. They receive 100%; you receive nothing and pay no fee. See [Refund a buyer](/guides/sellers/refund-a-buyer).
+  </Tab>
+  <Tab title="Problem reported">
+    Either party reports a problem; money is frozen and auto-release stops. A reviewer decides any split. You receive your share minus 1%. Both records get **+1 Disputes**.
+  </Tab>
+</Tabs>
+
+## Behind "Collect my payment"
+
+The button calls `autoRelease(id)`, which anyone may call. The contract checks the order is open, **not disputed**, and `block.timestamp ≥ autoReleaseAt`; it then pays out exactly as a buyer release would and emits both `AutoReleased(id, seller)` and `FundsReleased(id, seller)`.
+
+<Accordion title="In plain words" icon="lightbulb">
+  Once the buyer's week is up and nobody has complained, the safe locker lets anyone tell it to pay you. Usually VeriPay's robot does this automatically; the button is there in case you want it right away.
+</Accordion>
+
+## Network fees
+
+Registered sellers with at least one order get their network fees covered for actions like refunds or collecting payment (up to 3 top-ups). You never need to buy MON.
