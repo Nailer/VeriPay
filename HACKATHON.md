@@ -2,6 +2,8 @@
 
 **Track:** Consumer Products & Payments
 **Live demo:** https://veripay.store
+**Demo video:** https://youtu.be/dxhIg5WTRA0
+**Pitch video:** https://youtu.be/XqcZS5daLv8
 **Network:** Monad testnet (chain 10143). No real money moves.
 **Code:** https://github.com/Nailer/VeriPay (MIT) — the [README](./README.md) lists what existed before the hackathon and what was built during it, and discloses AI tool use.
 
