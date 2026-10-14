@@ -205,6 +205,9 @@ export default function Navbar() {
           <Link href="/seller" className="text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
             Check a seller
           </Link>
+          <a href="/docs" className="text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
+            Docs
+          </a>
           {/* Crypto-native routes stay reachable, just not in a shopper's face */}
           <div className="relative group">
             <button className="text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors focus:outline-none">More</button>
@@ -299,6 +302,7 @@ export default function Navbar() {
           {[{ href: "/orders", label: "My orders" }, { href: "/sell", label: "Sell — get your payment link" }, { href: "/seller", label: "Check a seller" }].map((l) => (
             <Link key={l.href} href={l.href} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-semibold text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">{l.label}</Link>
           ))}
+          <a href="/docs" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-semibold text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">Docs — how VeriPay works</a>
           <div className="border-t border-zinc-200 dark:border-zinc-800 mt-2 pt-3">
             <p className="px-4 text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">More</p>
             {MORE_LINKS.map((l) => (

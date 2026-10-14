@@ -13,6 +13,7 @@ and the money is held until the order arrives. Nobody ever sees a wallet, a toke
 [![Live app](https://img.shields.io/badge/live-veripay.store-000000?style=for-the-badge)](https://veripay.store)
 [![Monad testnet](https://img.shields.io/badge/Monad-testnet%2010143-000000?style=for-the-badge)](https://testnet.monadscan.com/address/0x00bdf9fbc9f59cc6814bbc7a91b19bbad1517e6d)
 [![Track](https://img.shields.io/badge/Metropolis-Consumer%20Products%20%26%20Payments-000000?style=for-the-badge)](#)
+[![Docs](https://img.shields.io/badge/docs-veri--pay.mintlify.app-000000?style=for-the-badge)](https://veri-pay.mintlify.app)
 [![License: MIT](https://img.shields.io/badge/license-MIT-000000?style=for-the-badge)](./LICENSE)
 
 </div>
@@ -45,6 +46,25 @@ and the money is held until the order arrives. Nobody ever sees a wallet, a toke
 | **Hackathon** | Monad Metropolis · Track 02 · Consumer Products & Payments |
 | **Network** | Monad testnet (chain id 10143) · test money only, nothing real moves |
 | **Submission write-up** | [`HACKATHON.md`](./HACKATHON.md) |
+| **Full documentation** | <https://veri-pay.mintlify.app> — also at [veripay.store/docs](https://veripay.store/docs) |
+
+---
+
+## Documentation
+
+The complete documentation is at **[veri-pay.mintlify.app](https://veri-pay.mintlify.app)** (or [veripay.store/docs](https://veripay.store/docs), which forwards there). Every technical explanation has an "In plain words" dropdown, so it works for a first-time shopper as well as an auditor.
+
+| If you are… | Start here |
+|---|---|
+| Trying VeriPay for the first time | [Quickstart](https://veri-pay.mintlify.app/quickstart) — the full flow on testnet in 5 minutes |
+| Buying | [Buyer guide](https://veri-pay.mintlify.app/guides/buyers/overview) |
+| Selling | [Seller guide](https://veri-pay.mintlify.app/guides/sellers/overview) |
+| Curious how it's built | [Architecture](https://veri-pay.mintlify.app/architecture/overview) |
+| Reviewing the contracts | [VeriPayEscrow reference](https://veri-pay.mintlify.app/contracts/escrow/overview) · [Invariants](https://veri-pay.mintlify.app/security/invariants) |
+| Integrating | [API reference](https://veri-pay.mintlify.app/api/overview) · [Integration guide](https://veri-pay.mintlify.app/developers/integration-guide) |
+| Checking what's not done yet | [Known limitations](https://veri-pay.mintlify.app/security/known-limitations) |
+
+The source is in [`docs/`](./docs) and publishes automatically on every push to this branch. Preview locally with `npm i -g mint && cd docs && mint dev`.
 
 ---
 
@@ -725,6 +745,7 @@ indexer/                 Envio HyperIndex project (reputation)
 supabase/schema.sql      database setup
 tests/e2e-pay.mjs        end-to-end payment test
 scripts/demo-video/      how the demo and pitch videos were produced
+docs/                    Mintlify documentation (veri-pay.mintlify.app)
 brand/                   logo files
 ```
 

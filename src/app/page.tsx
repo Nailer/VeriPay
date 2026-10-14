@@ -90,6 +90,7 @@ export default function Home() {
       <footer className="border-t border-zinc-200 dark:border-zinc-900 py-8 sm:py-12 px-5 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-zinc-500 text-xs sm:text-sm max-w-6xl mx-auto w-full relative z-10 transition-colors">
         <p>© 2026 VeriPay. All rights reserved.</p>
         <div className="flex gap-4 sm:gap-6">
+          <a href="/docs" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Docs</a>
           <Link href="/install" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Install App</Link>
           <a href="https://www.coinapi.io/learn/glossary/escrow-service" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Terms of Service</a>
           <a href={`https://testnet.monadscan.com/address/${CONTRACT_ADDRESS}`} className="hover:text-zinc-900 dark:hover:text-white transition-colors">Smart Contracts</a>
