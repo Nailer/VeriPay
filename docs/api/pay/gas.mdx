@@ -1,0 +1,39 @@
+---
+title: "Sponsor network fees"
+api: "POST https://veripay.store/api/pay/gas"
+description: "Top up an eligible buyer or seller with MON so they can sign their next action. Capped and eligibility-gated so it can't be used as a faucet."
+---
+
+<ParamField body="address" type="string" required>Account about to transact.</ParamField>
+
+<ResponseField name="ready" type="boolean">
+  `true` if the account already holds ≥ 0.08 MON, or a top-up of 0.15 MON was sent successfully. `false` if not eligible, capped, or the send failed. Never errors — failures return `{ "ready": false }`.
+</ResponseField>
+
+## Eligibility
+
+1. **Registered seller** with `gas_topups < 3` and at least one on-chain trade.
+2. **Buyer** with a `funded` card payment whose `gas_topups < 3`.
+3. Anyone else → `ready: false`.
+
+Each top-up is counted (compare-and-swap) **before** it's sent.
+
+<Accordion title="In plain words" icon="lightbulb">
+  Asks VeriPay to put a little network fuel in an account. Only real buyers and sellers qualify, and only up to three times.
+</Accordion>
+
+<RequestExample>
+```bash
+curl -X POST https://veripay.store/api/pay/gas -H "Content-Type: application/json" -d '{"address":"0xSeller…"}'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{ "ready": true }
+```
+</ResponseExample>
+
+<Tip>
+  In the browser, call `readyToTransact(address)` from `src/lib/gas.ts` instead — it checks the balance first (≥ 0.03 MON), calls this endpoint only if needed, and polls up to 6 s for the top-up to land.
+</Tip>

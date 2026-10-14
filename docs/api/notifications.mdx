@@ -1,0 +1,72 @@
+---
+title: "Notifications"
+description: "List, create and mark-read in-app notifications. Creating one also sends a best-effort device push to every subscription of the recipient."
+icon: "bell"
+---
+
+## List notifications
+
+```http
+GET /api/notifications?address=0x…
+```
+
+<ParamField query="address" type="string" required>Recipient (case-insensitive).</ParamField>
+
+Returns the **50** newest, newest first. Without Supabase: `{ "notifications": [] }`.
+
+<ResponseField name="notifications" type="Notification[]">
+  <Expandable title="Notification">
+    <ResponseField name="id" type="number" />
+    <ResponseField name="type" type="&quot;trade&quot; | &quot;chat&quot;" />
+    <ResponseField name="tradeId" type="string" />
+    <ResponseField name="fromAddress" type="string" />
+    <ResponseField name="amount" type="string">For `trade` — e.g. `"₦2,500"` or a MON number.</ResponseField>
+    <ResponseField name="message" type="string">For `chat`.</ResponseField>
+    <ResponseField name="read" type="boolean" />
+    <ResponseField name="createdAt" type="string">Localised `HH:MM`.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Create a notification
+
+```http
+POST /api/notifications
+```
+
+<ParamField body="toAddress" type="string" required>Recipient.</ParamField>
+<ParamField body="type" type="&quot;trade&quot; | &quot;chat&quot;" required />
+<ParamField body="tradeId" type="string" required />
+<ParamField body="fromAddress" type="string" required />
+<ParamField body="amount" type="string">For `trade`.</ParamField>
+<ParamField body="message" type="string">For `chat`.</ParamField>
+
+Returns `{ success: true, notification }`. Then fires `sendPushToAddress(toAddress, { title, body, url: "/trade/<id>" })` without awaiting it.
+
+| Status | When |
+|---|---|
+| 400 | Missing `toAddress`, `type`, `tradeId` or `fromAddress` |
+| 503 | Persistence not configured |
+
+## Mark as read
+
+```http
+PATCH /api/notifications
+```
+
+<ParamField body="address" type="string" required />
+<ParamField body="ids" type="number[]">Specific ids; omit or empty to mark **all** for that address read.</ParamField>
+
+<Accordion title="In plain words" icon="lightbulb">
+  These addresses let the app read your alerts, create a new alert for someone (which also pings their phone), and mark alerts as read.
+</Accordion>
+
+<Warning>
+  These routes are not authenticated — anyone who knows an address can read or create that address's notifications. Notifications carry display text only; they never move money. Treat them as untrusted and always verify state on-chain.
+</Warning>
+
+<RequestExample>
+```bash
+curl -X POST https://veripay.store/api/notifications -H "Content-Type: application/json" \
+  -d '{"toAddress":"0xSeller…","type":"trade","tradeId":"9","fromAddress":"0xBuyer…","amount":"₦2,500"}'
+```
+</RequestExample>

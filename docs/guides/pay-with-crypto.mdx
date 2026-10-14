@@ -1,0 +1,59 @@
+---
+title: "Pay with crypto (direct escrow)"
+description: "For crypto-native users: open an escrow straight to a seller's address in MON or AUSD, without a seller link or a card."
+icon: "coins"
+---
+
+**Pay with crypto** (`/create`, under **More** in the menu) is the original VeriPay flow, extended during Metropolis. You provide the seller's address and lock **MON** (native) or **AUSD** (ERC-20) yourself.
+
+<Accordion title="In plain words" icon="lightbulb">
+  If you already have crypto in a wallet, you can use VeriPay's safe locker directly by typing the seller's account number. Most people should use a seller's payment link instead.
+</Accordion>
+
+## Steps
+
+<Steps>
+  <Step title="Sign in with any wallet">
+    Passkey, in-app (email/social), MetaMask, WalletConnect, etc.
+  </Step>
+  <Step title="Paste the seller's address">
+    The **Seller Wallet Address** field. As soon as it's a valid address, the seller's **reputation card** appears — check it before continuing.
+  </Step>
+  <Step title="Choose the asset">
+    Toggle **MON** or **AUSD**.
+  </Step>
+  <Step title="Enter amount and terms">
+    **Trade Terms / Waybill Info** is stored on-chain as `metadata`. Describe the item and delivery terms precisely.
+  </Step>
+  <Step title="Lock the funds">
+    - **MON:** one transaction — `createTrade(seller, metadata)` with `msg.value = amount`.
+    - **AUSD:** two transactions — `AUSD.approve(escrow, amount)`, then `createTradeWithToken(seller, metadata, AUSD, amount)`.
+  </Step>
+  <Step title="Funds Secured!">
+    You get the order reference. Track it like any other order.
+  </Step>
+</Steps>
+
+## MON vs AUSD
+
+| | MON | AUSD |
+|---|---|---|
+| Type | Native gas token | Agora USD stablecoin, 6 decimals |
+| Price stability | Volatile between lock and release | ≈ $1 |
+| Transactions to lock | 1 | 2 (approve + lock) |
+| Fee bucket | `accruedFees[address(0)]` | `accruedFees[AUSD]` |
+| Testnet availability | Public faucet | **Mint is owner-only** — must request from Agora |
+
+<Accordion title="Why a stablecoin matters">
+  Escrow holds funds for up to a week. If the escrowed asset is volatile, the seller may receive materially more or less value than agreed. A dollar-pegged asset removes that risk: the agreed price is the paid price.
+
+  **In plain words:** crypto prices jump around. A stablecoin stays at about $1, so the seller gets what was agreed even if the order takes a week.
+</Accordion>
+
+<Note>
+  The AUSD address defaults to `0x333a12e2B519DA16EBE75012d54574C16ef4463f` and can be overridden with `NEXT_PUBLIC_AUSD_ADDRESS` without a contract redeploy, since the escrow accepts any ERC-20.
+</Note>
+
+## Getting testnet MON
+
+Use the official Monad testnet faucet linked from [monad.xyz](https://monad.xyz). Testnet MON has no value.

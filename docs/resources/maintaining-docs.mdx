@@ -1,0 +1,58 @@
+---
+title: "Maintaining these docs"
+description: "How this documentation is built, previewed, published and kept accurate — plus the style rules every page follows."
+icon: "book-marked"
+---
+
+## How it's built
+
+| | |
+|---|---|
+| Platform | [Mintlify](https://mintlify.com) |
+| Source | `docs/` in [Nailer/VeriPay](https://github.com/Nailer/VeriPay) |
+| Config | `docs/docs.json` (theme, colours, navigation tabs/groups, navbar, footer) |
+| Pages | `.mdx` files; path = URL (e.g. `docs/architecture/reputation.mdx` → `/architecture/reputation`) |
+| Snippets | `docs/snippets/` (shared testnet warning, address table) |
+| Images | `docs/images/`, `docs/logo/`, `docs/favicon.svg` |
+| Deploys | Mintlify's GitHub app builds on every push to the configured branch and `docs` directory |
+
+## Preview locally
+
+```bash
+npm i -g mint
+cd docs
+mint dev               # http://localhost:3000
+mint broken-links      # check internal links
+mint validate          # strict build check
+```
+
+## Add a page
+
+<Steps>
+  <Step title="Create the file">`docs/<section>/<slug>.mdx` with frontmatter `title`, `description`, `icon` (Lucide name).</Step>
+  <Step title="Register it">Add `"<section>/<slug>"` to the right group in `docs/docs.json`.</Step>
+  <Step title="Validate">`mint broken-links && mint validate`.</Step>
+  <Step title="Commit and push">Mintlify redeploys automatically.</Step>
+</Steps>
+
+## Style rules
+
+1. **Technical first, then plain words.** Every technical explanation is followed by an `<Accordion title="In plain words">` that explains it for a non-technical reader.
+2. **Cite the code.** Name the file (`src/lib/payments.ts`) that implements what you describe.
+3. **Be honest about status.** Testnet, test money, unaudited, single arbitrator — never imply otherwise.
+4. **Consumer language in user guides.** "Order", "held safely", "paid out" — not "trade", "escrow", "wallet".
+5. **Exact UI strings in bold**, copied from the app (e.g. **I received my order — pay the seller**).
+6. **Numbers from code, not memory.** Limits, caps, intervals and addresses change; re-check the source.
+
+## Keep in sync when code changes
+
+| If you change… | Update |
+|---|---|
+| Contract functions/events/errors | `contracts/escrow/*` |
+| Addresses / redeploys | `snippets/addresses.mdx`, `contracts/deployments.mdx` |
+| Pay-link limits, gas constants | `architecture/card-to-escrow`, `architecture/gas-sponsorship`, `api/pay/*` |
+| Reputation rules | `architecture/reputation`, `guides/sellers/your-record` |
+| API routes | `api/*` |
+| Env vars | `developers/environment-variables` |
+| UI copy | user guides |
+| Known issues fixed | `security/known-limitations`, `resources/changelog` |

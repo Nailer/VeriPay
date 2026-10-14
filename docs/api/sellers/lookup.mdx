@@ -1,0 +1,51 @@
+---
+title: "Look up a seller"
+api: "GET https://veripay.store/api/sellers"
+description: "Resolve a seller's link name to their shop and payout address, or find the link registered to an address."
+---
+
+Exactly one of `handle` or `address` is required.
+
+<ParamField query="handle" type="string">
+  Link name. Normalised: trimmed, lowercased, leading `@` removed.
+</ParamField>
+<ParamField query="address" type="string">
+  Payout address (`0x` + 40 hex, any case).
+</ParamField>
+
+<ResponseField name="seller" type="object | null">
+  `null` when not found (still HTTP 200).
+  <Expandable title="properties">
+    <ResponseField name="handle" type="string">Link name.</ResponseField>
+    <ResponseField name="name" type="string">Shop name.</ResponseField>
+    <ResponseField name="address" type="string">Lowercase payout address.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<Accordion title="In plain words" icon="lightbulb">
+  Give it a link name like `adaeze-thrift` and it tells you the shop's name and the account that gets paid. Or give it an account and it tells you its link name.
+</Accordion>
+
+<RequestExample>
+```bash By handle
+curl "https://veripay.store/api/sellers?handle=adaeze-thrift"
+```
+```bash By address
+curl "https://veripay.store/api/sellers?address=0xEfD0497f4557b49E84369cfb884B6c7446e11aBA"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "seller": {
+    "handle": "adaeze-thrift",
+    "name": "Adaeze Thrift",
+    "address": "0xefd0497f4557b49e84369cfb884b6c7446e11aba"
+  }
+}
+```
+```json 400
+{ "error": "Missing handle or address" }
+```
+</ResponseExample>

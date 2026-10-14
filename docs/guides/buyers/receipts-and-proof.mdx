@@ -1,0 +1,49 @@
+---
+title: "Receipts and proof"
+description: "Understand every line of your VeriPay receipt and verify the payment yourself, straight from the blockchain."
+icon: "receipt"
+---
+
+## Your receipt
+
+After paying through a link you get a **Payment secured** receipt:
+
+| Line | Meaning | Source |
+|---|---|---|
+| **Amount** (headline) | In naira — *"Held safely for you. [Shop name] only gets paid when you confirm your order arrived."* | Locked vNGN amount |
+| **Paid to** | Shop name and `@handle` | `sellers` table |
+| **For** | What you typed when paying | Stored on-chain as `Trade.metadata` |
+| **Order no.** | e.g. `#0009` | `id` from the `TradeCreated` event |
+| **Reference** | `VP-<intentId>` | Your pay intent / Paystack reference prefix |
+| **Date** | When the lock confirmed | Your device clock |
+| **Status** | *Held until you confirm delivery* | Contract state |
+| **Secured in … · network fee ₦…, paid for you** | Lock latency and gas cost | Transaction receipt |
+| **Test payment — no real money moved.** | Shown on testnet | Paystack test key |
+
+Two buttons follow: **Track your order** (opens `/trade/<id>`) and **View proof on Monad**.
+
+## Verify it yourself
+
+Tap **View proof on Monad**. The proof page (`/proof/<transaction hash>`):
+
+1. Fetches the **transaction receipt** and its **block** directly from a Monad RPC node — not from VeriPay's database.
+2. Decodes event logs emitted by the escrow and auto-release contracts.
+3. Describes each in words, for example:
+   - *"Payment for order #9 locked in the VeriPay contract"*
+   - *"Money for order #9 paid out"*
+   - *"1% VeriPay fee taken on order #9"*
+   - *"Order #2 released automatically — the buyer's window had passed"*
+   - *"Chainlink automation triggered the release of order #2"*
+4. Shows status (**Confirmed on Monad** / **This transaction failed**), block number, time, sender, which contract it went to, network fee and the full hash, with a link to the explorer.
+
+<Accordion title="In plain words" icon="lightbulb">
+  The proof page goes straight to the blockchain and asks "what happened in this transaction?" It then explains it in normal language. Because it doesn't use VeriPay's own records, it's an independent check.
+</Accordion>
+
+## Example
+
+The Chainlink automatic payout of order #2: [veripay.store/proof/0xa5cf52ae…87f823](https://veripay.store/proof/0xa5cf52aeac617514c10055bf703c2766eb5366f640958c171006681b9d87f823).
+
+## Raw explorer
+
+For the raw view, every transaction is on [testnet.monadscan.com](https://testnet.monadscan.com/address/0x00bdf9fbc9f59cc6814bbc7a91b19bbad1517e6d).

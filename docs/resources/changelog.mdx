@@ -1,0 +1,43 @@
+---
+title: "Changelog"
+description: "Notable changes to VeriPay, newest first."
+icon: "history"
+rss: true
+---
+
+<Update label="October 2026" description="Docs and submission">
+  - **Documentation:** full Mintlify documentation site (this site) covering product, user guides, architecture, contracts, API, developers, security and resources.
+  - README rewritten for judging — use cases, full architecture diagrams, YouTube videos.
+  - Final demo and pitch videos with subtitles; the scripts that produced them.
+</Update>
+
+<Update label="October 2026" description="Metropolis features">
+  - **Proof page** — reads a transaction live from Monad and explains it in words.
+  - **Order page and seller lookup** in plain language.
+  - **Chainlink CRE workflow runs end to end** and released a real order (#2) on 11 Oct 2026.
+  - **Plain-language navigation**, **My orders**, and fees covered for sellers.
+  - Buyer gas top-up made **reliable and resumable** (fix for "insufficient balance" after paying).
+  - Live **Envio indexer** endpoint recorded.
+  - Proper **receipt** after a pay-link payment.
+  - Card step no longer skipped when the Paystack public key is missing.
+  - Repository renamed to `Nailer/VeriPay`; links updated; logo files added.
+</Update>
+
+<Update label="September 2026" description="Metropolis foundations">
+  - **Seller payment links** and **naira card checkout into escrow**.
+  - **Seller reputation** everywhere; live CRE receiver; submission doc.
+  - **Contract suite** on a local EVM (30 tests) and an **end-to-end payment test**.
+  - MIT licence, example env file and database schema.
+  - **AUSD-extended escrow** deployed (`createTradeWithToken`, per-asset fees).
+  - **Passkey sign-in** with Mera.
+  - **Alchemy RPC** everywhere.
+</Update>
+
+<Update label="April – August 2026" description="Foundation (pre-hackathon)">
+  - Basic MON escrow on Monad testnet: create, release, refund.
+  - Escrow v2 source with fees, disputes and auto-release.
+  - Naira ⇄ crypto exchange with server-side pricing and admin console.
+  - Per-trade chat, in-app notifications, PWA install, web push.
+  - Fix: all writes moved from `window.ethereum` to thirdweb's pipeline (mobile wallets).
+  - First documentation site (superseded by this one).
+</Update>

@@ -1,0 +1,62 @@
+---
+title: "Claim a payment link"
+api: "POST https://veripay.store/api/sellers"
+description: "Register a link name for a payout address, proven by an EIP-191 signature from that address."
+---
+
+<ParamField body="handle" type="string" required>
+  Desired link name. Must match `^[a-z0-9][a-z0-9_-]{2,29}$` after normalisation and not be reserved (`admin`, `api`, `pay`, `sell`, `seller`, `veripay`, `support`, `help`, `dashboard`, `exchange`, `create`, `trade`, `install`, `orders`).
+</ParamField>
+<ParamField body="name" type="string" required>Shop name, 2–60 characters after trimming.</ParamField>
+<ParamField body="address" type="string" required>Payout address.</ParamField>
+<ParamField body="signature" type="string" required>
+  EIP-191 `personal_sign` signature by `address` over exactly:
+
+  ```text
+  VeriPay: I am claiming the payment link "<handle>" for <address lowercased>.
+  ```
+</ParamField>
+
+<ResponseField name="seller" type="object">The created seller: `handle`, `name`, `address`.</ResponseField>
+
+## Rules
+
+- Signature verified with viem `verifyMessage`; must recover to `address`.
+- One link per address (`409 This account already has a payment link.`).
+- Handles are unique (`409 That link name is taken — try another.`, from Postgres `23505`).
+
+<Accordion title="In plain words" icon="lightbulb">
+  To register a link, the account that will receive payments has to "sign" a sentence saying it's claiming that link. VeriPay checks the signature before saving, so nobody can register a link that pays someone else.
+</Accordion>
+
+<RequestExample>
+```ts viem
+import { privateKeyToAccount } from "viem/accounts";
+const account = privateKeyToAccount(process.env.KEY as `0x${string}`);
+const handle = "adaeze-thrift";
+const message = `VeriPay: I am claiming the payment link "${handle}" for ${account.address.toLowerCase()}.`;
+const signature = await account.signMessage({ message });
+
+await fetch("https://veripay.store/api/sellers", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ handle, name: "Adaeze Thrift", address: account.address, signature }),
+});
+```
+```ts thirdweb (in the app)
+import { claimMessage } from "@/lib/sellerShared";
+const signature = await account.signMessage({ message: claimMessage(handle, account.address) });
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{ "seller": { "handle": "adaeze-thrift", "name": "Adaeze Thrift", "address": "0xefd0…1aba" } }
+```
+```json 401
+{ "error": "We couldn't confirm you control that account. Try again." }
+```
+```json 409
+{ "error": "That link name is taken — try another." }
+```
+</ResponseExample>

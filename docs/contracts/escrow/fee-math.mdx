@@ -1,0 +1,71 @@
+---
+title: "Fee math"
+description: "Exact formulas for fees, splits and rounding in VeriPayEscrow, with worked examples in base units."
+icon: "calculator"
+---
+
+## Formulas
+
+```text
+fee(toSeller)    = ⌊ toSeller × trade.feeBps / 10,000 ⌋
+sellerReceives   = toSeller − fee
+buyerReceives    = toBuyer                         (never charged)
+
+release / auto-release:  toBuyer = 0,  toSeller = amount
+refund:                  toBuyer = amount, toSeller = 0
+ruling(bps):             toBuyer = ⌊ amount × bps / 10,000 ⌋,  toSeller = amount − toBuyer
+```
+
+<Accordion title="In plain words" icon="lightbulb">
+  The fee is a percentage of whatever the seller gets, rounded down. The buyer's share is never charged.
+</Accordion>
+
+## Worked examples (vNGN, 6 decimals)
+
+### Release of ₦25,000
+
+| | Base units | Naira |
+|---|---|---|
+| `amount` | 25,000,000,000 | ₦25,000 |
+| `fee = amount × 100 / 10000` | 250,000,000 | ₦250 |
+| Seller receives | 24,750,000,000 | ₦24,750 |
+| `accruedFees[vNGN] +=` | 250,000,000 | ₦250 |
+
+### Ruling 30% to buyer on ₦10,000
+
+| | Base units | Naira |
+|---|---|---|
+| `toBuyer = 10,000,000,000 × 3000 / 10000` | 3,000,000,000 | ₦3,000 |
+| `toSeller` | 7,000,000,000 | ₦7,000 |
+| `fee = 7,000,000,000 × 100 / 10000` | 70,000,000 | ₦70 |
+| Seller receives | 6,930,000,000 | ₦6,930 |
+
+### Rounding edge — 1 base unit
+
+`fee = ⌊ 1 × 100 / 10000 ⌋ = 0` → no `FeeCharged` event, seller gets 1. Rounding always favours the parties, never the fee bucket.
+
+## Overflow
+
+Solidity 0.8 checked arithmetic. `amount × feeBps` (feeBps ≤ 500) overflows only for amounts above ~2.3 × 10⁷⁴ base units — far beyond any token supply.
+
+## Fee snapshot
+
+```solidity
+t.feeBps = feeBps;   // at creation
+...
+uint256 fee = (toSeller * t.feeBps) / BPS_DENOMINATOR;   // at settlement
+```
+
+Changing the global `feeBps` (≤ 500) only affects trades created afterwards.
+
+## Same for `autoReleaseAt`
+
+`autoReleaseAt = createdAt + autoReleaseDelay` is computed at creation. Changing `autoReleaseDelay` doesn't move existing deadlines.
+
+## Previewing
+
+```ts
+const [net, fee] = await client.readContract({ address: ESCROW, abi, functionName: "previewSellerProceeds", args: [id] });
+```
+
+The order page uses the same arithmetic to show *"The seller receives ₦24,750 after the 1% fee."*

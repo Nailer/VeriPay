@@ -1,0 +1,55 @@
+---
+title: "Developer troubleshooting"
+description: "Known failure modes when developing or operating VeriPay, their real causes and fixes."
+icon: "bug"
+---
+
+<AccordionGroup>
+  <Accordion title="Nested API routes 404 (/api/admin/*, /api/exchange/*); admin passcode 'wrong'">
+    **Cause:** `npm run build` ran while `npm run dev` was live and corrupted `.next`.
+    **Fix:** stop the server, `rm -rf .next`, restart. Use `npx tsc --noEmit` for typechecks.
+  </Accordion>
+  <Accordion title="&quot;No browser wallet detected. Please install MetaMask.&quot;">
+    **Cause:** code used `window.ethereum`. **Fix:** use thirdweb's pipeline — [Sending transactions](/developers/sending-transactions).
+  </Accordion>
+  <Accordion title="Dashboard / order pages render empty">
+    **Cause:** decoding v1 data with the v2 ABI (or vice versa). **Fix:** read via `readTrade()` / `readNextTradeId()`.
+  </Accordion>
+  <Accordion title="Contract address ignored">
+    **Cause:** `CONTRACT_ADDRESS` instead of `NEXT_PUBLIC_CONTRACT_ADDRESS`. **Fix:** use the prefixed name.
+  </Accordion>
+  <Accordion title="Buyer charged, then 'Signer had insufficient balance' on lock">
+    **Cause:** gas top-up didn't land. **Fix:** current code retries with fresh nonces and re-runs on every confirm; ensure the minter wallet has MON. Check `GET /api/pay/intent`.
+  </Accordion>
+  <Accordion title="Paystack: 'Duplicate Transaction Reference'">
+    **Cause:** calling `/transaction/initialize` and then opening the inline popup with the same reference. **Fix:** the pay-link flow must not initialise server-side.
+  </Accordion>
+  <Accordion title="Mint fails after card charge">
+    **Cause:** no minter key, minter isn't vNGN owner, or minter has no MON. **Fix:** set `PAY_MINTER_PRIVATE_KEY`, `transferOwnership` vNGN if needed, fund it. The intent stays `paid` and is retryable.
+  </Accordion>
+  <Accordion title="Reputation shows source: chain although Envio is configured">
+    **Cause:** Envio endpoint changed after redeploy, or returned GraphQL errors. **Fix:** update `ENVIO_GRAPHQL_URL`; test with curl.
+  </Accordion>
+  <Accordion title="CRE: 'failed to execute subscribe … wasm unreachable'">
+    **Cause:** simulating in place inside the repo. **Fix:** use `cre/simulate.sh`.
+  </Accordion>
+  <Accordion title="CRE: 'not a function' at runtime">
+    **Cause:** hand-built report request or bytes/bigint params. **Fix:** `prepareReportRequest`; hex string receiver; string gasLimit.
+  </Accordion>
+  <Accordion title="Chat messages vanish">
+    **Cause:** Supabase not configured. The route now returns `503` loudly instead of pretending to save.
+  </Accordion>
+  <Accordion title="Wrong bank details shown to buyers">
+    **Cause:** near-miss env var names. **Fix:** `EXCHANGE_MERCHANT_ACCOUNT_NUMBER` / `EXCHANGE_MERCHANT_ACCOUNT_NAME` exactly, in both `.env` and Vercel.
+  </Accordion>
+  <Accordion title="Passkey account 'disappeared'">
+    **Cause:** different hostname (preview URL vs `veripay.store` vs `localhost`). Passkeys are domain-bound.
+  </Accordion>
+  <Accordion title="App feels slow">
+    **Cause:** dev mode. **Fix:** `npm run build && npm run start`.
+  </Accordion>
+</AccordionGroup>
+
+<Tip>
+  When something is broken, find the actual cause before changing code — the admin-passcode incident was a 404 masquerading as an auth failure.
+</Tip>

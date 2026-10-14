@@ -1,0 +1,75 @@
+---
+title: "Events"
+description: "Every event VeriPayEscrow emits, its topics, when it fires, and how indexers and the app consume it."
+icon: "radio"
+---
+
+Events are the contract's permanent, public log. VeriPay's reputation system, proof page, notifications and indexer are all built on them.
+
+<Accordion title="In plain words" icon="lightbulb">
+  Every time something happens, the contract writes a short public note. These notes can never be changed, and VeriPay uses them to build seller records and receipts.
+</Accordion>
+
+## Trade events
+
+| Event | Signature | Indexed | Emitted by |
+|---|---|---|---|
+| `TradeCreated` | `TradeCreated(uint256 indexed id, address indexed buyer, address indexed seller, uint256 amount)` | id, buyer, seller | `createTrade`, `createTradeWithToken` |
+| `TradeToken` | `TradeToken(uint256 indexed id, address indexed token)` | id, token | `createTradeWithToken` (after `TradeCreated`) |
+| `FundsReleased` | `FundsReleased(uint256 indexed id, address to)` | id | `releaseToSeller` (to seller), `autoRelease` (to seller), `buyerClaimRefund` (to buyer) |
+| `AutoReleased` | `AutoReleased(uint256 indexed id, address to)` | id | `autoRelease` (before `FundsReleased`) |
+| `RefundAuthorized` | `RefundAuthorized(uint256 indexed id)` | id | `sellerApproveRefund` |
+| `DisputeRaised` | `DisputeRaised(uint256 indexed id, address by)` | id | `raiseDispute` |
+| `DisputeResolved` | `DisputeResolved(uint256 indexed id, uint256 toBuyer, uint256 toSeller)` | id | `resolveDispute` |
+| `FeeCharged` | `FeeCharged(uint256 indexed id, uint256 amount)` | id | `_payout` when fee > 0 |
+
+<Note>
+  `TradeCreated`, `FundsReleased` and `RefundAuthorized` keep their **v1 signatures** so anything indexing the original contract keeps working.
+</Note>
+
+## Admin events
+
+| Event | Signature |
+|---|---|
+| `FeesWithdrawn` | `FeesWithdrawn(address indexed to, address indexed token, uint256 amount)` |
+| `FeeUpdated` | `FeeUpdated(uint16 bps)` |
+| `ArbitratorUpdated` | `ArbitratorUpdated(address arbitrator)` |
+| `FeeRecipientUpdated` | `FeeRecipientUpdated(address feeRecipient)` |
+| `AutoReleaseDelayUpdated` | `AutoReleaseDelayUpdated(uint64 seconds_)` |
+| `OwnershipTransferred` | `OwnershipTransferred(address indexed from, address indexed to)` |
+
+## Event sequences per action
+
+| Action | Events, in order |
+|---|---|
+| Lock MON | `TradeCreated` |
+| Lock ERC-20 | (token `Transfer`) · `TradeCreated` · `TradeToken` |
+| Release | `FeeCharged` · (token `Transfer`) · `FundsReleased(seller)` |
+| Auto-release | `FeeCharged` · (token `Transfer`) · `AutoReleased(seller)` · `FundsReleased(seller)` |
+| Approve refund | `RefundAuthorized` |
+| Claim refund | (token `Transfer`) · `FundsReleased(buyer)` |
+| Raise dispute | `DisputeRaised` |
+| Resolve dispute | `FeeCharged` (if seller share) · (transfers) · `DisputeResolved` |
+| Via CRE receiver | the auto-release sequence · `AutoReleaseSucceeded(id)` (receiver) |
+
+## Topic hashes (for raw log filtering)
+
+Compute with `keccak256` of the canonical signature, e.g. in viem:
+
+```ts
+import { toEventSelector } from "viem";
+toEventSelector("TradeCreated(uint256,address,address,uint256)");
+toEventSelector("FundsReleased(uint256,address)");
+toEventSelector("DisputeRaised(uint256,address)");
+toEventSelector("DisputeResolved(uint256,uint256,uint256)");
+```
+
+The pay page uses `topics[0] === toEventSelector("TradeCreated(...)")` and `BigInt(topics[1])` to extract the new order id from the receipt.
+
+## Consumers
+
+| Consumer | Events used |
+|---|---|
+| Envio indexer | `TradeCreated`, `TradeToken`, `FundsReleased`, `DisputeRaised`, `DisputeResolved` |
+| Proof page | all trade events + `AutoReleaseSucceeded` |
+| Pay page | `TradeCreated` (order id) |

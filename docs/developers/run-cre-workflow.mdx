@@ -1,0 +1,72 @@
+---
+title: "Run the Chainlink workflow"
+description: "Build, simulate and broadcast VeriPay's auto-release CRE workflow, and the three fixes that made it work."
+icon: "timer"
+---
+
+## Prerequisites
+
+- **CRE CLI** (`~/.cre/bin/cre`, built against v1.38.0) and a free CRE account (`cre login`, once).
+- **Bun** — the CRE compiler expects Bun-installed dependencies (`bun.lock`).
+- For `--broadcast`: a funded testnet key in `cre/.env` as `CRE_ETH_PRIVATE_KEY`.
+
+<Accordion title="In plain words" icon="lightbulb">
+  This is how to run the "pay the seller after 7 days" robot yourself, either as a dry run that changes nothing, or for real on the test network.
+</Accordion>
+
+## Layout
+
+```text
+cre/
+  project.yaml            RPC per target (public Monad node; swap in Alchemy locally)
+  secrets.yaml            none needed
+  .env                    CRE_ETH_PRIVATE_KEY — gitignored
+  simulate.sh             runs the simulator from a clean temp copy
+  auto-release/
+    workflow.yaml         staging / production targets → main.ts + config file
+    config.staging.json   schedule, chain, escrow + receiver addresses, gas, scanLimit
+    config.production.json
+    main.ts               Runner entry point
+    workflow.ts           the logic
+```
+
+## Commands
+
+```bash
+cre login                                   # once
+cd cre
+./simulate.sh                               # dry run — reads the chain, sends nothing
+./simulate.sh --broadcast                   # real testnet write through Chainlink's forwarder
+cre workflow build auto-release --target staging-settings   # compile check (no login needed)
+```
+
+## The three fixes — don't undo them
+
+<AccordionGroup>
+  <Accordion title="1. Run from a clean copy (simulate.sh)">
+    Run in place inside the app repo, the compiled workflow traps at start-up (`failed to execute subscribe … wasm unreachable`). The identical source runs correctly from a directory outside the repo. The cause isn't pinned down (not the code, SDK, CLI or lockfile — each ruled out), so `simulate.sh` copies the project to a temp dir, runs `bun install`, and simulates there.
+  </Accordion>
+  <Accordion title="2. Build the report with prepareReportRequest">
+    `runtime.report(prepareReportRequest(payload))` — a hand-built request with `hexToBase64` compiled but failed at runtime ("not a function").
+  </Accordion>
+  <Accordion title="3. Pass receiver as hex string and gasLimit as string">
+    `evmClient.writeReport(runtime, { receiver: "0x…", report, gasConfig: { gasLimit: "500000" } })`. The bytes/bigint forms type-check but fail at run time.
+  </Accordion>
+</AccordionGroup>
+
+## Expected output
+
+```text
+Scanned trades 0-12, found 1 due for auto-release
+Auto-release report delivered. TX: 0x…
+Submitted auto-release for 1 trade(s): 2 — tx 0x…
+```
+
+or `No trades due for auto-release`.
+
+## Going to production
+
+1. Obtain CRE deploy access from Chainlink.
+2. Deploy the workflow with `--target production-settings` (`config.production.json`).
+3. Receiver owner calls `setForwarderAddress(0xF8344CFd5c43616a4366C34E3EEE75af79a74482)`.
+4. Optionally `setExpectedWorkflowId(...)` to bind the receiver to this workflow.

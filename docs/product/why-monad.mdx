@@ -1,0 +1,58 @@
+---
+title: "Why Monad"
+description: "VeriPay only works because of two properties Monad has — measured on the live contract, not estimated."
+icon: "zap"
+---
+
+VeriPay isn't on Monad because it was convenient. The product depends on **low-latency finality** and **negligible per-transaction cost**, and on the second-order effect of the latter: it becomes economical to write an immutable event for every order, regardless of size.
+
+<Accordion title="In plain words" icon="lightbulb">
+  Monad is fast and almost free to use. Fast means paying feels like paying, not waiting. Almost free means VeriPay can pay the fee for you and protect even tiny orders — and keep a permanent public record of every single order.
+</Accordion>
+
+## Measured on VeriPay
+
+| | Measured on the live contract | Why it matters |
+|---|---|---|
+| **Time to lock a payment** | **0.6 – 1.3 s** across test runs | Feels like paying. A buyer at a checkout won't sit through 15 seconds of "waiting for crypto". |
+| **Network cost of a lock** | **under ₦1** (≈ 0.02 MON) | Cheap enough that VeriPay simply sponsors it. At ₦300 per lock, protecting a ₦2,000 order would make no sense. |
+| **Cost of recording every order** | the same — under ₦1 | Every order, however small, writes real events. That's what makes the seller record complete and impossible to fake. |
+
+The receipt prints both numbers after every payment — *"Secured in 1.1s · network fee ₦0.72, paid for you"* — the only place the chain is visible to the user at all.
+
+<Accordion title="How the receipt measures this">
+  The pay page records `performance.now()` immediately before `sendTransaction(createTradeWithToken…)`, awaits `waitForReceipt`, and reports the elapsed time. The fee is `receipt.gasUsed × receipt.effectiveGasPrice`, converted to naira with the live MON `buyNgn` price from `GET /api/exchange/rates`. It measures user-perceived latency (submission → confirmed receipt), which is what matters for UX.
+
+  **In plain words:** the page starts a stopwatch when you pay and stops it when the blockchain confirms, then shows you the time and the tiny fee.
+</Accordion>
+
+## The reputation argument
+
+Reputation is the feature that answers *"is this seller legit?"*, and it is only trustworthy if it is **complete** and **independently verifiable**:
+
+- **Complete** means every order writes an event — not a sample, not a batch, not "only orders above ₦50,000".
+- **Verifiable** means anyone can replay those events and get the same numbers — so the numbers can't be a database row VeriPay controls.
+
+On a chain where each event costs a meaningful fee, a reputation system has to sample, batch or move off-chain — and then it's just a number someone controls again. Monad's fee level makes "every order, on-chain, forever" practical.
+
+<Accordion title="In plain words">
+  A track record only means something if it includes every order and anyone can double-check it. On expensive blockchains you can't afford to record everything, so you'd end up trusting a company's database again. On Monad you can record everything.
+</Accordion>
+
+## EVM compatibility
+
+Monad is EVM-compatible, which means:
+
+- `VeriPayEscrow` is plain Solidity `^0.8.24`, deployed from Remix with no changes.
+- Standard tooling works: viem, thirdweb, Envio HyperSync (`monad-testnet.hypersync.xyz`), Chainlink CRE (`monad-testnet` chain selector), Alchemy RPC.
+- Moving to mainnet is a redeploy and a config change, not a rewrite.
+
+<Accordion title="In plain words">
+  Monad speaks the same "language" as Ethereum, so all the standard developer tools just work, and moving to the real network later is simple.
+</Accordion>
+
+## What Monad does not solve
+
+<Note>
+  Monad makes the escrow fast and cheap. It does not by itself solve fiat on/off-ramps (Paystack, a licensed stablecoin), identity (passkeys), indexing (Envio) or liveness (Chainlink). Those are separate layers — see [Architecture](/architecture/overview).
+</Note>

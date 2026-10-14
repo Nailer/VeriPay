@@ -1,0 +1,42 @@
+---
+title: "Contract invariants"
+description: "Properties VeriPayEscrow must always satisfy, with the code that enforces each and how it's tested."
+icon: "sigma"
+---
+
+An **invariant** is a property that must hold before and after every transaction. These are the properties an auditor should try to break.
+
+<Accordion title="In plain words" icon="lightbulb">
+  These are promises the safe locker must keep no matter what anyone does. If any of them were ever broken, it would be a serious bug.
+</Accordion>
+
+| ID | Invariant | Enforcement | Tested |
+|---|---|---|---|
+| **I-1 Conservation** | For each asset: `balance(escrow) ≥ Σ open amounts + accruedFees[asset]` (equality absent direct ERC-20 donations) | Every entry/exit path accounted; `receive()` reverts | Partially (withdrawFees test) |
+| **I-2 No owner custody** | No sequence of owner-only calls can transfer any part of an open trade's `amount` | Owner functions touch only config and `accruedFees` | ✅ withdrawFees test |
+| **I-3 Single settlement** | A trade transitions from open to settled at most once | `_requireOpen` + flags set before transfers | ✅ |
+| **I-4 Fee bound** | `feeBps ≤ 500` globally and per trade | `MAX_FEE_BPS` constant; setter check; snapshot | ✅ |
+| **I-5 Fee immutability per trade** | `trade.feeBps` never changes after creation | Only written in `createTrade*` | ✅ |
+| **I-6 Refund fee-free** | Buyer-directed payouts never incur a fee | Fee computed on `toSeller` only | ✅ |
+| **I-7 Buyer-only release** | Only the buyer can trigger `releaseToSeller` | `require(msg.sender == buyer)` | ✅ |
+| **I-8 Consent for refund** | `buyerClaimRefund` requires `sellerApprovedRefund` | `require` | ✅ |
+| **I-9 Dispute freezes auto-release** | `autoRelease` reverts when `disputed` | `require(!t.disputed)` | ✅ |
+| **I-10 Window respected** | `autoRelease` reverts before `autoReleaseAt` | `require(now ≥ autoReleaseAt)` | ✅ |
+| **I-11 Arbitrator scope** | Only disputed, open trades can be resolved, with share ≤ 100% | three `require`s | ✅ |
+| **I-12 Split conservation** | `toBuyer + toSeller == amount`; `sellerReceives + fee == toSeller` | Arithmetic | ✅ (50/50, 100%) |
+| **I-13 Asset consistency** | A trade pays out only in its own `token` | `_send(t.token, …)` | ✅ token tests |
+| **I-14 No reentrancy** | Value-moving functions can't be reentered | `nonReentrant` | Not explicitly |
+| **I-15 Parties distinct** | `buyer ≠ seller`, `seller ≠ 0` | `require`s | ✅ |
+| **I-16 Window bounds** | `1 day ≤ autoReleaseDelay ≤ 90 days` | setter check | ✅ |
+
+## Recommended property tests
+
+```text
+forall sequences of calls:
+  I-1  sum(open amounts per token) + accruedFees[token] == balanceOf(escrow, token)
+  I-2  owner-only calls never decrease sum(open amounts)
+  I-3  for each id: count(settlement events) <= 1 (DisputeResolved counts once)
+  I-12 for each settlement: buyerOut + sellerOut + fee == amount
+```
+
+Implement with Foundry `invariant_*` tests or Echidna against a harness that deploys vNGN and a malicious token.

@@ -1,120 +1,79 @@
 ---
-title: "Project Structure"
-sidebarTitle: "Project Structure"
-description: "A detailed map of VeriPay's codebase — every directory and key file explained."
+title: "Project structure"
+description: "A map of the repository: every directory and the most important files, with what each is responsible for."
+icon: "folder-tree"
 ---
 
-## Directory Tree
-
-```
-veripay/
-│
-├── abi/
-│   └── monad_pay_lagos.json       # Raw smart contract ABI (JSON)
-│
-├── public/                        # Static assets served at root URL
-│   └── favicon.ico
-│
+```text
+VeriPay/
 ├── src/
-│   ├── app/                       # Next.js App Router
-│   │   │
-│   │   ├── layout.tsx             # Root layout — wraps every page
-│   │   │                          # (Navbar, ThemeProvider, ThirdwebProvider)
-│   │   │
-│   │   ├── providers.tsx          # Context providers wrapper component
-│   │   │
-│   │   ├── client.ts              # Thirdweb client singleton
-│   │   │
-│   │   ├── globals.css            # Global CSS (Tailwind @import directives)
-│   │   │
-│   │   ├── page.tsx               # Landing page (/) — hero + features
-│   │   │
-│   │   ├── create/
-│   │   │   └── page.tsx           # Create escrow form (/create)
-│   │   │
-│   │   ├── dashboard/
-│   │   │   └── page.tsx           # Trade list dashboard (/dashboard)
-│   │   │
-│   │   ├── trade/
-│   │   │   └── [id]/
-│   │   │       ├── page.tsx       # Trade detail + settlement (/trade/:id)
-│   │   │       └── chat/
-│   │   │           └── page.tsx   # In-trade chat (/trade/:id/chat)
-│   │   │
+│   ├── app/
+│   │   ├── page.tsx                  landing
+│   │   ├── pay/[handle]/             buyer checkout for a seller link · receipt
+│   │   ├── sell/                     seller claims and shares a link · incoming orders
+│   │   ├── orders/                   "My orders" — bought and sold
+│   │   ├── trade/[id]/               one order — confirm, refund, report, collect
+│   │   ├── trade/[id]/chat/          order chat
+│   │   ├── seller/                   public seller lookup by link name
+│   │   ├── seller/[address]/         full public history
+│   │   ├── proof/[hash]/             a transaction read live from Monad
+│   │   ├── install/                  PWA install guide
+│   │   ├── create/                   direct escrow in MON or AUSD
+│   │   ├── dashboard/                all recent escrows
+│   │   ├── exchange/                 naira ⇄ crypto (buy, sell, order/[id])
+│   │   ├── admin/                    passcode-gated console
+│   │   ├── manifest.ts · layout.tsx · providers.tsx · client.ts · globals.css · icon.svg
 │   │   └── api/
-│   │       ├── notifications/
-│   │       │   └── route.ts       # GET/POST/PATCH notifications API
-│   │       └── chat/
-│   │           └── route.ts       # GET/POST chat messages API
-│   │
-│   ├── components/
-│   │   └── Navbar.tsx             # Navigation bar (logo, links, wallet,
-│   │                              # notifications bell, theme switcher)
-│   │
-│   └── lib/
-│       └── abi.ts                 # Typed ABI export + CONTRACT_ADDRESS constant
-│
-├── .env.local                     # Environment variables (not in git)
-├── .gitignore
-├── next.config.ts                 # Next.js configuration
-├── package.json
-├── postcss.config.mjs             # PostCSS config for Tailwind CSS v4
-├── tsconfig.json                  # TypeScript configuration
-└── docs/                          # Documentation (this site!)
-    ├── mint.json                  # Mintlify configuration
-    ├── introduction.mdx
-    └── ...
+│   │       ├── sellers/              claim & look up links
+│   │       ├── pay/{intent,confirm,gas}/
+│   │       ├── reputation/[address]/
+│   │       ├── notifications/ · chat/ · push/{subscribe,unsubscribe,resubscribe}/
+│   │       ├── exchange/{rates,orders,card/{init,verify,webhook}}/
+│   │       ├── admin/{orders,chats,stats}/
+│   │       └── track/ · trades/log/
+│   ├── lib/
+│   │   ├── payments.ts               card verification, minting, gas sponsorship, resume
+│   │   ├── paystack.ts               Paystack init / verify / webhook HMAC
+│   │   ├── sellers.ts · sellerShared.ts   signed seller claims
+│   │   ├── reputation.ts             Envio first, chain fallback, identical rules
+│   │   ├── mera.ts · useSignIn.ts · wallets.ts   passkey + fallback sign-in
+│   │   ├── monad.ts                  chain, contracts, RPC, friendly errors
+│   │   ├── escrow.ts · abi.ts        v1/v2 compatible trade reads, amounts by asset
+│   │   ├── gas.ts                    readyToTransact (client)
+│   │   ├── pricing.ts · exchangeStore.ts · chainVerify.ts   exchange
+│   │   ├── chatStore.ts · push.ts · pushClient.ts
+│   │   ├── supabase.ts               server-only service-role client
+│   │   └── usePolling.ts             visibility-aware polling
+│   └── components/                   Navbar, OrdersList, SellerReputationCard, ReputationBadge,
+│                                     ArbitrationPanel, AdminOrderCard, InstallPrompt, …
+├── contracts/
+│   ├── VeriPayEscrow.sol             the escrow
+│   ├── cre/                          AutoReleaseReceiver + Chainlink receiver template
+│   ├── test/                         30-test suite, harness, VeriPayTestNaira.sol
+│   └── README.md                     Remix deployment guide
+├── cre/                              Chainlink CRE workflow (auto-release) + simulate.sh
+├── indexer/                          Envio HyperIndex project (reputation)
+├── supabase/schema.sql               database setup
+├── tests/e2e-pay.mjs                 end-to-end payment test
+├── scripts/demo-video/               how the demo and pitch videos were produced
+├── public/                           sw.js, offline.html, icons/
+├── brand/                            logo files (SVG + PNG) and generators
+├── docs/                             this documentation (Mintlify)
+├── abi/                              exported ABI
+├── demo/                             demo and pitch videos
+├── README.md · HACKATHON.md · EXCHANGE.md · CLAUDE.md · LICENSE
+└── .env.example
 ```
 
-## Key Files Explained
+## Where to change what
 
-### `src/app/layout.tsx`
-
-The root layout wraps every page with:
-- `Navbar` component for navigation
-- `ThemeProvider` (next-themes) for dark/light mode
-- `ThirdwebProvider` for wallet connectivity
-- Global font and HTML structure
-
-### `src/app/client.ts`
-
-Initializes the singleton Thirdweb client used across the app:
-
-```typescript
-import { createThirdwebClient } from "thirdweb";
-
-export const client = createThirdwebClient({
-  clientId: process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID!,
-});
-```
-
-### `src/lib/abi.ts`
-
-Exports two key values used throughout the app:
-
-```typescript
-export const escrowAbi = [...] as const;  // Full typed ABI
-export const CONTRACT_ADDRESS = "0xd0cc...1621" as `0x${string}`;
-```
-
-### `src/components/Navbar.tsx`
-
-The most complex component — handles:
-- Wallet connection button (Thirdweb `ConnectButton`)
-- Theme switching (Light / Dark / System)
-- Notification bell with polling and unread badge
-- Mobile responsive hamburger menu
-- Notification panel with read/unread state
-
-### `src/app/api/notifications/route.ts`
-
-Next.js API Route Handler (App Router):
-- `GET` — Fetch notifications by wallet address
-- `POST` — Create a new notification
-- `PATCH` — Mark all notifications as read
-
-### `src/app/api/chat/route.ts`
-
-Next.js API Route Handler:
-- `GET` — Fetch all messages for a trade ID
-- `POST` — Send a new message + trigger notification
+| I want to… | Edit |
+|---|---|
+| Change pay-link validation or limits | `src/lib/payments.ts` (`PAY_MIN_NGN`, `PAY_MAX_NGN`, `createIntent`) |
+| Change gas sponsorship | `src/lib/payments.ts` (`GAS_FLOOR`, `GAS_TOPUP`, `MAX_GAS_TOPUPS`), `src/lib/gas.ts` |
+| Change handle rules | `src/lib/sellers.ts` **and** `supabase/schema.sql` `CHECK` |
+| Change reputation rules | `src/lib/reputation.ts` **and** `indexer/src/EventHandlers.ts` — keep identical |
+| Add an escrow action | `contracts/VeriPayEscrow.sol`, `src/lib/abi.ts`, `src/lib/escrow.ts`, tests |
+| Change consumer copy | `src/app/{pay,sell,orders,trade}/…`, `src/components/OrdersList.tsx` |
+| Change the auto-release scan | `cre/auto-release/config.*.json` (`scanLimit`, `schedule`) |
+| Add a docs page | `docs/*.mdx` + `docs/docs.json` navigation |

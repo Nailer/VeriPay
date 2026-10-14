@@ -1,0 +1,58 @@
+---
+title: "Roadmap"
+description: "What comes next — from security review to mainnet, real sellers, bank payouts and cross-border payments — and why each step matters."
+icon: "map"
+---
+
+<Accordion title="In plain words" icon="lightbulb">
+  The plan to go from a test version to a real product people can use with real money.
+</Accordion>
+
+## Now → mainnet
+
+<Steps>
+  <Step title="Independent security review" icon="shield-check">
+    Audit `VeriPayEscrow` and `AutoReleaseReceiver`; fix the [known issues](/security/known-limitations) first. **Why:** before any real money.
+  </Step>
+  <Step title="Register the business + Paystack live mode" icon="building-2">
+    **Why:** real card payments require a registered business.
+  </Step>
+  <Step title="Licensed naira stablecoin / payout partner" icon="landmark">
+    Replace vNGN; let sellers cash out to their bank. **Why:** sellers must be able to spend what they earn.
+  </Step>
+  <Step title="Monad mainnet" icon="rocket">
+    Same contracts, redeployed; per-order caps and monitoring at launch.
+  </Step>
+  <Step title="Scheduled Chainlink deployment" icon="timer">
+    Move from the simulator to a deployed CRE workflow (`setForwarderAddress`, no redeploy).
+  </Step>
+</Steps>
+
+## Product
+
+| Item | Why |
+|---|---|
+| **First 20–50 sellers onboarded by hand in Lagos** | Learn where real people get stuck |
+| **Multi-party dispute review** | Remove the single-arbitrator dependency |
+| **Cross-border payments in AUSD** | Diaspora buyers paying sellers at home |
+| **Seller dashboard** (earnings, payouts, analytics) | Retain sellers |
+| **Delivery-aware windows** | Longer windows for services and inter-state shipping |
+| **WhatsApp-native notifications** | Where sellers already live |
+| **Verified seller badges** | Sybil resistance for reputation |
+
+## Engineering
+
+| Item | Why |
+|---|---|
+| Pull-payment fallback in escrow | Recipient contracts can't block settlement |
+| Fix refund-approved auto-release edge case | Correctness |
+| Authenticated chat/notification writes | Integrity of display data |
+| Invariant & fuzz tests | Audit readiness |
+| Passkey-native smart accounts (P-256) or isolated signer | Reduce key exposure in the page |
+| Paymaster / EIP-7702 gas sponsorship | Replace MON top-ups |
+| Event-driven due-list for auto-release | Scale beyond bounded scans |
+| Monitoring & alerting (stuck intents, sponsor balance) | Operations |
+
+## Funding
+
+A local pre-seed **SAFE (~$60,000 target)** is being pursued to fund: the testnet-to-mainnet move and security review, founder runway, and a small marketing/liquidity push to get first real orders flowing. (No valuation cap has been set.)

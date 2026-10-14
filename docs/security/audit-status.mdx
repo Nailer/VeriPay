@@ -1,41 +1,43 @@
 ---
-title: "Audit Status"
-sidebarTitle: "Audit Status"
-description: "Current security audit status and plans for third-party verification."
+title: "Audit status"
+description: "What has been verified, what hasn't, and the plan for an independent security review before real money."
+icon: "file-check"
 ---
 
-## Current Status
+<Warning>
+  **VeriPay's contracts have not been independently audited.** Do not put meaningful real money through them until they are.
+</Warning>
 
-| Audit Type | Status | Details |
-| --- | --- | --- |
-| Internal code review | ✅ Complete | All smart contract functions reviewed by the founding team |
-| Community review | ✅ Ongoing | Open source code available for public inspection |
-| Automated analysis | 🔄 Planned | Slither, Mythril, and other static analysis tools |
-| Professional third-party audit | 🔄 Planned | Scheduled before mainnet launch |
-| Bug bounty program | 🔄 Planned | Will launch alongside mainnet |
+<Accordion title="In plain words" icon="lightbulb">
+  No outside security company has checked VeriPay's code yet. It has been tested a lot by the founder, but that's not the same thing. An independent review is the first thing to do before real money.
+</Accordion>
 
-## Smart Contract Simplicity
+## What has been done
 
-VeriPay's escrow contract is intentionally **simple and minimal**:
+| Verification | Scope | Result |
+|---|---|---|
+| Local-EVM test suite | `VeriPayEscrow` (23), `AutoReleaseReceiver` (7) | 30/30 passing |
+| End-to-end money path | Card → verify → mint → gas → lock → reputation, plus fraud attempts | 14/14 locally and on the live deployment |
+| On-chain configuration read-back | owner, arbitrator, feeRecipient, feeBps, autoReleaseDelay | Matches intended values |
+| Chainlink template | Vendored verbatim from Chainlink | Not modified |
+| Indexer vs chain parity | Every address that has traded | Identical numbers |
+| Real auto-release | Order #2 via CRE | Succeeded on-chain |
 
-- **6 functions** total (4 state-changing, 2 view)
-- **1 data structure** (the Trade struct)
-- **No external dependencies** — doesn't import other contracts
-- **No upgradability** — no proxy patterns, no admin functions
-- **No complex math** — straightforward value transfers
+## What has not been done
 
-This simplicity is a deliberate security choice. Fewer lines of code = fewer potential vulnerabilities.
+- Independent manual audit.
+- Formal verification or invariant/fuzz testing.
+- Penetration test of the web app and API.
+- Review of key management and operational security.
+- Economic review of dispute incentives and wash-trading resistance.
 
-## Pre-Mainnet Audit Plan
+## Plan
 
-Before deploying to Monad Mainnet, VeriPay will:
+<Steps>
+  <Step title="Pre-audit hardening">Fix known limitations (refund-approved auto-release, pull-payment fallback, API auth gaps, admin passcode default), add invariant tests.</Step>
+  <Step title="Independent audit">Scope: `VeriPayEscrow.sol`, `AutoReleaseReceiver.sol`; off-chain money path (`payments.ts`, `paystack.ts`, `sellers.ts`).</Step>
+  <Step title="Fix and re-review">Publish the report and fixes.</Step>
+  <Step title="Mainnet with limits">Per-order caps and monitoring at launch.</Step>
+</Steps>
 
-1. **Run automated vulnerability scanners** (Slither, Mythril, Echidna)
-2. **Engage a professional audit firm** (e.g., Trail of Bits, OpenZeppelin, Certik)
-3. **Publish the full audit report** publicly in the documentation
-4. **Launch a bug bounty program** to incentivize ongoing security research
-5. **Deploy to a staging environment** for extended testing before mainnet
-
-<Info>
-  The audit report will be published in this documentation section once completed. We believe in full transparency about our security posture.
-</Info>
+Budget for this is part of the pre-seed plan — see [Roadmap](/resources/roadmap).

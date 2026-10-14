@@ -1,0 +1,137 @@
+---
+title: "Features"
+description: "Everything VeriPay does today, grouped by who it serves, with the code that implements each feature."
+icon: "sparkles"
+---
+
+## For sellers
+
+<AccordionGroup>
+  <Accordion title="One payment link" icon="link" defaultOpen>
+    Claim `veripay.store/pay/<handle>` by signing a message with your account. The handle maps to your payout address server-side, so buyers never see or paste an address. One link per account; handles are unique.
+
+    **Implementation:** `src/app/sell/page.tsx`, `src/lib/sellers.ts`, `src/lib/sellerShared.ts`, `POST /api/sellers`, table `sellers`.
+
+    **In plain words:** you get a short link for your bio. Customers tap it to pay you safely.
+  </Accordion>
+  <Accordion title="Real-time order feed" icon="inbox">
+    The `/sell` page lists every order paid to you through `OrdersList`, read from the chain and labelled in plain words (*Paid — deliver this order*, *Paid out to you*, …). New orders also raise an in-app notification and an optional device push.
+
+    **In plain words:** you see each new paid order the moment it happens, and your phone can alert you.
+  </Accordion>
+  <Accordion title="Guaranteed liveness — never stuck waiting" icon="timer">
+    If a buyer neither confirms nor reports a problem within the window (default 7 days), `autoRelease` pays you. A Chainlink CRE workflow calls it every 15 minutes for every due order; you can also tap **Collect my payment** yourself.
+
+    **In plain words:** if a buyer goes quiet, you still get paid after 7 days — automatically.
+  </Accordion>
+  <Accordion title="A public, portable track record" icon="badge-check">
+    Your **Paid out / Disputes / Refunds / Total** counters are derived from contract events, shown on your pay page, on every order page, and at `/seller/<address>`. Anyone can look you up by link name.
+
+    **In plain words:** every good sale makes your next sale easier, because new customers can see your real history.
+  </Accordion>
+  <Accordion title="Fees covered for you" icon="fuel">
+    A registered seller with at least one order gets network fees sponsored (capped at 3 top-ups) for actions like approving a refund.
+
+    **In plain words:** you never need to buy crypto to use VeriPay.
+  </Accordion>
+</AccordionGroup>
+
+## For buyers
+
+<AccordionGroup>
+  <Accordion title="Check before you pay" icon="search" defaultOpen>
+    The pay page shows the seller's on-chain record before you enter anything. `/seller` lets you look up any seller by link name without signing in.
+
+    **In plain words:** see whether a seller is trustworthy before you spend a kobo.
+  </Accordion>
+  <Accordion title="Pay in naira by card" icon="credit-card">
+    Paystack inline checkout (Verve, Mastercard, Visa). The charge is verified server-to-server; exactly the charged amount is represented on-chain as vNGN and locked.
+
+    **In plain words:** pay the normal way, with your bank card, in naira.
+  </Accordion>
+  <Accordion title="Fingerprint sign-in" icon="fingerprint">
+    Passkey accounts via Mera: no seed phrase, no password, no email OTP. The same passkey recreates the same account on any device that syncs it.
+
+    **In plain words:** your face or fingerprint is your login.
+  </Accordion>
+  <Accordion title="Money held until it arrives" icon="lock">
+    Funds sit in `VeriPayEscrow` until you tap **I received my order — pay the seller**.
+
+    **In plain words:** the seller is only paid after you're happy.
+  </Accordion>
+  <Accordion title="Report a problem" icon="triangle-alert">
+    `raiseDispute` freezes the funds and stops auto-release until the arbitrator decides any split between you and the seller.
+
+    **In plain words:** if something goes wrong, the money stays frozen until a fair decision is made.
+  </Accordion>
+  <Accordion title="Receipts and proof" icon="receipt">
+    Every payment produces a receipt with order number, reference, lock time and fee, plus a **View proof on Monad** link that reads the transaction directly from the chain.
+
+    **In plain words:** you get a proper receipt and can check for yourself that your money is really locked.
+  </Accordion>
+  <Accordion title="Never charged twice" icon="repeat">
+    If you pay but the lock doesn't complete, the page detects your funded intent on return, skips the card step and resumes.
+
+    **In plain words:** if something interrupts you, just come back — you won't pay again.
+  </Accordion>
+</AccordionGroup>
+
+## For everyone
+
+<AccordionGroup>
+  <Accordion title="My orders" icon="list">
+    `/orders` lists everything you've bought and sold, in plain language, with what you need to do next.
+  </Accordion>
+  <Accordion title="Per-order chat" icon="message-circle">
+    `/trade/<id>/chat` — a message thread for buyer and seller (and a VeriPay agent on disputes).
+  </Accordion>
+  <Accordion title="Notifications" icon="bell">
+    In-app bell plus optional device push notifications through Web Push.
+  </Accordion>
+  <Accordion title="Installable app" icon="smartphone">
+    A PWA with manifest, icons, an offline fallback page and a per-platform install walkthrough at `/install`.
+  </Accordion>
+  <Accordion title="Proof page" icon="scan-search">
+    `/proof/<txHash>` — any transaction, read live from Monad and described in words.
+  </Accordion>
+  <Accordion title="Light and dark mode" icon="sun-moon">
+    Strict black-and-white design, light/dark/system themes, mobile-first at 375px.
+  </Accordion>
+</AccordionGroup>
+
+## Advanced features (for crypto users)
+
+These live under **More** in the navigation and are intentionally kept away from the consumer flow.
+
+<AccordionGroup>
+  <Accordion title="Pay with crypto (direct escrow)" icon="coins">
+    `/create` — open an escrow by entering a seller address, in **MON** or **AUSD** (approve-then-lock), with the seller's reputation card shown as soon as an address is pasted. See [Pay with crypto](/guides/pay-with-crypto).
+  </Accordion>
+  <Accordion title="Buy / sell crypto (exchange)" icon="arrow-left-right">
+    `/exchange` — a naira ⇄ crypto on/off-ramp with server-side pricing from Binance/CoinGecko × Bybit P2P, 15-minute locked quotes, bank transfer or card. See [Exchange](/guides/exchange).
+  </Accordion>
+  <Accordion title="All trades" icon="layout-list">
+    `/dashboard` — recent escrows read from the chain.
+  </Accordion>
+  <Accordion title="Admin console" icon="lock-keyhole">
+    `/admin` — passcode-gated fulfilment queue, dispute arbitration panel, chat inbox and stats.
+  </Accordion>
+</AccordionGroup>
+
+## Feature status matrix
+
+| Feature | Status | Notes |
+|---|---|---|
+| Seller payment links | ✅ Live on testnet | Built during Metropolis |
+| Naira card → escrow | ✅ Live (Paystack test mode) | vNGN test token |
+| Passkey sign-in | ✅ Live | Requires WebAuthn PRF support |
+| Gas sponsorship | ✅ Live | Capped, eligibility-gated |
+| On-chain reputation | ✅ Live | Envio hosted (dev tier) + chain fallback |
+| Chainlink auto-release | ✅ Proven on-chain | Runs via CRE simulator `--broadcast` |
+| Disputes and arbitration | ✅ Live | Single arbitrator address |
+| AUSD escrow | ⚠️ Contract + UI ready | Not demonstrated with Agora's token |
+| Proof page | ✅ Live | |
+| PWA + push | ✅ Live | |
+| Exchange | ✅ Live (pre-hackathon) | Naira payouts settled manually |
+| Bank withdrawal for sellers | ❌ Not available | Needs licensed partner |
+| Mainnet | ❌ Not yet | After security review |

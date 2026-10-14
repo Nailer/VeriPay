@@ -1,0 +1,41 @@
+---
+title: "My orders"
+description: "One place for everything you've bought and sold, in plain words, with what you need to do next."
+icon: "list"
+---
+
+Open **My orders** in the top bar (or [veripay.store/orders](https://veripay.store/orders)) and sign in. You'll see every order where your account is the buyer or the seller, newest first.
+
+## Status labels
+
+| Label | You are | Meaning | What to do |
+|---|---|---|---|
+| **Held safely — confirm when it arrives** | Buyer | Your money is locked | Confirm when the order arrives, or report a problem |
+| **Paid — deliver this order** | Seller | The buyer's money is locked for you | Deliver |
+| **Under review** | Either | A problem was reported; money frozen | Add evidence in the chat; wait for the decision |
+| **Refunded to you** | Buyer | You were repaid in full | Nothing |
+| **Refunded to buyer** | Seller | The buyer was repaid | Nothing |
+| **Settled by review** | Either | A reviewer split the money | Nothing |
+| **Completed** | Buyer | The seller was paid | Nothing |
+| **Paid out to you** | Seller | You were paid | Nothing |
+
+Orders needing your action are highlighted.
+
+<Accordion title="Where does this list come from?" icon="database">
+  `OrdersList` calls `GET /api/reputation/<your address>?trades=1`, which always reads your trades **directly from the escrow contract** (the newest 1,000 orders, cached 30 s) and returns a `TradeSummary` per order: id, your role, counterparty, amount and symbol (formatted by asset — `₦` for vNGN), status (`open | released | refunded | disputed | split`) and description. No database is involved in deciding status.
+
+  **In plain words:** your order list is read straight from the blockchain, so it always matches reality.
+</Accordion>
+
+## The order page
+
+Tapping an order opens `/trade/<id>`:
+
+- **Amount** and what the seller receives after the fee.
+- **Status**: *Held safely*, *Frozen*, *Paid out* or *Refunded*.
+- **Countdown** to automatic release, e.g. *"2d 5h left for the buyer to confirm delivery."*
+- **Buyer** and **Seller** (shop name and record badge for sellers with a link).
+- **Actions** for whichever role you are.
+- **Message the seller / buyer** to open the chat.
+
+Visitors who aren't the buyer or seller can view an order but see *"You're viewing this order as a visitor — only its buyer and seller can act on it."*

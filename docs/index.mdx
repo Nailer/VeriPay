@@ -1,0 +1,158 @@
+---
+title: "VeriPay documentation"
+sidebarTitle: "Introduction"
+description: "Buy from anyone online. Pay only when it arrives. Buyer protection for social commerce, settled by a non-custodial escrow contract on Monad."
+icon: "house"
+mode: "wide"
+---
+
+import TestnetNote from '/snippets/testnet-note.mdx';
+
+<img className="block dark:hidden rounded-xl" src="/images/hero-light.svg" alt="VeriPay — buy from anyone online, pay only when it arrives" />
+<img className="hidden dark:block rounded-xl" src="/images/hero-dark.svg" alt="VeriPay — buy from anyone online, pay only when it arrives" />
+
+**VeriPay** is a consumer payments product that adds buyer protection to social commerce — the Instagram, WhatsApp and Jiji trade where strangers buy from each other every day. It is built as a **non-custodial, event-sourced escrow protocol on Monad** wrapped in a payments surface that never exposes a wallet, a token, a seed phrase or a gas fee to the person using it.
+
+<Accordion title="In plain words" icon="lightbulb">
+  When you buy something from a stranger online, one of you has to trust the other first. VeriPay removes that problem. You pay, but the money doesn't go to the seller yet — it waits in a safe place that **nobody can touch, not even VeriPay**. When your order arrives, you tap a button and the seller gets paid. If something goes wrong, you get your money back.
+
+  You never need to understand crypto to use it. You sign in with your fingerprint and pay with your normal bank card in naira.
+</Accordion>
+
+<TestnetNote />
+
+## What VeriPay does in one minute
+
+<Steps>
+  <Step title="A seller gets one link" icon="link">
+    A seller signs in with a fingerprint and claims a payment link such as `veripay.store/pay/adaeze-thrift`. The claim is bound to their account by an **ECDSA signature** that the server verifies before storing it.
+    <Accordion title="In plain words">
+      The seller gets a short web address to put in their Instagram bio or WhatsApp status. Nobody else can create a link that pays into the seller's account, because the seller has to "sign" the request with their fingerprint-protected account first.
+    </Accordion>
+  </Step>
+  <Step title="The buyer sees a record nobody can fake" icon="badge-check">
+    The pay page shows the seller's **on-chain reputation** — orders paid out, disputes and refunds — derived purely from the escrow contract's event log, indexed by Envio HyperIndex with a direct-RPC fallback.
+    <Accordion title="In plain words">
+      Before paying, the buyer sees how many orders this seller has completed and how many went wrong. These numbers come straight from the public record of every past order, so the seller can't edit them, delete bad ones, or buy fake reviews.
+    </Accordion>
+  </Step>
+  <Step title="The buyer pays in naira with a fingerprint" icon="credit-card">
+    The buyer authenticates with a **WebAuthn passkey** (PRF extension → deterministic secp256k1 key), pays by card through **Paystack**, and the server verifies the charge server-to-server before minting the exact amount of **vNGN** to the buyer and topping up their gas.
+    <Accordion title="In plain words">
+      The buyer uses Face ID or their fingerprint instead of a password, then pays with a normal debit card. VeriPay checks directly with the card company that the payment really happened, then gives the buyer the same amount in digital naira, ready to be locked away safely.
+    </Accordion>
+  </Step>
+  <Step title="The money is locked in about a second" icon="lock">
+    The buyer's device signs `approve` and `createTradeWithToken` against `VeriPayEscrow`. Monad's sub-second block times and sub-₦1 fees mean the lock confirms in ~0.6–1.3 s and VeriPay can sponsor the fee.
+    <Accordion title="In plain words">
+      The money moves into the protected "locker" almost instantly — about as fast as tapping your card at a shop. The tiny network fee (less than one naira) is paid by VeriPay, so the buyer never sees it.
+    </Accordion>
+  </Step>
+  <Step title="Delivery decides where the money goes" icon="package-check">
+    The buyer calls `releaseToSeller` (99% to seller, 1% fee), the seller can approve a fee-free refund, either party can `raiseDispute` to freeze the funds for arbitration, and after a 7-day window **Chainlink CRE** triggers `autoRelease` so a silent buyer never strands a seller.
+    <Accordion title="In plain words">
+      - Order arrived and it's fine? The buyer taps **"I received my order — pay the seller"** and the seller is paid.
+      - Seller can't deliver? The seller can give the buyer a **full refund**.
+      - Something's wrong and you can't agree? Either side taps **"Report a problem"** and the money is frozen until a reviewer decides.
+      - Buyer disappears and never confirms? After 7 days, an automatic robot pays the seller, so honest sellers are never stuck.
+    </Accordion>
+  </Step>
+</Steps>
+
+## Choose your path
+
+<CardGroup cols={3}>
+  <Card title="I want to buy safely" icon="shopping-bag" href="/guides/buyers/overview">
+    Check a seller, pay through their link, confirm delivery or get your money back.
+  </Card>
+  <Card title="I sell online" icon="store" href="/guides/sellers/overview">
+    Get one payment link, take card payments in naira, build a record that wins customers.
+  </Card>
+  <Card title="Just show me" icon="play" href="/quickstart">
+    Try the full flow on testnet in five minutes with a test card.
+  </Card>
+  <Card title="How it works under the hood" icon="network" href="/architecture/overview">
+    System architecture, trust boundaries, every money path with sequence diagrams.
+  </Card>
+  <Card title="Smart contract reference" icon="file-code" href="/contracts/escrow/overview">
+    Every function, event, revert reason and invariant of `VeriPayEscrow`.
+  </Card>
+  <Card title="Build with VeriPay" icon="terminal" href="/api/overview">
+    HTTP API, GraphQL reputation feed, on-chain reads and integration recipes.
+  </Card>
+</CardGroup>
+
+## The properties that make it trustworthy
+
+<CardGroup cols={2}>
+  <Card title="Non-custodial by construction" icon="vault">
+    There is **no function** in `VeriPayEscrow` that lets the owner move money held for open orders. `withdrawFees` can only move `accruedFees`, which contains nothing but fees already deducted from settled orders.
+    <Accordion title="In plain words">
+      VeriPay physically cannot take your money. The program that holds it has no "take the money" button for VeriPay — only a button to collect the small fee from orders that already finished successfully.
+    </Accordion>
+  </Card>
+  <Card title="Fees that can't surprise you" icon="percent">
+    `MAX_FEE_BPS = 500` is a compile-time `constant` (5%). The fee rate is snapshotted into each `Trade` at creation, so a later `setFeeBps` never reaches open orders. Refunds are always fee-free.
+    <Accordion title="In plain words">
+      The fee is 1% and is only charged when a seller gets paid. It can never go above 5% — that limit is written permanently into the program. And if VeriPay ever changes the fee, it only affects new orders, never yours.
+    </Accordion>
+  </Card>
+  <Card title="Reputation that can't be edited" icon="scroll-text">
+    Seller records are a **pure function of on-chain events** (`TradeCreated`, `FundsReleased`, `DisputeRaised`, `DisputeResolved`). Anyone can replay the log and re-derive the same numbers.
+    <Accordion title="In plain words">
+      A seller's score is calculated from the public history of real orders. VeriPay doesn't store a number it could quietly change. Anyone, anywhere, can recount it and get the same answer.
+    </Accordion>
+  </Card>
+  <Card title="Server-verified money path" icon="shield-check">
+    The browser is never trusted about payment. Paystack is queried server-to-server, references are bound to one intent, SQL status guards prevent double delivery, and minted amounts equal the verified charge exactly.
+    <Accordion title="In plain words">
+      Someone can't trick VeriPay by pretending they paid, paying less than the price, or reusing an old receipt. Every payment is double-checked with the card company before anything happens.
+    </Accordion>
+  </Card>
+</CardGroup>
+
+## Live on Monad testnet
+
+| | |
+|---|---|
+| **App** | [veripay.store](https://veripay.store) |
+| **Test card** | `4084 0840 8408 4081` · any future expiry · CVV `408` |
+| **Demo seller** | type `adaeze-thrift` at [veripay.store/seller](https://veripay.store/seller) |
+| **Escrow contract** | [`0x00bdf9fb…1517e6d`](https://testnet.monadscan.com/address/0x00bdf9fbc9f59cc6814bbc7a91b19bbad1517e6d) |
+| **Chain** | Monad testnet, chain id `10143` |
+| **Source** | [github.com/Nailer/VeriPay](https://github.com/Nailer/VeriPay) (MIT) |
+| **Demo video** | [youtu.be/dxhIg5WTRA0](https://youtu.be/dxhIg5WTRA0) (2:17) |
+| **Pitch video** | [youtu.be/XqcZS5daLv8](https://youtu.be/XqcZS5daLv8) (1:45) |
+
+## How these docs are organised
+
+<AccordionGroup>
+  <Accordion title="Documentation — what VeriPay is" icon="book-open">
+    The problem, the product, use cases, why it runs on Monad, fees, and a glossary that explains every term used anywhere on this site.
+  </Accordion>
+  <Accordion title="User guides — how to use it" icon="users">
+    Step-by-step, non-technical guides for buyers and sellers: signing in, paying, confirming delivery, refunds, disputes, notifications and installing the app.
+  </Accordion>
+  <Accordion title="Architecture — how it is built" icon="network">
+    System design, trust boundaries, sequence diagrams for every flow, data model and technology stack.
+  </Accordion>
+  <Accordion title="Smart contracts — the rules in code" icon="file-code">
+    Full reference for `VeriPayEscrow`, `AutoReleaseReceiver` and `vNGN`: storage layout, functions, events, errors, fee math and admin operations.
+  </Accordion>
+  <Accordion title="API reference — integrate with it" icon="terminal">
+    Every HTTP route the app exposes, plus the Envio GraphQL reputation feed and direct on-chain reads.
+  </Accordion>
+  <Accordion title="Developers — run, test and deploy it" icon="code">
+    Local setup, environment variables, database, testing, deployment of the app, indexer and Chainlink workflow, and troubleshooting.
+  </Accordion>
+  <Accordion title="Security — why you can trust it, and where you shouldn't yet" icon="shield-check">
+    Security model, threat model, contract invariants, audit status, known limitations and risk disclosures.
+  </Accordion>
+  <Accordion title="Resources — everything else" icon="library">
+    Roadmap, hackathon submission, sponsor integrations, changelog, team, brand assets, legal pages and how to maintain these docs.
+  </Accordion>
+</AccordionGroup>
+
+<Tip>
+  Every technical explanation on this site is followed by an **"In plain words"** dropdown. If a sentence feels too technical, open the dropdown below it. If you're still stuck, the [Glossary](/glossary) defines every term.
+</Tip>

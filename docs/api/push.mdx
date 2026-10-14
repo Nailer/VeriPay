@@ -1,0 +1,48 @@
+---
+title: "Push subscriptions"
+description: "Register, remove and rotate Web Push subscriptions tied to an address."
+icon: "bell-ring"
+---
+
+## Subscribe
+
+```http
+POST /api/push/subscribe
+```
+
+<ParamField body="address" type="string" required>Owner of the subscription (lowercased).</ParamField>
+<ParamField body="subscription" type="object" required>
+  The browser's `PushSubscription` JSON.
+  <Expandable title="properties">
+    <ParamField body="endpoint" type="string" required />
+    <ParamField body="keys.p256dh" type="string" required />
+    <ParamField body="keys.auth" type="string" required />
+  </Expandable>
+</ParamField>
+
+Upserts on `endpoint` (one row per browser install). `200 { success: true }`; `400` missing fields; `503` no storage.
+
+## Unsubscribe
+
+```http
+POST /api/push/unsubscribe
+```
+
+<ParamField body="endpoint" type="string" required />
+
+Deletes the row. `200 { success: true }`.
+
+## Resubscribe (from the service worker)
+
+```http
+POST /api/push/resubscribe
+```
+
+<ParamField body="oldEndpoint" type="string" required />
+<ParamField body="subscription" type="object" required>New `PushSubscription` JSON.</ParamField>
+
+Copies the address from the old row to the new endpoint and deletes the old row. `404` if the old endpoint isn't known. Called by `pushsubscriptionchange` in `public/sw.js`, which can't know the address itself.
+
+<Accordion title="In plain words" icon="lightbulb">
+  These register your phone or browser for notifications, remove it, or update it when the browser changes its notification address.
+</Accordion>

@@ -1,0 +1,64 @@
+---
+title: "Create a payment intent"
+api: "POST https://veripay.store/api/pay/intent"
+description: "Open a card payment for a seller link. The seller's payout address is resolved server-side from the handle — the browser never supplies where money goes."
+---
+
+<ParamField body="handle" type="string" required>Seller link name.</ParamField>
+<ParamField body="amountNgn" type="number" required>Naira, rounded to kobo. 100 ≤ amount ≤ 5,000,000.</ParamField>
+<ParamField body="item" type="string" required>What's being bought. Trimmed to 140 chars; ≥ 3 chars. Becomes the on-chain `metadata`.</ParamField>
+<ParamField body="buyerAddress" type="string" required>Signed-in buyer's address. Must differ from the seller's.</ParamField>
+<ParamField body="email" type="string" required>Receipt email (passed to Paystack).</ParamField>
+
+<ResponseField name="ok" type="boolean">`true`.</ResponseField>
+<ResponseField name="intent" type="object">
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">8-character intent id.</ResponseField>
+    <ResponseField name="handle" type="string" />
+    <ResponseField name="sellerAddress" type="string">Lowercase.</ResponseField>
+    <ResponseField name="buyerAddress" type="string">Lowercase.</ResponseField>
+    <ResponseField name="amountNgn" type="number" />
+    <ResponseField name="item" type="string" />
+    <ResponseField name="status" type="string">`awaiting_payment`.</ResponseField>
+    <ResponseField name="testMode" type="boolean">`true` if no Paystack secret is configured.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="reference" type="string">`VP-<id>-<base36 timestamp>`. Use **exactly** this as the Paystack reference.</ResponseField>
+<ResponseField name="demo" type="boolean">TEST MODE flag.</ResponseField>
+<ResponseField name="publicKey" type="string">Paystack public key for the inline popup.</ResponseField>
+
+<Note>
+  This endpoint does **not** initialise the Paystack transaction. The inline popup creates the charge under `reference`; initialising first would make Paystack reject the popup with "Duplicate Transaction Reference".
+</Note>
+
+<Accordion title="In plain words" icon="lightbulb">
+  Tells VeriPay "this buyer wants to pay this seller this much for this item". VeriPay saves it and returns a unique reference that the card payment must use.
+</Accordion>
+
+<RequestExample>
+```bash
+curl -X POST https://veripay.store/api/pay/intent \
+  -H "Content-Type: application/json" \
+  -d '{"handle":"adaeze-thrift","amountNgn":2500,"item":"Black Ankara gown","buyerAddress":"0xBuyer…","email":"buyer@example.com"}'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "ok": true,
+  "intent": {
+    "id": "K7QH2MZP", "handle": "adaeze-thrift",
+    "sellerAddress": "0xefd0…1aba", "buyerAddress": "0xbuyer…",
+    "amountNgn": 2500, "item": "Black Ankara gown",
+    "status": "awaiting_payment", "testMode": false
+  },
+  "reference": "VP-K7QH2MZP-MGQ3X1A2",
+  "demo": false,
+  "publicKey": "pk_test_…"
+}
+```
+```json 400
+{ "error": "You can't pay your own link." }
+```
+</ResponseExample>

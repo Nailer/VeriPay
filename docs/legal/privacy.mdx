@@ -1,67 +1,58 @@
 ---
-title: "Privacy Policy"
-sidebarTitle: "Privacy Policy"
-description: "VeriPay Privacy Policy — what data we collect, how we use it, and your rights."
+title: "Privacy"
+description: "What data VeriPay collects, where it's stored, who can see it, and what is public on the blockchain."
+icon: "lock"
 ---
 
-*Last updated: July 2026*
+<Warning>
+  **Draft** for the testnet phase, not reviewed by a lawyer. A lawyer-reviewed policy (including NDPA/NDPR compliance for Nigeria) is required before launch.
+</Warning>
 
-## Overview
+## Public by design (on the blockchain)
 
-VeriPay is designed with **privacy by default**. We collect as little data as possible and are transparent about what we do collect.
+Anything written to Monad is **permanent and public**:
 
-## What We Collect
+| Data | Where |
+|---|---|
+| Buyer and seller account addresses | `Trade` struct, events |
+| Order amounts and asset | `Trade`, events |
+| Item description you type when paying | `Trade.metadata` |
+| Timestamps, release/refund/dispute outcomes | `Trade`, events |
 
-### On-Chain Data (Public by Design)
+<Note>
+  **Don't put personal information (phone numbers, home addresses, names) in "What are you buying?"** — it becomes public and permanent.
+</Note>
 
-The following data is **permanently recorded on the Monad blockchain** and is publicly accessible to anyone:
+## Stored by VeriPay (Supabase)
 
-- Buyer wallet addresses
-- Seller wallet addresses
-- Escrow amounts (in MON)
-- Trade descriptions (metadata)
-- Transaction hashes and timestamps
+| Data | Purpose | Table |
+|---|---|---|
+| Shop name, link name, payout address | Seller links | `sellers` |
+| Receipt email, amount, item, addresses | Card payments | `pay_intents` |
+| Notifications | In-app alerts | `notifications` |
+| Chat messages | Order and support chat | `chat_messages` |
+| Push subscription endpoints and keys | Device alerts | `push_subscriptions` |
+| Exchange orders incl. bank account details | Exchange settlement | `exchange_orders` |
+| Page views, connect events, user agent | Analytics | `page_views`, `wallet_events`, `app_users` |
 
-This data is on-chain by necessity — it's how the escrow protocol works. By creating an escrow, you consent to this data being publicly visible on the blockchain.
+Access: server only, via the service-role key. Row-level security blocks public access.
 
-### Off-Chain Data (VeriPay Servers)
+## Processed by third parties
 
-| Data Type | What We Store | Why | Retention |
-| --- | --- | --- | --- |
-| Notifications | Wallet address, trade ID, notification type, read status | To deliver trade alerts | Until user clears notifications |
-| Chat messages | Trade ID, sender address, message text, timestamp | To enable in-trade communication | Until trade is deleted |
+| Party | Data |
+|---|---|
+| Paystack | Card details (VeriPay never sees full card numbers), email, amount |
+| Supabase | The database above |
+| Vercel | Hosting logs |
+| Alchemy | RPC requests (addresses, transactions) |
+| Envio | Public chain data only |
+| Browser push services | Encrypted push payloads |
 
-### What We Do NOT Collect
+## What VeriPay never receives
 
-- ❌ Real names or personal identification
-- ❌ Email addresses (unless you choose social login, handled by Thirdweb)
-- ❌ Phone numbers (unless you choose phone login, handled by Thirdweb)
-- ❌ IP addresses (stored by hosting infrastructure only, not VeriPay)
-- ❌ Browser fingerprints or tracking cookies
-- ❌ Financial data (your private keys, seed phrases, bank details)
+Your passkey, your private key, or full card numbers.
 
-## Social Login (Thirdweb)
+## Your choices
 
-If you choose to sign in with email, Google, Apple, Facebook, or phone, these credentials are handled by [Thirdweb](https://thirdweb.com/privacy-policy) — not VeriPay directly. VeriPay only receives your generated wallet address. Please review [Thirdweb's Privacy Policy](https://thirdweb.com/privacy-policy) for details on how they handle your social login data.
-
-## How We Use Data
-
-- **Notifications:** To alert you when trade events occur involving your wallet
-- **Chat:** To enable communication between trade participants
-- We do **not** sell, share, or monetize your data in any way
-
-## Your Rights
-
-- **Access:** Request a copy of any data we hold about your wallet address
-- **Deletion:** Request deletion of your off-chain data (notifications, chat messages)
-- **Portability:** All on-chain data is already publicly accessible via the block explorer
-
-## Data Security
-
-- Off-chain data is stored with industry-standard security practices
-- We do not store private keys, seed phrases, or sensitive financial information
-- HTTPS is enforced for all connections to VeriPay's servers
-
-## Contact
-
-For privacy-related requests, contact the team at [ajeemmanuel221@gmail.com](mailto:ajeemmanuel221@gmail.com).
+- Disable device alerts at any time.
+- Request deletion of off-chain data via `support@veripay.store` (on-chain data cannot be deleted).

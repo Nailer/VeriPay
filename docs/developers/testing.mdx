@@ -1,0 +1,65 @@
+---
+title: "Testing"
+description: "All of VeriPay's automated tests — the contract suite and the end-to-end money-path test — how to run them and what they prove."
+icon: "flask-conical"
+---
+
+## Contract suite — 30 tests
+
+```bash
+cd contracts/test && npm install && npm test
+```
+
+Compiles the real contracts with `solc` and runs them on an in-process Ganache chain. Full case list: [Contract testing](/contracts/testing).
+
+## End-to-end money path — 14 checks
+
+```bash
+npm run build && npm run start      # terminal 1
+node tests/e2e-pay.mjs              # terminal 2  (BASE_URL=https://… to target a deployment)
+```
+
+Needs a filled-in `.env` including `PAYSTACK_SECRET_KEY` and `PAY_MINTER_PRIVATE_KEY`. It generates throwaway seller/buyer keys, makes a **real Paystack test-mode charge** with the test card, creates one on-chain test trade, then deletes the seller row. No real money moves.
+
+| # | Check |
+|---|---|
+| 1 | Claim signed by the **wrong** key is rejected (401) |
+| 2 | Claim signed by the owner succeeds |
+| 3 | A taken handle can't be claimed twice (409) |
+| 4 | Intent created with the correct seller address |
+| 5 | Confirm **before** paying is rejected (400) |
+| 6 | Confirm after a real test charge → `funded` |
+| 7 | Buyer holds **exactly** 2,500 vNGN |
+| 8 | Buyer was topped up with gas |
+| 9 | Replaying confirm does **not** mint twice |
+| 10 | A ₦2,500 payment can't be reused to fund a ₦50,000 one |
+| 11 | Seller can't pay their own link |
+| 12 | Trade locks the right amount for the right seller (timed) |
+| 13 | Gas top-up was enough for both transactions |
+| 14 | Trade shows on the seller's record in naira |
+
+Passed **14/14** locally and against the live deployment.
+
+<Accordion title="In plain words" icon="lightbulb">
+  This test pretends to be a real seller and buyer, makes a fake card payment, and checks 14 things — including trying to cheat in several ways — to make sure the money path is safe.
+</Accordion>
+
+## Manual test plan
+
+| Scenario | Steps | Expected |
+|---|---|---|
+| Happy path | Pay link → confirm delivery | Seller +1 Paid out |
+| Refund | Seller refund → buyer claim | Buyer 100%, +1 Refunds |
+| Dispute 50/50 | Report problem → arbitrator 5000 | Split, fee on seller half, both +1 Disputes |
+| Resume | Pay, close tab before lock, reopen link | No second charge, lock completes |
+| Visitor | Open someone else's order | No action buttons |
+| Push | Enable alerts, receive an order | Device notification |
+| Offline | Disable network, navigate | Offline page |
+| Legacy | Open a v1 order | "older order" notice, no dispute button |
+
+## Typecheck and lint
+
+```bash
+npx tsc --noEmit
+npm run lint
+```

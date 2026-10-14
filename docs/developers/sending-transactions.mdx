@@ -1,0 +1,68 @@
+---
+title: "Sending transactions"
+description: "The one correct way to send transactions in the VeriPay app — thirdweb's pipeline — and the bugs the wrong ways caused."
+icon: "send"
+---
+
+## The rule
+
+<Check>
+  Every write goes through `src/lib/monad.ts`: `prepareContractCall` / `prepareTransaction` → `sendTransaction({ account, transaction })` → `waitForReceipt`, with `account` from `useActiveAccount()`.
+</Check>
+
+<Danger>
+  **Never** use `window.ethereum.request(...)` or a raw viem `createWalletClient` with an injected transport for user transactions.
+</Danger>
+
+<Accordion title="In plain words" icon="lightbulb">
+  There's one approved way to send blockchain actions from the app. Other common shortcuts only work for people with a browser-extension wallet and silently break for everyone on a phone or using fingerprint sign-in.
+</Accordion>
+
+## Why
+
+`window.ethereum` only exists for browser-extension wallets (MetaMask, Rabby…). It is **undefined** for:
+
+- thirdweb in-app wallets (email, phone, Google, Apple, Facebook),
+- wallets over WalletConnect (most mobile users),
+- VeriPay's passkey accounts.
+
+Using it produced *"No browser wallet detected. Please install MetaMask."* on every write for most real users. It was found and fixed across `create/page.tsx`, `trade/[id]/page.tsx`, `exchange/order/[id]/page.tsx` and `ArbitrationPanel.tsx`. thirdweb's pipeline works uniformly across every connection type and switches/adds Monad testnet automatically — the manual `wallet_switchEthereumChain` / `wallet_addEthereumChain` dance is gone and shouldn't come back.
+
+## Template for a new write action
+
+```ts
+import { prepareContractCall, sendTransaction, waitForReceipt } from "thirdweb";
+import { useActiveAccount } from "thirdweb/react";
+import { escrowContract, friendlyTxError } from "@/lib/monad";
+import { readyToTransact } from "@/lib/gas";
+
+const account = useActiveAccount();
+
+async function act(id: bigint) {
+  if (!account) return setError("Please sign in first.");
+  try {
+    await readyToTransact(account.address);                       // sponsor gas if needed
+    const transaction = prepareContractCall({ contract: escrowContract, method: "releaseToSeller", params: [id] });
+    const result = await sendTransaction({ account, transaction });
+    await waitForReceipt(result);
+    // best-effort mirrors: /api/trades/log, /api/notifications
+  } catch (err) {
+    setError(friendlyTxError(err));
+  }
+}
+```
+
+## Passkey wallet note
+
+For the passkey account, `sendTransaction` is implemented by VeriPay's adapter using viem's `walletClient.sendTransaction`, which signs locally and broadcasts a raw transaction. Don't wrap it with `viemAdapter.wallet.fromViem` — see [Passkey accounts](/architecture/passkey-accounts#wallet-wiring-and-the-bug-it-avoids).
+
+## Server-side writes
+
+Only two server components sign transactions, both with viem and a private key from env:
+
+| Where | Key | Writes |
+|---|---|---|
+| `src/lib/payments.ts` | `PAY_MINTER_PRIVATE_KEY` | `vNGN.mint`, MON gas top-ups |
+| `src/lib/exchangeStore.ts` | `EXCHANGE_PAYOUT_PRIVATE_KEY` | MON payouts for exchange buys |
+
+Both use `waitForTransactionReceipt` and treat non-`success` as failure. `sendGas` re-reads the `pending` nonce per attempt.

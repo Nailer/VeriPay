@@ -1,95 +1,108 @@
 ---
-title: "Frequently Asked Questions"
-sidebarTitle: "FAQ"
-description: "Answers to the most common questions about VeriPay — from basics to technical details."
+title: "Frequently asked questions"
+description: "Straight answers for buyers, sellers, developers and investors."
+icon: "circle-help"
 ---
 
-## General
+## For everyone
 
 <AccordionGroup>
-  <Accordion title="What is VeriPay?">
-    VeriPay is a decentralized escrow protocol built on the Monad blockchain. It allows two parties (a buyer and a seller) to conduct trustless peer-to-peer transactions by locking funds in a smart contract until both parties are satisfied.
+  <Accordion title="What is VeriPay, in one sentence?">
+    A way to buy from strangers online where your money is held safely until your order arrives — and the seller can prove they're honest with a record nobody can fake.
   </Accordion>
-
-  <Accordion title="Is VeriPay free to use?">
-    Yes. VeriPay charges **zero platform fees**. The only cost is a minimal Monad gas fee (typically less than $0.01) for on-chain transactions like creating an escrow or releasing funds.
+  <Accordion title="Is this real money?">
+    **Not yet.** VeriPay runs on Monad **testnet**. Card payments use Paystack **test mode** and the naira held on-chain is **vNGN**, a test token. Going live requires a security review, a registered business, Paystack live mode, a licensed naira stablecoin or payout partner, and Monad mainnet. See the [Roadmap](/resources/roadmap).
   </Accordion>
-
-  <Accordion title="Do I need a crypto wallet to use VeriPay?">
-    Not necessarily. You can sign in with your **email, Google account, Apple ID, Facebook, or phone number** — and VeriPay will create a secure, non-custodial wallet for you automatically. If you already have MetaMask, WalletConnect, or another wallet, you can connect that instead.
+  <Accordion title="Do I need crypto, a wallet, or to understand blockchain?">
+    No. You sign in with Face ID / fingerprint, pay with your normal bank card in naira, and VeriPay pays the network fees. You never see a wallet address, a token name or a gas fee on the buying and selling pages.
   </Accordion>
-
-  <Accordion title="What blockchain does VeriPay run on?">
-    VeriPay runs on **Monad**, a high-performance EVM-compatible Layer 1 blockchain with 10,000+ TPS (transactions per second) and near-zero gas fees. Currently on the Monad Testnet (Chain ID: 10143).
+  <Accordion title="Can VeriPay run away with my money?">
+    No — and this is enforced by code, not by promise. The escrow contract has **no function** that lets VeriPay's admin move money held for open orders. The only money VeriPay can withdraw is the fee bucket, which only contains fees from orders that already completed successfully. You can read the [contract source](https://github.com/Nailer/VeriPay/blob/hackathon/metropolis/contracts/VeriPayEscrow.sol) or the [invariants page](/security/invariants).
   </Accordion>
-
-  <Accordion title="Is VeriPay available in my country?">
-    VeriPay is a decentralized application accessible from anywhere with internet access. It's designed specifically for the African market (starting with Nigeria/Lagos) but can be used globally. No KYC or geographical restrictions apply.
+  <Accordion title="How much does it cost?">
+    **1% of the order, charged to the seller, only when they're paid.** Buyers pay nothing extra. Refunds are free. The network fee (under ₦1) is paid by VeriPay. The fee can never exceed 5% — that limit is hard-coded. See [Fees and pricing](/product/fees-and-pricing).
+  </Accordion>
+  <Accordion title="Do I need to download an app?">
+    No. VeriPay works in any modern phone browser. You can optionally [install it to your home screen](/guides/install-app) for an app-like experience and notifications.
+  </Accordion>
+  <Accordion title="Which countries is it for?">
+    It's designed for Nigerian social commerce first (naira, Paystack, Instagram/WhatsApp/Jiji). The contract accepts any ERC-20 token, including dollar stablecoins, so cross-border use is on the roadmap.
   </Accordion>
 </AccordionGroup>
 
-## Security & Trust
+## For buyers
 
 <AccordionGroup>
-  <Accordion title="Is my money safe on VeriPay?">
-    Yes. Your funds are locked in an **immutable smart contract** on the Monad blockchain. No human — not even VeriPay's team — can access, freeze, or redirect your funds. The contract has no admin keys, no owner function, and no privileged access.
+  <Accordion title="What happens if the seller never delivers?">
+    Don't confirm delivery. Message the seller first; if that doesn't work, tap **Report a problem with this order** *before the confirmation window ends* (7 days). The money is frozen until a reviewer decides. If the seller agrees to refund, you get 100% back.
   </Accordion>
-
-  <Accordion title="What if the seller doesn't deliver my goods?">
-    If the seller fails to deliver, you can request a refund. The process requires the **seller to approve** the refund (a two-step consent model). Use the **in-trade chat** to communicate with the seller and negotiate. If they approve, you can withdraw your MON.
+  <Accordion title="What if I forget to confirm?">
+    After 7 days without a confirmation or a problem report, the seller is paid automatically. The order page shows a countdown so you always know how long you have.
   </Accordion>
-
-  <Accordion title="What if the seller refuses to approve a refund?">
-    Currently, if the seller refuses, the funds remain locked until the dispute is resolved through communication. **Future versions** will include DAO-based arbitration where neutral third parties can review evidence and make binding decisions.
+  <Accordion title="I paid, but the page closed before it said 'Payment secured'. Was I charged twice?">
+    No. If you paid but the lock didn't finish, just open the seller's link again and sign in. The page finds your earlier payment, **skips the card step**, and finishes locking it. You are never charged twice for the same payment.
   </Accordion>
-
-  <Accordion title="Has the smart contract been audited?">
-    The contract has been internally reviewed and is open source for public inspection. A **professional third-party audit** is planned before mainnet launch. The contract is intentionally simple (6 functions, 1 data structure) to minimize attack surface.
+  <Accordion title="How do I know the seller's record is real?">
+    It's counted from public blockchain events written by the escrow contract for every order. VeriPay doesn't store a score it could edit. Anyone can recount it — see [Reputation](/architecture/reputation).
   </Accordion>
-
-  <Accordion title="What happens if VeriPay the company disappears?">
-    The smart contract is **immutable and permissionless** — it runs on the Monad blockchain independently. Even if VeriPay's website goes offline, your funds remain accessible through the smart contract. Anyone can build a new frontend that interacts with the same contract.
+  <Accordion title="Can a seller fake a good record by buying from themselves?">
+    Not trivially: a seller can't pay their own link, and the contract rejects `buyer == seller`. A determined seller could use a second account and pay the 1% fee on each fake order, which makes wash-trading costly but not impossible. Recognising this, VeriPay shows disputes and refunds alongside completions. Stronger sybil resistance is on the roadmap.
+  </Accordion>
+  <Accordion title="Can I use VeriPay for a Jiji or marketplace purchase?">
+    Yes. Ask the seller for their VeriPay link, or check them at [veripay.store/seller](https://veripay.store/seller) first.
   </Accordion>
 </AccordionGroup>
 
-## Using VeriPay
+## For sellers
 
 <AccordionGroup>
-  <Accordion title="How do I get MON tokens?">
-    **On testnet:** Use the [Monad Faucet](https://faucet.monad.xyz) to get free testnet MON.
-
-    **On mainnet (coming soon):** VeriPay will integrate a NGN → MON onramp allowing you to buy MON with Nigerian Naira via bank transfer or mobile money.
+  <Accordion title="How do I get paid?">
+    When the buyer confirms delivery, 99% of the order is released to your account immediately. If the buyer goes silent, you're paid automatically after 7 days. On testnet the balance is test naira and **cannot yet be withdrawn to a bank** — that needs a licensed payout partner.
   </Accordion>
-
-  <Accordion title="Can I cancel an escrow after creating it?">
-    You cannot unilaterally cancel an escrow. This protects the seller from buyers who might cancel after the seller has shipped goods. To recover funds, you must go through the [refund process](/user-guide/request-refund), which requires seller consent.
+  <Accordion title="Can I change my link name?">
+    Not from the app today. Each account can hold exactly one link, and link names are unique. Contact support if you need a change.
   </Accordion>
-
-  <Accordion title="Can I use VeriPay on my phone?">
-    Absolutely. VeriPay is fully responsive and optimized for mobile browsers. It works on Chrome, Safari, Firefox, and Brave on both iOS and Android devices.
+  <Accordion title="Can a buyer just report a problem to avoid paying?">
+    Reporting a problem doesn't give the buyer the money — it freezes it until a reviewer decides. The reviewer can award any split, including 100% to you. Problem reports also count on the buyer's own record.
   </Accordion>
-
-  <Accordion title="What currencies does VeriPay support?">
-    Currently, VeriPay supports **MON** (Monad's native token). Support for **USDC, USDT, and other ERC-20 tokens** is planned for v2.0. A **Naira (NGN) onramp** is planned for v1.5.
-  </Accordion>
-
-  <Accordion title="Is there a minimum or maximum escrow amount?">
-    There is **no minimum amount** in the smart contract — you can escrow any amount above 0. There is also **no maximum**. On testnet, you're limited by faucet availability.
+  <Accordion title="Why does VeriPay need my signature to create a link?">
+    So nobody else can create a link that sends *your* customers' payments to *their* account, or squat a link in your name.
   </Accordion>
 </AccordionGroup>
 
-## Technical
+## For developers
 
 <AccordionGroup>
-  <Accordion title="Is VeriPay open source?">
-    Yes. The frontend code is fully open source on [GitHub](https://github.com/Nailer/Monad-Pay-Lagos). You can review, fork, and contribute to the codebase.
+  <Accordion title="Is the code open source?">
+    Yes, MIT-licensed at [github.com/Nailer/VeriPay](https://github.com/Nailer/VeriPay). The `hackathon/metropolis` branch is the current product.
   </Accordion>
-
-  <Accordion title="Can I integrate VeriPay into my own app?">
-    Yes. You can interact with VeriPay's smart contract directly using the [ABI and contract address](/api-reference/smart-contract-abi). We also provide [REST API documentation](/api-reference/overview) and an [integration guide](/api-reference/integration-guide).
+  <Accordion title="Can I integrate VeriPay into my own store?">
+    Yes. You can send buyers to a seller's `/pay/<handle>` link, read reputation via `GET /api/reputation/:address` or Envio GraphQL, or call `VeriPayEscrow` directly from your own dApp. See the [Integration guide](/developers/integration-guide).
   </Accordion>
+  <Accordion title="Why not use a smart-contract wallet / account abstraction for gas?">
+    The passkey account is an EOA derived from the PRF output, so gas is sponsored by a capped server-side MON top-up rather than a paymaster. It's simple and works on any EVM chain today; ERC-4337 / EIP-7702 sponsorship is a reasonable future step.
+  </Accordion>
+  <Accordion title="Where's the Hardhat/Foundry config?">
+    There isn't one. Contracts are deployed from Remix and tested with `solc` + an in-process Ganache chain via `node --test` in `contracts/test/`.
+  </Accordion>
+  <Accordion title="Why are there two contract versions?">
+    v1 (`0xd0cc…1621`) had no fees, disputes or auto-release. v2 (`VeriPayEscrow`) adds them plus ERC-20 support. `src/lib/escrow.ts` detects which is deployed by calling `feeBps()` and normalises both. See [Legacy v1](/contracts/legacy-v1).
+  </Accordion>
+</AccordionGroup>
 
-  <Accordion title="Who built VeriPay?">
-    VeriPay is built by a developer and founder based in Lagos, Nigeria — someone who has experienced the P2P trade fraud problem firsthand and is building the solution from within the market.
+## For investors and judges
+
+<AccordionGroup>
+  <Accordion title="Are there real users?">
+    Not yet. Every order on the contract was created by the founder's own demo and test wallets. They're real on-chain transactions, but they're not customers.
+  </Accordion>
+  <Accordion title="How does VeriPay make money?">
+    A 1% success-only fee on released orders, configurable up to a hard 5% ceiling. A separate naira↔crypto exchange earns a spread (default 3.5%).
+  </Accordion>
+  <Accordion title="Has the contract been audited?">
+    No. It has a 30-test local-EVM suite and an end-to-end payment test, but no independent security review. That's the first roadmap item before real money. See [Audit status](/security/audit-status).
+  </Accordion>
+  <Accordion title="Why Monad specifically?">
+    Locking a payment confirms in ~1 second and costs under ₦1, so VeriPay can protect even ₦2,000 orders and pay the fee itself — and write a permanent event for every order, which is what makes the reputation complete and unfakeable. See [Why Monad](/product/why-monad).
   </Accordion>
 </AccordionGroup>

@@ -1,0 +1,123 @@
+---
+title: "Integration guide"
+description: "Four ways to build on VeriPay — link out, show reputation, read orders, or call the escrow directly — with working code."
+icon: "plug"
+---
+
+<CardGroup cols={2}>
+  <Card title="1. Link to a seller's checkout" icon="link">No code. Lowest effort.</Card>
+  <Card title="2. Show a seller's record" icon="badge-check">One HTTP call or GraphQL query.</Card>
+  <Card title="3. Read orders on-chain" icon="search">viem reads against the escrow.</Card>
+  <Card title="4. Use the escrow directly" icon="vault">Your own dApp locks and releases funds.</Card>
+</CardGroup>
+
+<Accordion title="In plain words" icon="lightbulb">
+  You can add VeriPay to your own website or app in four ways, from simply linking to a seller's VeriPay page, to building your own app on top of the safe locker.
+</Accordion>
+
+## 1. Link to a seller's checkout
+
+```html
+<a href="https://veripay.store/pay/adaeze-thrift">Pay safely with VeriPay</a>
+```
+
+Ideal for marketplaces, link-in-bio tools and chatbots. The buyer gets the full experience (record, card, fingerprint, protection).
+
+## 2. Show a seller's record
+
+```ts
+const res = await fetch(`https://veripay.store/api/reputation/${sellerAddress}`);
+const { reputation, source } = await res.json();
+// reputation.completedTrades, disputedTrades, refundedTrades, totalTrades
+```
+
+Resolve a handle first if needed:
+
+```ts
+const { seller } = await (await fetch(`https://veripay.store/api/sellers?handle=adaeze-thrift`)).json();
+```
+
+Or query Envio directly — see [Envio GraphQL](/api/graphql).
+
+## 3. Read orders on-chain
+
+```ts
+import { createPublicClient, http, formatUnits } from "viem";
+
+const ESCROW = "0x00bdf9fbc9f59cc6814bbc7a91b19bbad1517e6d";
+const abi = [
+  { type: "function", name: "nextTradeId", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "getTrade", stateMutability: "view", inputs: [{ type: "uint256" }], outputs: [{
+    type: "tuple", components: [
+      { name: "buyer", type: "address" }, { name: "seller", type: "address" }, { name: "amount", type: "uint256" },
+      { name: "released", type: "bool" }, { name: "sellerApprovedRefund", type: "bool" }, { name: "metadata", type: "string" },
+      { name: "createdAt", type: "uint64" }, { name: "autoReleaseAt", type: "uint64" }, { name: "disputed", type: "bool" },
+      { name: "refunded", type: "bool" }, { name: "feeBps", type: "uint16" }, { name: "token", type: "address" },
+    ] }] },
+] as const;
+
+const client = createPublicClient({ transport: http("https://testnet-rpc.monad.xyz") });
+const next = await client.readContract({ address: ESCROW, abi, functionName: "nextTradeId" });
+const t = await client.readContract({ address: ESCROW, abi, functionName: "getTrade", args: [next - 1n] });
+
+const decimals = t.token === "0x0000000000000000000000000000000000000000" ? 18 : 6;
+console.log(t.metadata, formatUnits(t.amount, decimals), { released: t.released, disputed: t.disputed });
+```
+
+<Tip>
+  Watch for new orders with `client.watchContractEvent({ address: ESCROW, abi: tradeCreatedAbi, eventName: "TradeCreated", onLogs })`.
+</Tip>
+
+## 4. Use the escrow directly
+
+### Lock in an ERC-20 (e.g. AUSD or vNGN)
+
+```ts
+import { createWalletClient, http, parseUnits } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+
+const wallet = createWalletClient({ account: privateKeyToAccount(KEY), transport: http(RPC), chain: monadTestnet });
+const amount = parseUnits("25000", 6);
+
+await wallet.writeContract({ address: TOKEN, abi: erc20Abi, functionName: "approve", args: [ESCROW, amount] });
+const hash = await wallet.writeContract({
+  address: ESCROW, abi: escrowAbi, functionName: "createTradeWithToken",
+  args: [seller, "Order #1234 — 2× Ankara gowns", TOKEN, amount],
+});
+```
+
+### Lock native MON
+
+```ts
+await wallet.writeContract({ address: ESCROW, abi: escrowAbi, functionName: "createTrade", args: [seller, "Order #1234"], value: parseEther("10") });
+```
+
+### Settle
+
+```ts
+await wallet.writeContract({ address: ESCROW, abi: escrowAbi, functionName: "releaseToSeller", args: [id] }); // buyer
+await wallet.writeContract({ address: ESCROW, abi: escrowAbi, functionName: "sellerApproveRefund", args: [id] }); // seller
+await wallet.writeContract({ address: ESCROW, abi: escrowAbi, functionName: "buyerClaimRefund", args: [id] }); // buyer
+await wallet.writeContract({ address: ESCROW, abi: escrowAbi, functionName: "raiseDispute", args: [id] }); // either
+await wallet.writeContract({ address: ESCROW, abi: escrowAbi, functionName: "autoRelease", args: [id] }); // anyone, after window
+```
+
+The full ABI is in `src/lib/abi.ts` and `indexer/abis/VeriPayEscrow.json`.
+
+### With thirdweb (as the app does)
+
+```ts
+import { prepareContractCall, sendTransaction, waitForReceipt } from "thirdweb";
+import { escrowContract } from "@/lib/monad";
+
+const tx = prepareContractCall({ contract: escrowContract, method: "releaseToSeller", params: [BigInt(id)] });
+await waitForReceipt(await sendTransaction({ account, transaction: tx }));
+```
+
+## Integration checklist
+
+- [ ] Decode amounts by `token` (6 decimals for vNGN/AUSD, 18 for MON).
+- [ ] Never trust off-chain status; read `getTrade`.
+- [ ] Surface the auto-release deadline (`autoReleaseAt`) to buyers.
+- [ ] Handle revert reasons — see [Errors](/contracts/escrow/errors).
+- [ ] On testnet, label everything as test money.

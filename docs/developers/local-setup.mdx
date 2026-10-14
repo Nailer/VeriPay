@@ -1,105 +1,95 @@
 ---
-title: "Local Development Setup"
-sidebarTitle: "Local Setup"
-description: "How to clone and run VeriPay locally for development or contribution."
+title: "Local setup"
+description: "Clone, configure and run the full VeriPay app on your machine against the live testnet contracts."
+icon: "laptop"
 ---
 
 ## Prerequisites
 
-Before you begin, make sure you have:
+| Requirement | Why |
+|---|---|
+| **Node.js 20+** and npm | Next.js 16 |
+| A free **Supabase** project | Sellers, intents, notifications, chat |
+| A free **thirdweb client id** ([thirdweb.com/create-api-key](https://thirdweb.com/create-api-key)) | Sign-in and transactions |
+| Optional: **Paystack test keys** | Card flow |
+| Optional: a testnet **minter key** + your own vNGN | Card flow delivery |
+| Optional: **Alchemy** Monad testnet URL | Reliable RPC |
 
-- **Node.js** v18+ ([download](https://nodejs.org))
-- **npm**, **yarn**, or **pnpm** (npm comes with Node.js)
-- **Git** ([download](https://git-scm.com))
-- A code editor — we recommend [VS Code](https://code.visualstudio.com)
-- MetaMask browser extension (for testing wallet interactions)
+<Accordion title="In plain words" icon="lightbulb">
+  You need Node.js installed, a free database account (Supabase) and a free key from thirdweb. Card payments need a few more test keys, but you can browse and look up sellers without them.
+</Accordion>
 
-## Step 1: Clone the Repository
+## Steps
 
-```bash
-git clone https://github.com/Nailer/Monad-Pay-Lagos.git
-cd Monad-Pay-Lagos
-```
+<Steps>
+  <Step title="Clone and install">
+    ```bash
+    git clone https://github.com/Nailer/VeriPay.git
+    cd VeriPay
+    git checkout hackathon/metropolis
+    npm install
+    cp .env.example .env
+    ```
+  </Step>
+  <Step title="Create the database">
+    In your Supabase project, open **SQL editor**, paste [`supabase/schema.sql`](https://github.com/Nailer/VeriPay/blob/hackathon/metropolis/supabase/schema.sql) and run it. It creates every table with row-level security on. See [Database](/developers/database).
+  </Step>
+  <Step title="Fill in .env">
+    Minimum to boot:
+    ```bash .env
+    NEXT_PUBLIC_CONTRACT_ADDRESS=0x00bdf9fbc9f59cc6814bbc7a91b19bbad1517e6d
+    NEXT_PUBLIC_THIRDWEB_CLIENT_ID=your-client-id
+    SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+    SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+    ADMIN_PASSCODE=choose-a-strong-passcode
+    ```
+    All variables: [Environment variables](/developers/environment-variables).
+  </Step>
+  <Step title="Run">
+    ```bash
+    npm run dev                       # development, http://localhost:3000
+    # or, for realistic performance:
+    npm run build && npm run start
+    ```
+  </Step>
+  <Step title="Smoke test">
+    - Open `/seller`, type `adaeze-thrift` — you should see the demo shop (if your DB has it) or a "no seller" message.
+    - `curl localhost:3000/api/reputation/0xEfD0497f4557b49E84369cfb884B6c7446e11aBA` → JSON with `source`.
+    - `curl localhost:3000/api/pay/intent` → `{ deliveryAddress, cardProcessor, storage }`.
+  </Step>
+</Steps>
 
-## Step 2: Install Dependencies
+## Enabling the card flow locally
 
-```bash
-npm install
-# or
-yarn install
-# or
-pnpm install
-```
+<Steps>
+  <Step title="Paystack test keys">Set `PAYSTACK_SECRET_KEY` (`sk_test_…`) and `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` (`pk_test_…`).</Step>
+  <Step title="Your own vNGN">Deploy `contracts/test/VeriPayTestNaira.sol` from Remix; set `NEXT_PUBLIC_NGN_TOKEN_ADDRESS`.</Step>
+  <Step title="Minter key">Set `PAY_MINTER_PRIVATE_KEY` to the deployer's **testnet-only** key; fund it with testnet MON.</Step>
+  <Step title="Create a seller">Visit `/sell` in one browser profile, then pay the link from another.</Step>
+</Steps>
 
-## Step 3: Configure Environment Variables
+<Warning>
+  **Passkeys are bound to the hostname.** A passkey account created on `localhost` is different from one on `veripay.store`. WebAuthn works on `localhost` without HTTPS; other hostnames need HTTPS.
+</Warning>
 
-Create a `.env.local` file in the root directory:
+## The `.next` gotcha
 
-```bash
-cp .env.example .env.local
-```
+<Danger>
+  **Never run `npm run build` while `npm run dev` is running.** It corrupts `.next`. The symptom is misleading: every *nested* API route (`/api/admin/*`, `/api/exchange/*`, `/api/trades/*`) returns 404 while single-level ones still work — it once looked like "the admin passcode is wrong".
 
-Then edit `.env.local` with your values:
+  **Fix:** stop the server, `rm -rf .next`, restart. **Prevent:** typecheck with `npx tsc --noEmit` instead of building while dev is running.
+</Danger>
 
-```env
-# Smart Contract (required)
-NEXT_PUBLIC_CONTRACT_ADDRESS=0xd0cc532f55ce6849d5b70e24d6188073f8921621
+Dev mode also feels slow (per-route compilation, reset server caches). **Always demo with `npm run build && npm run start`** — pages and `/api/exchange/rates` serve in ~3 ms in production mode.
 
-# Thirdweb Client ID (required for wallet connection)
-# Get a free client ID at https://thirdweb.com/dashboard
-NEXT_PUBLIC_THIRDWEB_CLIENT_ID=your_thirdweb_client_id_here
-```
+## Commands
 
-<Info>
-  Get a free Thirdweb Client ID at [thirdweb.com/dashboard](https://thirdweb.com/dashboard). Without it, wallet connection features will be limited.
-</Info>
-
-## Step 4: Start the Development Server
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Step 5: Connect a Test Wallet
-
-1. Open MetaMask in your browser
-2. Visit the app at `localhost:3000`
-3. Click **"Connect Wallet"** and choose MetaMask
-4. When prompted, let VeriPay add Monad Testnet to your wallet
-5. Get test MON tokens from the [Monad Faucet](https://faucet.monad.xyz)
-
-## Available Scripts
-
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Start development server at `localhost:3000` |
-| `npm run build` | Build production bundle |
-| `npm run start` | Start production server (after build) |
-| `npm run lint` | Run ESLint code quality checks |
-
-## Hot Reload
-
-The dev server supports **hot module replacement**. Any changes you make to files in `src/` will automatically reload in the browser without a full page refresh.
-
-## Troubleshooting
-
-<AccordionGroup>
-  <Accordion title="'Module not found' error on startup">
-    Run `npm install` again to ensure all dependencies are installed. If the error persists, try deleting `node_modules/` and `package-lock.json`, then run `npm install` fresh.
-  </Accordion>
-  <Accordion title="Wallet connection not working in dev">
-    Ensure `NEXT_PUBLIC_THIRDWEB_CLIENT_ID` is set in `.env.local`. Restart the dev server after changing environment variables.
-  </Accordion>
-  <Accordion title="Transactions failing in development">
-    Make sure your MetaMask is connected to **Monad Testnet** (Chain ID: 10143). VeriPay will try to switch networks automatically, but MetaMask must be unlocked first.
-  </Accordion>
-  <Accordion title="TypeScript compilation errors">
-    Run `npm run lint` to see all TypeScript and ESLint errors. Most common issues are related to missing type annotations in the viem contract calls.
-  </Accordion>
-</AccordionGroup>
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Development server |
+| `npm run build` | Production build |
+| `npm run start` | Serve the production build |
+| `npm run lint` | ESLint |
+| `npx tsc --noEmit` | Typecheck without touching `.next` |
+| `cd contracts/test && npm test` | Contract suite |
+| `node tests/e2e-pay.mjs` | End-to-end money path (needs a running server) |

@@ -1,0 +1,60 @@
+---
+title: "Check a seller"
+description: "Look up a seller's real, on-chain track record by link name or address — no sign-in, no payment."
+icon: "search"
+---
+
+## How to check
+
+<Tabs>
+  <Tab title="By link name">
+    <Steps>
+      <Step title="Open the lookup page">
+        Go to [veripay.store/seller](https://veripay.store/seller), or tap **Check a seller** in the menu.
+      </Step>
+      <Step title="Type their link name">
+        Type the part after `/pay/` — for example `adaeze-thrift`. A leading `@` is fine.
+      </Step>
+      <Step title="Read the record">
+        You'll see the shop name and their counts, plus every order they've been part of, each clickable through to its details.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="On the pay page">
+    The seller's record is shown at the top of their payment link, **before** you enter anything.
+  </Tab>
+  <Tab title="By address (advanced)">
+    Open `veripay.store/seller/<address>` with the seller's `0x…` address, or paste the address as the seller on **Pay with crypto** — the record appears as soon as the address is valid.
+  </Tab>
+</Tabs>
+
+## Reading the record
+
+| Figure | What it counts | Good sign | Warning sign |
+|---|---|---|---|
+| **Paid out** (`completedTrades`) | Orders where this seller was paid — by buyer confirmation, automatic release, or a review that gave them a share | Grows steadily | — |
+| **Disputes** (`disputedTrades`) | Orders this address was part of where either side reported a problem | Zero or a small fraction | A high share of orders |
+| **Refunds** (`refundedTrades`) | Times this address was refunded **as a buyer** | — | — |
+| **Total orders** (`totalTrades`) | Every order this address was buyer or seller on | — | Zero means brand new — not necessarily bad |
+
+<Accordion title="In plain words" icon="lightbulb">
+  "Paid out" is how many times customers were happy enough (or a reviewer agreed) for the seller to get paid. "Disputes" is how many times something went wrong. A seller with lots of payouts and few disputes is a good sign. A brand-new seller with zero of everything isn't necessarily bad — just new.
+</Accordion>
+
+## Why you can trust these numbers
+
+Every figure is computed from events the escrow contract emitted on Monad — `TradeCreated`, `FundsReleased`, `DisputeRaised`, `DisputeResolved` — by an [Envio](/architecture/reputation) indexer, with a fallback that reads every order directly from the contract using **identical counting rules**. VeriPay doesn't store a reputation number, so it can't edit one. Sellers can't delete bad orders, and fake screenshots don't count.
+
+<Accordion title="In plain words">
+  The numbers come from the public record of every real order, not from VeriPay's own files. Nobody — not the seller, not VeriPay — can change them.
+</Accordion>
+
+## Limits of a record
+
+<Note>
+  A good record is strong evidence, not a guarantee. A seller could build history using a second account (each fake order costs them the 1% fee), or behave well for months and then defect. That's why your payment is **still held in escrow** no matter how good the record is.
+</Note>
+
+## Try it
+
+Type `adaeze-thrift` at [veripay.store/seller](https://veripay.store/seller) — VeriPay's demo shop. Its orders were created by the founder's own test wallets; they're real on-chain transactions but not real customers.

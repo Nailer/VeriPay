@@ -1,54 +1,39 @@
 ---
-title: "Risk Disclosures"
-sidebarTitle: "Risk Disclosures"
-description: "Important risks and limitations that every VeriPay user should understand."
+title: "Risk disclosures"
+description: "Risks every user, integrator and investor should understand before using or relying on VeriPay."
+icon: "info"
 ---
 
-## Important Disclosures
-
 <Warning>
-  Please read these disclosures carefully before using VeriPay. Understanding the risks helps you make informed decisions about using the platform.
+  VeriPay is experimental software running on a test network. Nothing here is financial, legal or investment advice.
 </Warning>
 
-### Testnet Disclaimer
+## For users
 
-VeriPay is currently deployed on the **Monad Testnet**. This means:
+| Risk | What it means |
+|---|---|
+| **Testnet** | Balances are test tokens with no value; they can't be withdrawn to a bank. |
+| **Smart-contract risk** | Unaudited code may contain bugs that lock or misdirect funds. |
+| **Deadline risk** | If you don't confirm or report a problem within the window (default 7 days), the seller can be paid automatically. |
+| **Irreversibility** | Confirming delivery pays the seller immediately and can't be undone. |
+| **Arbitration risk** | Disputes are decided by a single reviewer whose decision is final on-chain. |
+| **Account recovery** | If your passkey isn't synced and you lose the device, the account can't be recovered. |
+| **Reputation is evidence, not a guarantee** | Good records can be gamed or a seller can change behaviour. |
+| **Third-party dependencies** | Paystack, Supabase, Alchemy, Envio and Chainlink outages can delay actions. |
 
-- MON tokens on testnet have **no real monetary value**
-- The testnet may experience downtime, resets, or data wipes
-- Features and UI may change significantly before mainnet launch
-- Do not use VeriPay for real financial transactions until mainnet launch is announced
+<Accordion title="In plain words" icon="lightbulb">
+  It's a test version. The money isn't real yet. Watch the 7-day deadline, only confirm when you have your item, and remember a good seller record is helpful but not a promise.
+</Accordion>
 
-### Smart Contract Risk
+## For integrators
 
-While VeriPay's smart contract is designed to be secure:
+- Interfaces and addresses may change before mainnet.
+- Envio dev-tier endpoints may move.
+- Public API routes are not versioned and have no SLA.
 
-- **No smart contract is 100% bug-free** — undiscovered vulnerabilities may exist
-- The contract has not yet been audited by a professional third-party firm
-- Once funds are locked in the contract, they can only be moved through the contract's defined functions
-- If a bug is discovered after mainnet launch, the contract **cannot be patched** (it is immutable)
+## For investors and partners
 
-### Blockchain Risk
-
-Using any blockchain-based application involves inherent risks:
-
-- **Transaction irreversibility** — blockchain transactions cannot be undone
-- **Private key responsibility** — if you lose your private keys, your funds are permanently lost
-- **Network risk** — the Monad network could experience outages or consensus failures
-- **Gas price volatility** — gas fees may increase during periods of high network activity
-
-### Regulatory Risk
-
-- Cryptocurrency regulations vary by jurisdiction and are evolving rapidly
-- VeriPay does not provide legal, financial, or tax advice
-- Users are responsible for complying with local laws regarding cryptocurrency use
-- The regulatory status of escrow services on blockchain is uncertain in many jurisdictions
-
-### Not Financial Advice
-
-VeriPay is a technology platform, not a financial institution. We do not:
-
-- Provide investment advice
-- Guarantee the value of any cryptocurrency
-- Insure deposits or transactions
-- Act as a regulated escrow agent
+- No real users or revenue yet; all on-chain activity is the team's own testing.
+- Regulatory: escrow and payments in Nigeria may require licensing; a naira stablecoin and bank payouts require licensed partners.
+- Key-person risk: a team of one.
+- Market risk: adoption by social-commerce sellers is unproven.

@@ -1,0 +1,110 @@
+---
+title: "Automatic release (Chainlink CRE)"
+description: "How a Chainlink CRE cron workflow and a receiver contract guarantee sellers are paid when buyers go silent — design, safety, the proof on-chain and the path to production."
+icon: "timer"
+---
+
+## The liveness problem
+
+`VeriPayEscrow.autoRelease(id)` pays the seller once `block.timestamp ≥ autoReleaseAt` on an open, undisputed trade. It is permissionless — but a permissionless function still needs **someone to call it**. Without automation, a seller whose buyer stops replying waits until they (or someone) remember to call it.
+
+<Accordion title="In plain words" icon="lightbulb">
+  The rule "pay the seller after 7 days of silence" exists in the contract, but rules don't run themselves — someone has to press the button. VeriPay uses Chainlink, a trusted automation network, to press it for every seller who's due, every 15 minutes.
+</Accordion>
+
+## Two halves
+
+| Half | Location | Role |
+|---|---|---|
+| **Off-chain workflow** | `cre/auto-release/workflow.ts` | Cron trigger; reads chain; decides which trades are due; produces a signed report |
+| **On-chain receiver** | `contracts/cre/AutoReleaseReceiver.sol` | Accepts reports only from the trusted Chainlink forwarder; calls `autoRelease(id)` for each id |
+
+## Workflow logic
+
+```ts cre/auto-release/workflow.ts (condensed)
+export const onCronTrigger = (runtime: Runtime<Config>) => {
+  const evm = new cre.capabilities.EVMClient(getNetwork({ chainFamily: "evm", chainSelectorName, isTestnet: true }).chainSelector.selector);
+
+  const now = evm.headerByNumber(runtime, {}).result().header.timestamp;     // chain time, not wall clock
+  const next = decode(evm.callContract(runtime, { call: nextTradeId() }).result());
+  const start = next > scanLimit ? next - scanLimit : 0n;
+
+  const due: bigint[] = [];
+  for (let id = start; id < next; id++) {
+    const t = decode(evm.callContract(runtime, { call: getTrade(id) }).result());
+    if (!t.released && !t.refunded && !t.disputed && t.autoReleaseAt > 0n && now >= t.autoReleaseAt) due.push(id);
+  }
+  if (!due.length) return "No trades due for auto-release";
+
+  const report = runtime.report(prepareReportRequest(encodeAbiParameters([{ type: "uint256[]" }], [due]))).result();
+  const res = evm.writeReport(runtime, { receiver: receiverAddress, report, gasConfig: { gasLimit } }).result();
+  if (res.txStatus !== TxStatus.SUCCESS) throw new Error(...);
+};
+```
+
+### Configuration (`config.staging.json`)
+
+| Key | Value | Meaning |
+|---|---|---|
+| `schedule` | `0 */15 * * * *` | Every 15 minutes (6-field cron with seconds) |
+| `chainSelectorName` | `monad-testnet` | Target chain |
+| `escrowAddress` | `0x00bdf9fb…1517e6d` | `VeriPayEscrow` |
+| `receiverAddress` | `0x4bdff272…a161a0b9` | `AutoReleaseReceiver` |
+| `gasLimit` | `"500000"` | Gas for the report write |
+| `scanLimit` | `150` | Most recent trade ids checked per run |
+
+<Accordion title="Why a bounded scan is safe">
+  Scanning the full history every 15 minutes doesn't scale. A trade past its window stays eligible on **every** subsequent run until settled, so a bounded recent window (150 ids) won't skip anything for long — as long as fewer than 150 new orders are created between a trade's creation and its window plus one run. At higher volume, raise `scanLimit` or move to an event-driven due-list from the indexer.
+
+  **In plain words:** the robot only checks the latest 150 orders each time. That's plenty at current volumes; it will need to look further as VeriPay grows.
+</Accordion>
+
+## Receiver contract
+
+```solidity contracts/cre/AutoReleaseReceiver.sol
+contract AutoReleaseReceiver is ReceiverTemplate {
+  address public immutable escrow;
+  event AutoReleaseSucceeded(uint256 indexed tradeId);
+  event AutoReleaseFailed(uint256 indexed tradeId, string reason);
+
+  function _processReport(bytes calldata report) internal override {
+    uint256[] memory tradeIds = abi.decode(report, (uint256[]));
+    for (uint256 i = 0; i < tradeIds.length; i++) {
+      try IVeriPayEscrowAutoRelease(escrow).autoRelease(tradeIds[i]) { emit AutoReleaseSucceeded(tradeIds[i]); }
+      catch Error(string memory reason) { emit AutoReleaseFailed(tradeIds[i], reason); }
+      catch { emit AutoReleaseFailed(tradeIds[i], "unknown"); }
+    }
+  }
+}
+```
+
+- **Holds no funds; needs no permission.** `autoRelease` is already callable by anyone and does its own checks (open, not disputed, window reached). The receiver only decides *when* to call it.
+- **Partial-failure tolerant.** If one trade was settled between the workflow's read and the report landing, that one emits `AutoReleaseFailed` and the rest still release.
+- **Forwarder-gated.** `ReceiverTemplate` (vendored **verbatim** from Chainlink's `cre-templates`) only accepts `onReport` from the configured forwarder and supports optional workflow-id/owner checks.
+
+See the [receiver reference](/contracts/auto-release-receiver).
+
+## Proven on-chain
+
+Trade **#2** was deliberately left open by its buyer. On **11 Oct 2026** the workflow found it past its window and released it in one transaction: forwarder → `AutoReleaseReceiver` → `VeriPayEscrow.autoRelease(2)`, emitting `AutoReleaseSucceeded(2)`, `AutoReleased(2, seller)`, `FeeCharged(2)` and `FundsReleased(2, seller)`.
+
+<Card title="0xa5cf52ae…87f823" icon="scan-search" href="https://veripay.store/proof/0xa5cf52aeac617514c10055bf703c2766eb5366f640958c171006681b9d87f823">
+  View the auto-release on VeriPay's proof page (read live from Monad).
+</Card>
+
+## Current deployment vs production
+
+| | Now | Production |
+|---|---|---|
+| Execution | `cre workflow simulate --broadcast` (real testnet writes) | Deployed CRE workflow on a Chainlink DON |
+| Forwarder trusted | MockKeystoneForwarder `0xB9F79d86…AeAd192` | KeystoneForwarder `0xF8344CFd…74482` |
+| Switch | — | `setForwarderAddress(0xF8344CFd5c43616a4366C34E3EEE75af79a74482)` by receiver owner — **no redeploy** |
+| Blocker | — | Chainlink CRE deploy access |
+
+## Fallbacks
+
+If the workflow isn't running, sellers can still call `autoRelease` themselves with **Collect my payment** on the order page, or anyone can call it from any EVM tool.
+
+<Warning>
+  **Known edge case:** neither `autoRelease` nor the workflow checks `sellerApprovedRefund`. An order where the seller approved a refund but the buyer never claimed it will be auto-released **to the seller** after the window. See [Known limitations](/security/known-limitations).
+</Warning>

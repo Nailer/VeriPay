@@ -1,0 +1,80 @@
+---
+title: "Database setup"
+description: "Create VeriPay's Supabase schema, understand the security model, and run common maintenance queries."
+icon: "database"
+---
+
+## Create the schema
+
+<Steps>
+  <Step title="Create a Supabase project">At [supabase.com](https://supabase.com). Free tier is fine.</Step>
+  <Step title="Run the schema">SQL editor → paste `supabase/schema.sql` → **Run**. Idempotent (`create table if not exists`).</Step>
+  <Step title="Copy keys">Project Settings → API: copy the **Project URL** → `SUPABASE_URL`, and the **service_role** key → `SUPABASE_SERVICE_ROLE_KEY`.</Step>
+</Steps>
+
+<Warning>
+  The **service_role** key bypasses row-level security. Use it **only on the server**. Never put it in a `NEXT_PUBLIC_` variable, a client component, or a public repo.
+</Warning>
+
+<Accordion title="In plain words" icon="lightbulb">
+  Make a free Supabase database, paste one file into its SQL editor, click Run, and copy two values into your settings. Keep the "service role" key secret — it unlocks everything.
+</Accordion>
+
+## Security model
+
+- RLS **enabled** on every table, **no policies** → the anon key can read/write nothing.
+- All access goes through `supabaseAdmin` in `src/lib/supabase.ts` (server-only module).
+- `isSupabaseConfigured()` returns `false` without the key; routes degrade gracefully (empty lists, 503s) and log a one-time warning.
+
+## Tables
+
+See [Data model](/architecture/data-model) for every column and constraint. Summary:
+
+| Area | Tables |
+|---|---|
+| Pay links | `sellers`, `pay_intents` |
+| Messaging | `notifications`, `chat_messages`, `push_subscriptions` |
+| Trade mirror | `escrow_trades`, `trade_activity` |
+| Exchange | `exchange_orders`, `exchange_order_events` |
+| Analytics | `app_users`, `wallet_events`, `page_views` |
+
+## Useful queries
+
+<CodeGroup>
+```sql Stuck payments
+-- Paid but never delivered (mint failed and wasn't retried)
+select id, handle, buyer_address, amount_ngn, mint_tx, paid_at
+from pay_intents
+where status = 'paid'
+order by paid_at desc;
+```
+
+```sql Gas spend
+select sum(gas_topups) as topups_to_buyers from pay_intents;
+select sum(gas_topups) as topups_to_sellers from sellers;
+```
+
+```sql Funnel
+select status, count(*) from pay_intents group by status;
+```
+
+```sql Release a stuck delivery slot (careful)
+-- Only if a delivery crashed mid-flight AND the mint tx did not land on-chain.
+update pay_intents set mint_tx = null where id = 'K7QH2MZP' and status = 'paid' and mint_tx = 'pending';
+```
+
+```sql Exchange queue
+select id, side, coin, exact_amount_ngn, status, quote_expires_at
+from exchange_orders
+where status in ('payment_review','verified')
+order by created_at;
+```
+</CodeGroup>
+
+<Danger>
+  Before clearing a `'pending'` delivery slot, confirm on the explorer that the minter did **not** already mint to that buyer. Clearing it when a mint landed would allow a second mint on retry.
+</Danger>
+
+## Migrations
+
+There is no migration framework; `schema.sql` is the source of truth. For changes, write an idempotent `alter table … add column if not exists …` script, apply it in the SQL editor, and update `schema.sql` in the same commit.

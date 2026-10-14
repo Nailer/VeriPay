@@ -1,0 +1,67 @@
+---
+title: "Admin operations"
+description: "What the owner can and cannot do, how to run each operation safely from Remix, and recommended key management."
+icon: "settings"
+---
+
+## What the owner can do
+
+| Operation | Function | Bounds | Effect on open trades |
+|---|---|---|---|
+| Change fee | `setFeeBps(uint16)` | 0 – 500 bps | None (snapshotted) |
+| Change auto-release window | `setAutoReleaseDelay(uint64)` | 86,400 – 7,776,000 s | None (computed at creation) |
+| Change arbitrator | `setArbitrator(address)` | non-zero | New arbitrator can resolve existing disputes |
+| Change fee recipient | `setFeeRecipient(address)` | non-zero | Future withdrawals go there |
+| Collect fees | `withdrawFees(address token)` | `accruedFees[token] > 0` | None |
+| Hand over control | `transferOwnership(address)` | non-zero | — |
+
+## What the owner cannot do
+
+<Warning>
+  - Move any money held for open trades.
+  - Release, refund or resolve trades (resolution is the **arbitrator's** role).
+  - Raise the fee above 5%, or change the fee on existing trades.
+  - Pause the contract or block users.
+  - Upgrade the contract (it isn't a proxy).
+</Warning>
+
+<Accordion title="In plain words" icon="lightbulb">
+  VeriPay's admin account can change settings within strict limits and collect the fees it earned. It can't touch customers' locked money, can't stop the contract, and can't change the rules of orders already in progress.
+</Accordion>
+
+## Running operations in Remix
+
+<Steps>
+  <Step title="Load the contract at its address">
+    Remix → *Deploy & run transactions* → Environment **Injected Provider** (wallet on Monad testnet, chain 10143) → paste `VeriPayEscrow.sol`, compile 0.8.24 → **At Address** `0x00bdf9fbc9f59cc6814bbc7a91b19bbad1517e6d`.
+  </Step>
+  <Step title="Read before writing">
+    Check `owner`, `feeBps`, `accruedFees(token)`, `escrowedBalance(token)`.
+  </Step>
+  <Step title="Call the setter">
+    E.g. `setFeeBps(100)`, `setAutoReleaseDelay(604800)`, `withdrawFees(0xdbb53d0a2d1b91ef6a41cf1128fef562ffc531eb)`.
+  </Step>
+  <Step title="Verify">
+    Read the getter back and check the event on the explorer.
+  </Step>
+</Steps>
+
+| Value | Meaning |
+|---|---|
+| `100` | 1% |
+| `250` | 2.5% |
+| `500` | 5% (max) |
+| `86400` | 1 day (min window) |
+| `604800` | 7 days (default) |
+| `1209600` | 14 days |
+| `7776000` | 90 days (max window) |
+| `0x0000000000000000000000000000000000000000` | MON for `accruedFees` / `escrowedBalance` / `withdrawFees` |
+
+## Recommended key management (before mainnet)
+
+| Role | Today | Recommended |
+|---|---|---|
+| Owner | Founder EOA | Multisig (e.g. 2-of-3) with a timelock |
+| Arbitrator | Founder EOA (same as owner) | Separate key / multisig dedicated to disputes |
+| Fee recipient | Founder EOA | Treasury multisig |
+| vNGN minter | Server hot key | Replace vNGN with a regulated stablecoin; VeriPay shouldn't be an issuer |

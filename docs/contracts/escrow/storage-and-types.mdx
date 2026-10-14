@@ -1,0 +1,117 @@
+---
+title: "Storage and types"
+description: "Constants, configuration, the Trade struct, mappings and the reentrancy lock of VeriPayEscrow."
+icon: "table"
+---
+
+## Constants
+
+```solidity
+uint16 public constant BPS_DENOMINATOR = 10_000; // 10_000 bps = 100%
+uint16 public constant MAX_FEE_BPS     = 500;    // 5% ceiling, immutable
+```
+
+<Accordion title="In plain words" icon="lightbulb">
+  Two numbers written permanently into the contract: "100%" expressed as 10,000, and the maximum fee of 5%. Nobody can change them, ever.
+</Accordion>
+
+## Configuration (owner-settable)
+
+| Variable | Type | Initial | Setter | Bounds |
+|---|---|---|---|---|
+| `owner` | `address` | deployer | `transferOwnership` | ≠ 0 |
+| `arbitrator` | `address` | deployer | `setArbitrator` | ≠ 0 |
+| `feeRecipient` | `address` | deployer | `setFeeRecipient` | ≠ 0 |
+| `feeBps` | `uint16` | `100` | `setFeeBps` | ≤ `MAX_FEE_BPS` |
+| `autoReleaseDelay` | `uint64` | `7 days` | `setAutoReleaseDelay` | 1 – 90 days |
+
+## The `Trade` struct
+
+```solidity
+struct Trade {
+    // Fields 0-5 keep the exact order of the original contract.
+    address buyer;                // 0
+    address seller;               // 1
+    uint256 amount;               // 2
+    bool    released;             // 3  seller has been paid
+    bool    sellerApprovedRefund; // 4
+    string  metadata;             // 5
+    // Added for disputes / fees / auto-release.
+    uint64  createdAt;            // 6
+    uint64  autoReleaseAt;        // 7
+    bool    disputed;             // 8
+    bool    refunded;             // 9  buyer has been repaid
+    uint16  feeBps;               // 10 rate locked in at creation
+    // Added for ERC-20 escrow support.
+    address token;                // 11 address(0) = native MON
+}
+```
+
+| Field | Set when | Meaning |
+|---|---|---|
+| `buyer` | creation | `msg.sender` of `createTrade*` |
+| `seller` | creation | payee |
+| `amount` | creation | full amount in the asset's base units; never changes |
+| `released` | release / auto-release / ruling with `toSeller > 0` | seller has been paid (fully or partly) |
+| `sellerApprovedRefund` | `sellerApproveRefund` | seller consented to a refund |
+| `metadata` | creation | free-text description (item, terms, waybill) |
+| `createdAt` | creation | `block.timestamp` |
+| `autoReleaseAt` | creation | `createdAt + autoReleaseDelay` (delay at creation time) |
+| `disputed` | `raiseDispute` | frozen for arbitration |
+| `refunded` | refund claim / ruling with `toBuyer > 0` | buyer has been repaid (fully or partly) |
+| `feeBps` | creation | snapshot of global `feeBps` |
+| `token` | creation | asset; `address(0)` for MON |
+
+<Accordion title="In plain words">
+  Each order is a record with 12 pieces of information: who's buying, who's selling, how much, which currency, what for, when it was created, when automatic payout kicks in, which fee applies, and four yes/no flags for paid, refund agreed, disputed and refunded.
+</Accordion>
+
+### Derived status
+
+| Condition | Status |
+|---|---|
+| `amount == 0` | does not exist |
+| `!released && !refunded && !disputed` | open (held) |
+| `!released && !refunded && disputed` | disputed (frozen) |
+| `released && !refunded` | released / paid out |
+| `refunded && !released` | refunded |
+| `released && refunded` | split by ruling |
+
+## Mappings and counters
+
+```solidity
+mapping(uint256 => Trade)   public trades;       // id → trade
+uint256                     public nextTradeId;  // next id to assign (0-based)
+mapping(address => uint256) public accruedFees;  // token → withdrawable fees; address(0) = MON
+```
+
+- Trade ids start at `0` and increment by one per trade.
+- The auto-generated getter `trades(id)` returns the struct as a tuple; prefer `getTrade(id)` which returns the struct.
+
+## Reentrancy lock
+
+```solidity
+uint256 private _lock = 1;
+modifier nonReentrant() {
+    require(_lock == 1, "reentrant call");
+    _lock = 2;
+    _;
+    _lock = 1;
+}
+```
+
+Applied to: `createTradeWithToken`, `releaseToSeller`, `autoRelease`, `buyerClaimRefund`, `resolveDispute`, `withdrawFees`.
+
+<Note>
+  `createTrade` (native) does not need the guard — it makes no external calls. `sellerApproveRefund` and `raiseDispute` only flip flags.
+</Note>
+
+## Inlined interface
+
+```solidity
+interface IERC20 {
+    function transferFrom(address from, address to, uint256 amount) external returns (bool);
+    function transfer(address to, uint256 amount) external returns (bool);
+    function balanceOf(address account) external view returns (uint256);
+}
+```

@@ -1,0 +1,74 @@
+---
+title: "vNGN — VeriPay Test Naira"
+description: "The testnet stand-in for a naira stablecoin: what it is, what it isn't, its interface, and how it will be replaced on mainnet."
+icon: "coins"
+---
+
+| | |
+|---|---|
+| Address | [`0xdbb53d0a2d1b91ef6a41cf1128fef562ffc531eb`](https://testnet.monadscan.com/address/0xdbb53d0a2d1b91ef6a41cf1128fef562ffc531eb) |
+| Source | `contracts/test/VeriPayTestNaira.sol` |
+| Name / symbol | `VeriPay Test Naira` / `vNGN` |
+| Decimals | 6 |
+| Mint | `owner` only |
+| Owner | VeriPay demo/minter wallet `0xeb1B…fd06` |
+
+<Warning>
+  **vNGN is not money and is not redeemable.** It is minted 1:1 against **test-mode** Paystack charges so the pay-link flow can be naira-native on testnet. Never describe it as real naira or as cNGN.
+</Warning>
+
+<Accordion title="In plain words" icon="lightbulb">
+  Pretend naira for the test network. When you pay ₦5,000 with a test card, VeriPay gives you 5,000 vNGN to lock in the safe. It's worth nothing outside testing.
+</Accordion>
+
+## Why it exists
+
+1 MON ≈ ₦44 at the time of building, so a ₦25,000 order would need ~570 testnet MON of liquidity that nobody has. A naira-denominated token lets amounts be naira everywhere — no MON price, no volatility, no conversions on screen — and is exactly the shape of a real naira stablecoin.
+
+## Interface
+
+```solidity
+string  public constant name = "VeriPay Test Naira";
+string  public constant symbol = "vNGN";
+uint8   public constant decimals = 6;
+address public owner;
+uint256 public totalSupply;
+mapping(address => uint256) public balanceOf;
+mapping(address => mapping(address => uint256)) public allowance;
+
+function mint(address to, uint256 amount) external;          // owner only
+function transferOwnership(address newOwner) external;        // owner only
+function approve(address spender, uint256 amount) external returns (bool);
+function transfer(address to, uint256 amount) external returns (bool);
+function transferFrom(address from, address to, uint256 amount) external returns (bool); // max allowance not decremented
+
+event Transfer(address indexed from, address indexed to, uint256 value);
+event Approval(address indexed owner, address indexed spender, uint256 value);
+event OwnershipTransferred(address indexed from, address indexed to);
+```
+
+## Minting path
+
+Only after `POST /api/pay/confirm` has verified a Paystack charge server-side (see [Card to escrow](/architecture/card-to-escrow)):
+
+```ts
+wallet.writeContract({ address: VNGN, abi: mintAbi, functionName: "mint", args: [buyer, parseUnits(amount.toFixed(2), 6)] });
+```
+
+Signed by `PAY_MINTER_PRIVATE_KEY` (fallback `EXCHANGE_PAYOUT_PRIVATE_KEY`). If a deployment only has the fallback key, that wallet must be made vNGN's owner (`transferOwnership`) and hold MON, or delivery fails after the card is charged.
+
+## Display
+
+`formatTradeAmount()` renders vNGN trades as `₦25,000` everywhere; `TradeSummary.symbol` is `NGN`.
+
+## Mainnet replacement
+
+On mainnet this slot belongs to a **regulated asset** — a licensed naira stablecoin, or AUSD with FX at the edges. **VeriPay should not be the issuer.** Because `VeriPayEscrow` accepts any ERC-20, swapping is a configuration change (`NEXT_PUBLIC_NGN_TOKEN_ADDRESS`), not a contract change. The mint step is replaced by the issuer's on-ramp.
+
+## Deploying your own (local/testing)
+
+<Steps>
+  <Step title="Deploy">Paste `VeriPayTestNaira.sol` into Remix, compile 0.8.24, deploy (no constructor args). The deployer is the owner.</Step>
+  <Step title="Configure the app">Set `NEXT_PUBLIC_NGN_TOKEN_ADDRESS` to the new address and `PAY_MINTER_PRIVATE_KEY` to the deployer's **testnet-only** key.</Step>
+  <Step title="Fund the minter">Give it testnet MON from the faucet — it pays mint gas and buyers' gas top-ups.</Step>
+</Steps>

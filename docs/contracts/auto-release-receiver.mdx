@@ -1,0 +1,91 @@
+---
+title: "AutoReleaseReceiver"
+description: "The Chainlink CRE consumer contract that turns signed reports into autoRelease calls — interface, security layers, events and configuration."
+icon: "timer"
+---
+
+| | |
+|---|---|
+| Address | [`0x4bdff272df53a78887fd84a9ee9f4aa9a161a0b9`](https://testnet.monadscan.com/address/0x4bdff272df53a78887fd84a9ee9f4aa9a161a0b9) |
+| Source | `contracts/cre/AutoReleaseReceiver.sol` |
+| Inherits | `ReceiverTemplate` (Chainlink, verbatim) → `IReceiver`, `Ownable` (OpenZeppelin) |
+| Escrow | `escrow` (immutable) = `0x00bdf9fb…1517e6d` |
+| Trusted forwarder | `0xB9F79d863261869B234c481D1f9A7af84AeAd192` (MockKeystoneForwarder) |
+
+## Purpose
+
+Lets a Chainlink CRE cron workflow trigger `VeriPayEscrow.autoRelease()` on a schedule. It **holds no funds** and has **no special permission** on the escrow — `autoRelease` is already callable by anyone. This contract just calls it on a schedule instead of by hand.
+
+<Accordion title="In plain words" icon="lightbulb">
+  A tiny contract that listens for Chainlink's official messages listing "orders that are due" and presses the "pay the seller" button for each. It never holds money and can't do anything a normal person couldn't.
+</Accordion>
+
+## Interface
+
+```solidity
+constructor(address _forwarder, address _escrow);         // both non-zero
+address public immutable escrow;
+
+// From ReceiverTemplate
+function onReport(bytes calldata metadata, bytes calldata report) external; // forwarder only
+function setForwarderAddress(address) external;           // owner
+function setExpectedAuthor(address) external;             // owner
+function setExpectedWorkflowName(bytes10) external;       // owner
+function setExpectedWorkflowId(bytes32) external;         // owner
+function getForwarderAddress() external view returns (address);
+function getExpectedAuthor() external view returns (address);
+function getExpectedWorkflowName() external view returns (bytes10);
+function getExpectedWorkflowId() external view returns (bytes32);
+function supportsInterface(bytes4) external view returns (bool);
+
+// Events
+event AutoReleaseSucceeded(uint256 indexed tradeId);
+event AutoReleaseFailed(uint256 indexed tradeId, string reason);
+event ForwarderAddressUpdated(address indexed previousForwarder, address indexed newForwarder);
+event ExpectedAuthorUpdated(address indexed previousAuthor, address indexed newAuthor);
+event ExpectedWorkflowNameUpdated(bytes10 indexed previousName, bytes10 indexed newName);
+event ExpectedWorkflowIdUpdated(bytes32 indexed previousId, bytes32 indexed newId);
+event SecurityWarning(string message);
+```
+
+## Report format
+
+```text
+report = abi.encode(uint256[] tradeIds)
+```
+
+## Processing
+
+For each id: `try escrow.autoRelease(id)` → `AutoReleaseSucceeded(id)`; `catch Error(reason)` → `AutoReleaseFailed(id, reason)`; `catch` → `AutoReleaseFailed(id, "unknown")`. A failing id never reverts the batch.
+
+## Security layers
+
+| Layer | Provided by | Protects against |
+|---|---|---|
+| Forwarder check | `ReceiverTemplate.onReport` (`InvalidSender`) | Anyone else submitting reports |
+| Optional author / workflow name / id checks | `ReceiverTemplate` setters | A different workflow using the same forwarder |
+| Escrow's own checks | `VeriPayEscrow.autoRelease` | Early release, disputed release, double settlement |
+| No funds held | design | Nothing to steal |
+| Try/catch per id | `_processReport` | One stale id blocking the batch |
+
+<Note>
+  The workflow-id/author checks are **not configured** today (only the forwarder is). Since the worst a forged report could do is call a permissionless function that enforces its own rules, this is acceptable; configuring `setExpectedWorkflowId` is recommended for production.
+</Note>
+
+## Switching to production
+
+```text
+receiver.setForwarderAddress(0xF8344CFd5c43616a4366C34E3EEE75af79a74482)   // KeystoneForwarder, Monad testnet
+```
+
+Called by the receiver owner after obtaining CRE deploy access. No redeploy needed.
+
+## Tests (local EVM)
+
+- Constructor refuses a zero forwarder or a zero escrow.
+- A report from anyone but the trusted forwarder is rejected.
+- A report from the forwarder releases a due trade and pays the seller.
+- The receiver cannot release a trade early — the escrow's own checks still apply.
+- One bad trade in a batch does not block the rest.
+- Only the owner can rotate the forwarder, and the old one stops working.
+- The receiver never holds funds.

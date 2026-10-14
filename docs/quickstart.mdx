@@ -1,0 +1,142 @@
+---
+title: "Quickstart"
+description: "Run the complete VeriPay flow on Monad testnet in about five minutes — as a seller, as a buyer, and as a verifier — using a Paystack test card."
+icon: "zap"
+---
+
+import TestnetNote from '/snippets/testnet-note.mdx';
+
+This quickstart walks through the **end-to-end money path** of VeriPay against the live testnet deployment: claiming a seller handle, paying through it by card, observing the escrow lock, releasing funds, and independently verifying every step on-chain.
+
+<Accordion title="In plain words" icon="lightbulb">
+  You're going to pretend to be a shop owner and a customer at the same time. You'll make a payment link, pay through it with a fake card, watch the money get locked safely, then release it — and finally check for yourself that it all really happened.
+</Accordion>
+
+<TestnetNote />
+
+## What you need
+
+<CardGroup cols={3}>
+  <Card title="Two browsers or devices" icon="smartphone">
+    A seller **cannot pay their own link**, so use two devices, or two browser profiles, or one normal + one private window.
+  </Card>
+  <Card title="Biometrics (recommended)" icon="fingerprint">
+    Face ID, Touch ID, an Android fingerprint or Windows Hello. Without it, use **Other ways to sign in** (email, Google, wallet).
+  </Card>
+  <Card title="The Paystack test card" icon="credit-card">
+    `4084 0840 8408 4081`, any future expiry date, CVV `408`. It's Paystack's public test card — it charges nothing real.
+  </Card>
+</CardGroup>
+
+<Accordion title="Why two devices?">
+  The server rejects an intent whose `buyerAddress` equals the seller's `address` (`"You can't pay your own link."`), and the contract itself reverts with `buyer cannot be the seller`. A passkey account is deterministic per device-held passkey, so the same browser profile will produce the same account for both roles.
+
+  **In plain words:** VeriPay won't let you pay yourself, so you need a second "person". Another phone, another browser, or a private window works.
+</Accordion>
+
+## Part 1 — Be the seller
+
+<Steps>
+  <Step title="Open the seller page">
+    On device **A**, go to [veripay.store/sell](https://veripay.store/sell) and tap **Get your payment link**.
+  </Step>
+  <Step title="Sign in with your fingerprint">
+    Tap the fingerprint / Face ID button. The browser runs a **WebAuthn ceremony with the PRF extension**; the 32-byte PRF output becomes BIP-39 entropy, which is derived along `m/44'/60'/0'/0/0` into your account key — entirely on your device.
+    <Accordion title="In plain words">
+      Your phone creates a secure "passkey" protected by your fingerprint. From that passkey, VeriPay's page builds your account right there on your phone. No password, no 12-word phrase to write down. Use the same passkey later and you get the same account back.
+    </Accordion>
+  </Step>
+  <Step title="Choose a shop name and link name">
+    Enter a shop name (2–60 characters) and a link name (3–30 characters: lowercase letters, numbers, `-` or `_`, matching `^[a-z0-9][a-z0-9_-]{2,29}$`). Some names are reserved (`admin`, `pay`, `sell`, `veripay`, …).
+  </Step>
+  <Step title="Sign the claim">
+    Your account signs the exact message `VeriPay: I am claiming the payment link "<handle>" for <address>.` The server recovers the signer with `verifyMessage` and stores the handle only if it matches.
+    <Accordion title="In plain words">
+      You approve a short sentence that says "this link belongs to me". VeriPay checks the approval really came from you before saving your link. This stops anyone from creating a link that would send your customers' money somewhere else.
+    </Accordion>
+  </Step>
+  <Step title="Copy your link">
+    You now have `veripay.store/pay/<your-handle>` with **Copy link** and **Share on WhatsApp** buttons. Leave this page open — new orders appear here.
+  </Step>
+</Steps>
+
+## Part 2 — Be the buyer
+
+<Steps>
+  <Step title="Open the link on device B">
+    Paste the link into the second browser. You'll see the shop name and the seller's **record**: paid out, disputes, refunds. A brand-new shop shows zeros.
+  </Step>
+  <Step title="Fill in the order">
+    Enter an amount in naira (minimum ₦100, maximum ₦5,000,000), what you're buying (at least 3 characters), and an email for the receipt.
+  </Step>
+  <Step title="Sign in and pay">
+    Tap **Pay ₦… safely**, sign in with your fingerprint, and complete the Paystack popup with the test card.
+    <Accordion title="What happens on the server">
+      1. `POST /api/pay/intent` creates a `pay_intents` row in status `awaiting_payment` and returns a reference `VP-<intentId>-<timestamp36>`.
+      2. The Paystack inline popup charges the card **under that reference**.
+      3. `POST /api/pay/confirm` checks the reference prefix belongs to this intent, calls Paystack `GET /transaction/verify/:reference` with the secret key, and checks `status = success`, `currency = NGN` and `amount ≥ expected − ₦1`.
+      4. The intent is claimed with `UPDATE … WHERE status = 'awaiting_payment'`, a single delivery slot is taken (`mint_tx = 'pending'`), and exactly the paid amount of vNGN is minted to you.
+      5. If your MON balance is below 0.08, the server sends you 0.15 MON for network fees (max 3 top-ups per payment).
+
+      **In plain words:** VeriPay asks the card company "did this person really pay, and how much?". Only after a "yes" does it give you the same amount in digital naira plus a little fuel for the network — and it's careful to never do this twice for one payment.
+    </Accordion>
+  </Step>
+  <Step title="Watch it lock">
+    Your device signs two transactions — `approve(escrow, amount)` on vNGN and `createTradeWithToken(seller, item, vNGN, amount)` on the escrow — without any wallet pop-up. You get a receipt: order number, reference, status **Held until you confirm delivery**, and a line like *"Secured in 1.1s · network fee ₦0.72, paid for you"*.
+  </Step>
+</Steps>
+
+## Part 3 — Deliver and release
+
+<Steps>
+  <Step title="Seller sees the order">
+    Back on device A, the order appears under **Your orders** as **Paid — deliver this order**. If you enabled device alerts, you also got a push notification.
+  </Step>
+  <Step title="Buyer confirms delivery">
+    On device B, open **My orders** → the order → **I received my order — pay the seller**. This calls `releaseToSeller(id)`; the contract pays the seller 99% and books 1% into `accruedFees[vNGN]`.
+    <Accordion title="In plain words">
+      The customer says "I got it", and the seller is paid immediately. VeriPay keeps 1% as its fee — but only because the sale went through.
+    </Accordion>
+  </Step>
+  <Step title="Check the seller's record">
+    Open [veripay.store/seller](https://veripay.store/seller) and type the seller's link name. **Paid out** has gone up by one. That number was recomputed from on-chain events.
+  </Step>
+</Steps>
+
+## Part 4 — Verify it yourself
+
+<Steps>
+  <Step title="Open the proof page">
+    On any receipt, tap **View proof on Monad**. The `/proof/<txHash>` page fetches the transaction receipt and block **directly from a Monad RPC node** (not VeriPay's database), decodes the escrow's event logs, and describes them in words.
+  </Step>
+  <Step title="Cross-check on the explorer">
+    Follow the explorer link, or open the escrow on [Monadscan](https://testnet.monadscan.com/address/0x00bdf9fbc9f59cc6814bbc7a91b19bbad1517e6d) and find your `TradeCreated` and `FundsReleased` events.
+  </Step>
+  <Step title="Query the indexer (optional)">
+    ```bash
+    curl -s https://indexer.dev.hyperindex.xyz/09eb2b1/v1/graphql \
+      -H 'Content-Type: application/json' \
+      -d '{"query":"{ AddressReputation(limit: 5) { id totalTrades completedTrades disputedTrades refundedTrades } }"}'
+    ```
+    <Accordion title="In plain words">
+      This is an optional, more technical check: it asks the public "index" of all VeriPay orders for the latest seller records. You'll see the same numbers the app shows.
+    </Accordion>
+  </Step>
+</Steps>
+
+## Try the other paths
+
+<CardGroup cols={2}>
+  <Card title="Refund instead of release" icon="rotate-ccw" href="/guides/sellers/refund-a-buyer">
+    Seller taps **Refund the buyer**, buyer taps **Take my refund** — 100% back, no fee.
+  </Card>
+  <Card title="Report a problem" icon="triangle-alert" href="/guides/buyers/report-a-problem">
+    Freeze the money and request a review. Auto-release stops until an arbitrator rules.
+  </Card>
+  <Card title="See an automatic payout" icon="timer" href="/architecture/auto-release">
+    Order #2 was released by Chainlink CRE after its buyer went silent for 7 days.
+  </Card>
+  <Card title="Run it locally" icon="laptop" href="/developers/local-setup">
+    Clone the repo and run the whole stack on your own machine.
+  </Card>
+</CardGroup>

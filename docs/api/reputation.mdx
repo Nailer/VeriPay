@@ -1,0 +1,73 @@
+---
+title: "Get reputation"
+api: "GET https://veripay.store/api/reputation/{address}"
+description: "An address's on-chain trade record — from Envio when available, otherwise read straight from the contract. Optionally includes the full order list."
+---
+
+<ParamField path="address" type="string" required>`0x` + 40 hex.</ParamField>
+<ParamField query="trades" type="string">Set to `1` to include the address's orders. Forces a chain read.</ParamField>
+
+<ResponseField name="configured" type="boolean">Always `true` (kept for compatibility).</ResponseField>
+<ResponseField name="source" type="&quot;envio&quot; | &quot;chain&quot; | null">Which implementation answered.</ResponseField>
+<ResponseField name="reputation" type="object">
+  <Expandable title="properties">
+    <ResponseField name="address" type="string">Lowercase.</ResponseField>
+    <ResponseField name="totalTrades" type="number">Orders as buyer or seller.</ResponseField>
+    <ResponseField name="completedTrades" type="number">Paid out as seller.</ResponseField>
+    <ResponseField name="disputedTrades" type="number">Orders with a dispute.</ResponseField>
+    <ResponseField name="refundedTrades" type="number">Repaid as buyer.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="trades" type="TradeSummary[]">
+  Only with `?trades=1`. Newest first.
+  <Expandable title="TradeSummary">
+    <ResponseField name="id" type="number">Order id.</ResponseField>
+    <ResponseField name="role" type="&quot;buyer&quot; | &quot;seller&quot;" />
+    <ResponseField name="counterparty" type="string">The other party's address.</ResponseField>
+    <ResponseField name="amount" type="string">Formatted, e.g. `"2,500"`.</ResponseField>
+    <ResponseField name="symbol" type="string">`NGN`, `AUSD` or `MON`.</ResponseField>
+    <ResponseField name="status" type="string">`open | released | refunded | disputed | split`.</ResponseField>
+    <ResponseField name="metadata" type="string">Item description.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<Accordion title="In plain words" icon="lightbulb">
+  Give it any account and it returns that account's track record. Add `?trades=1` to also get the list of orders.
+</Accordion>
+
+<RequestExample>
+```bash Record
+curl https://veripay.store/api/reputation/0xEfD0497f4557b49E84369cfb884B6c7446e11aBA
+```
+```bash With orders
+curl "https://veripay.store/api/reputation/0xEfD0497f4557b49E84369cfb884B6c7446e11aBA?trades=1"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 (envio)
+{
+  "configured": true,
+  "source": "envio",
+  "reputation": {
+    "address": "0xefd0497f4557b49e84369cfb884b6c7446e11aba",
+    "totalTrades": 4, "completedTrades": 4, "disputedTrades": 0, "refundedTrades": 0
+  }
+}
+```
+```json 200 (?trades=1)
+{
+  "configured": true,
+  "source": "chain",
+  "reputation": { "address": "0x…", "totalTrades": 1, "completedTrades": 0, "disputedTrades": 0, "refundedTrades": 0 },
+  "trades": [
+    { "id": 9, "role": "seller", "counterparty": "0x…", "amount": "2,500", "symbol": "NGN", "status": "open", "metadata": "Black Ankara gown" }
+  ]
+}
+```
+```json 400
+{ "error": "Invalid address" }
+```
+</ResponseExample>
+
+Counting rules and caching: [Reputation](/architecture/reputation).

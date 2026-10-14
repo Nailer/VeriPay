@@ -1,0 +1,31 @@
+---
+title: "Payments readiness"
+api: "GET https://veripay.store/api/pay/intent"
+description: "Check whether a deployment can take pay-link payments — without exposing any secret."
+---
+
+<ResponseField name="deliveryAddress" type="string | null">
+  Public address of the minter wallet (derived from `PAY_MINTER_PRIVATE_KEY`, or `EXCHANGE_PAYOUT_PRIVATE_KEY` as fallback). `null` means delivery will fail after a charge.
+</ResponseField>
+<ResponseField name="cardProcessor" type="boolean">`true` when `PAYSTACK_SECRET_KEY` is set (otherwise TEST MODE).</ResponseField>
+<ResponseField name="storage" type="boolean">`true` when Supabase is configured.</ResponseField>
+
+<Tip>
+  Check this first whenever a deployment misbehaves. Then confirm `deliveryAddress` owns vNGN and holds MON.
+</Tip>
+
+<Accordion title="In plain words" icon="lightbulb">
+  A quick health check that says whether card payments, the database and the payout wallet are set up — without revealing any secrets.
+</Accordion>
+
+<RequestExample>
+```bash
+curl https://veripay.store/api/pay/intent
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{ "deliveryAddress": "0xeb1B…fd06", "cardProcessor": true, "storage": true }
+```
+</ResponseExample>

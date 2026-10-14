@@ -1,0 +1,40 @@
+---
+title: "Your seller record"
+description: "How your public track record is calculated, where it's shown, and how to grow it honestly."
+icon: "scroll-text"
+---
+
+## Where buyers see it
+
+- At the top of your **payment link** page, before they pay.
+- On every **order page**, under *Seller*.
+- At [veripay.store/seller](https://veripay.store/seller) when someone types your link name, and at `/seller/<your address>` with your full order history.
+- On **Pay with crypto**, as soon as a buyer pastes your address as the seller.
+
+## How it's counted
+
+| Figure | Increases when… |
+|---|---|
+| **Total orders** | You're the buyer **or** seller on any new order (+1) |
+| **Paid out** | You're the seller and you got paid — buyer confirmed, auto-release, or a ruling gave you any share (+1) |
+| **Disputes** | Anyone reported a problem on an order you're part of (+1 to **both** sides) |
+| **Refunds** | You're the **buyer** and were repaid — refund claim or a ruling that gave you any share (+1) |
+
+These rules are implemented twice — in the Envio indexer (`indexer/src/EventHandlers.ts`) and in the chain fallback (`src/lib/reputation.ts`) — and verified to produce identical numbers for every address that has traded.
+
+<Accordion title="In plain words" icon="lightbulb">
+  Every order you finish successfully adds one to "Paid out". Every time someone reports a problem on your order, "Disputes" goes up for both of you. The numbers are counted from public records, so they're always the same no matter who counts them.
+</Accordion>
+
+## What you can't do
+
+- **Edit or delete** an order from your history. The events are permanent.
+- **Import** reviews from elsewhere.
+- **Pay yourself** to inflate your record — your own link refuses your account, and the contract rejects `buyer == seller`.
+
+## Growing your record honestly
+
+1. Route every sale through your link, even repeat customers.
+2. Deliver fast and ask happy buyers to tap **I received my order**.
+3. Refund quickly when you can't deliver, instead of letting it become a dispute.
+4. Keep conversations in the order chat so disputes, if any, resolve in your favour when you're right.

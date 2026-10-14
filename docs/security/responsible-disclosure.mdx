@@ -1,0 +1,43 @@
+---
+title: "Responsible disclosure"
+description: "How to report a security vulnerability in VeriPay privately, what to include, and what to expect."
+icon: "mail-warning"
+---
+
+If you find a vulnerability in VeriPay's contracts, app or infrastructure, **please report it privately** so it can be fixed before it's exploited.
+
+<Accordion title="In plain words" icon="lightbulb">
+  If you find a security problem, please tell VeriPay privately instead of posting it publicly, so it can be fixed first.
+</Accordion>
+
+## How to report
+
+- **GitHub:** use *Security → Report a vulnerability* (private advisory) on [Nailer/VeriPay](https://github.com/Nailer/VeriPay/security) if enabled, or
+- **Email:** `support@veripay.store` with the subject `SECURITY`.
+
+Please **don't** open a public issue, post on social media, or test against other users' accounts.
+
+## Include
+
+1. A description of the issue and its impact.
+2. Steps to reproduce (transactions on testnet, requests, scripts).
+3. Affected component (contract, route, page) and commit/branch.
+4. Any suggested fix.
+
+## What to expect
+
+| Step | Target |
+|---|---|
+| Acknowledgement | Within 3 business days |
+| Initial assessment | Within 7 days |
+| Fix or mitigation | Depends on severity; critical issues prioritised |
+| Credit | With your permission, in the changelog |
+
+## Scope
+
+In scope: `VeriPayEscrow`, `AutoReleaseReceiver`, the pay-link money path, seller claims, gas sponsorship, admin routes, data exposure.
+Out of scope: issues requiring a compromised user device, social engineering, testnet faucet abuse, third-party services themselves.
+
+## Safe harbour
+
+Good-faith research on testnet that respects these guidelines won't be pursued legally.

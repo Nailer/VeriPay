@@ -1,0 +1,243 @@
+---
+title: "Functions"
+description: "Complete reference for every VeriPayEscrow function: signature, parameters, access, checks, effects, events, reverts, and a plain-language explanation."
+icon: "function-square"
+---
+
+## Trade lifecycle
+
+### `createTrade`
+
+```solidity
+function createTrade(address _seller, string calldata _metadata) external payable returns (uint256 id)
+```
+
+Locks **native MON** for a seller. The value sent is the full trade amount; the fee is taken later from the seller's side, only on success.
+
+<ParamField path="_seller" type="address" required>Payee. Must be non-zero and different from `msg.sender`.</ParamField>
+<ParamField path="_metadata" type="string" required>Free-text description of the item or terms, stored on-chain.</ParamField>
+<ParamField path="msg.value" type="uint256" required>Amount of MON (wei) to lock. Must be > 0.</ParamField>
+<ResponseField name="id" type="uint256">The new trade id (`nextTradeId` before increment).</ResponseField>
+
+**Effects:** writes `Trade{ buyer: msg.sender, seller, amount: msg.value, metadata, createdAt: now, autoReleaseAt: now + autoReleaseDelay, feeBps: feeBps, token: address(0) }`; increments `nextTradeId`.
+**Emits:** `TradeCreated(id, buyer, seller, amount)`.
+**Reverts:** `send the payment with this call` · `seller required` · `buyer cannot be the seller`.
+
+<Accordion title="In plain words" icon="lightbulb">
+  Put MON into the locker for a specific seller, with a note about what it's for. You get an order number back.
+</Accordion>
+
+---
+
+### `createTradeWithToken`
+
+```solidity
+function createTradeWithToken(address _seller, string calldata _metadata, address _token, uint256 _amount)
+    external nonReentrant returns (uint256 id)
+```
+
+Same as `createTrade` but locks an **ERC-20** (vNGN, AUSD, …). The buyer must have approved this contract for at least `_amount` beforehand; funds are pulled with `transferFrom`.
+
+<ParamField path="_seller" type="address" required>Payee; non-zero; ≠ caller.</ParamField>
+<ParamField path="_metadata" type="string" required>Item description.</ParamField>
+<ParamField path="_token" type="address" required>ERC-20 address. Must not be `address(0)` (use `createTrade` for MON).</ParamField>
+<ParamField path="_amount" type="uint256" required>Amount in the token's base units (vNGN/AUSD: 6 decimals). > 0.</ParamField>
+<ResponseField name="id" type="uint256">New trade id.</ResponseField>
+
+**Effects:** writes the trade (with `token = _token`) **before** pulling tokens; then `require(IERC20(_token).transferFrom(msg.sender, this, _amount))`.
+**Emits:** `TradeCreated(id, buyer, seller, amount)` then `TradeToken(id, token)`.
+**Reverts:** `use createTrade for native MON` · `amount required` · `seller required` · `buyer cannot be the seller` · `token transfer failed` (or the token's own revert, e.g. vNGN `allowance exceeded` / `insufficient balance`) · `reentrant call`.
+
+```ts Example (viem)
+await wallet.writeContract({ address: VNGN, abi: erc20Abi, functionName: "approve", args: [ESCROW, parseUnits("25000", 6)] });
+await wallet.writeContract({
+  address: ESCROW, abi: escrowAbi, functionName: "createTradeWithToken",
+  args: [seller, "Black Ankara gown, size 12", VNGN, parseUnits("25000", 6)],
+});
+```
+
+<Accordion title="In plain words">
+  Same as above, but for digital naira or digital dollars. First you give the locker permission to take the amount, then you lock it.
+</Accordion>
+
+---
+
+### `releaseToSeller`
+
+```solidity
+function releaseToSeller(uint256 _id) external nonReentrant
+```
+
+Buyer confirms delivery. **Allowed even during a dispute** — the buyer conceding should never be blocked.
+
+<ParamField path="_id" type="uint256" required>Trade id.</ParamField>
+
+**Checks:** `msg.sender == buyer`; open.
+**Effects:** `released = true`; `_payout(id, 0, amount)` (fee on seller side).
+**Emits:** `FeeCharged(id, fee)` (if fee > 0), `FundsReleased(id, seller)`.
+**Reverts:** `only the buyer can release` · `no such trade` · `already settled` · `transfer failed` / `token transfer failed` · `reentrant call`.
+
+<Accordion title="In plain words">
+  The buyer's "I got it" button. Pays the seller, minus the fee.
+</Accordion>
+
+---
+
+### `autoRelease`
+
+```solidity
+function autoRelease(uint256 _id) external nonReentrant
+```
+
+Pays the seller once the buyer's window has passed without a confirmation or a dispute. **Callable by anyone.**
+
+**Checks:** open; `!disputed`; `block.timestamp ≥ autoReleaseAt`.
+**Effects:** `released = true`; `_payout(id, 0, amount)`.
+**Emits:** `FeeCharged`, `AutoReleased(id, seller)`, `FundsReleased(id, seller)`.
+**Reverts:** `no such trade` · `already settled` · `trade is disputed` · `release window not reached` · transfer errors.
+
+<Warning>
+  Does **not** check `sellerApprovedRefund`. See [Known limitations](/security/known-limitations).
+</Warning>
+
+<Accordion title="In plain words">
+  After the waiting period, if nobody complained, anyone — usually Chainlink's robot — can tell the locker to pay the seller.
+</Accordion>
+
+---
+
+### `sellerApproveRefund`
+
+```solidity
+function sellerApproveRefund(uint256 _id) external
+```
+
+Seller agrees to refund. The buyer still has to claim it.
+
+**Checks:** `msg.sender == seller`; open.
+**Effects:** `sellerApprovedRefund = true`.
+**Emits:** `RefundAuthorized(id)`.
+**Reverts:** `only the seller can approve` · `no such trade` · `already settled`.
+
+---
+
+### `buyerClaimRefund`
+
+```solidity
+function buyerClaimRefund(uint256 _id) external nonReentrant
+```
+
+Buyer takes back the full amount. **No fee.**
+
+**Checks:** `msg.sender == buyer`; open; `sellerApprovedRefund`.
+**Effects:** `refunded = true`; `_payout(id, amount, 0)`.
+**Emits:** `FundsReleased(id, buyer)`.
+**Reverts:** `only the buyer can claim` · `no such trade` · `already settled` · `seller has not approved a refund` · transfer errors.
+
+<Accordion title="In plain words">
+  Once the seller says "refund", the buyer presses this to get every naira back.
+</Accordion>
+
+---
+
+### `raiseDispute`
+
+```solidity
+function raiseDispute(uint256 _id) external
+```
+
+Either party flags the trade. Freezes auto-release until the arbitrator rules.
+
+**Checks:** caller is buyer or seller; open; not already disputed.
+**Effects:** `disputed = true`.
+**Emits:** `DisputeRaised(id, by)`.
+**Reverts:** `not a party to this trade` · `no such trade` · `already settled` · `already disputed`.
+
+---
+
+### `resolveDispute`
+
+```solidity
+function resolveDispute(uint256 _id, uint16 _buyerBps) external nonReentrant
+```
+
+Arbitrator settles a disputed trade.
+
+<ParamField path="_buyerBps" type="uint16" required>Buyer's share in basis points. `10000` = full refund, `0` = pay the seller in full, `5000` = split down the middle.</ParamField>
+
+**Checks:** `msg.sender == arbitrator`; `_buyerBps ≤ 10000`; open; `disputed`.
+**Effects:** `toBuyer = amount × bps / 10000`; `toSeller = amount − toBuyer`; `refunded = toBuyer > 0`; `released = toSeller > 0`; `_payout(id, toBuyer, toSeller)`.
+**Emits:** `FeeCharged` (on seller share), `DisputeResolved(id, toBuyer, toSeller)`.
+**Reverts:** `only the arbitrator can resolve` · `share out of range` · `no such trade` · `already settled` · `trade is not disputed` · transfer errors.
+
+<Accordion title="In plain words">
+  The reviewer picks what percentage goes back to the buyer; the rest goes to the seller, minus the fee on the seller's part only.
+</Accordion>
+
+## Admin
+
+| Function | Signature | Checks | Emits |
+|---|---|---|---|
+| Withdraw fees | `withdrawFees(address _token)` | owner; `accruedFees[_token] > 0` | `FeesWithdrawn(feeRecipient, token, amount)` |
+| Set fee | `setFeeBps(uint16 _bps)` | owner; `_bps ≤ 500` | `FeeUpdated(bps)` |
+| Set arbitrator | `setArbitrator(address)` | owner; ≠ 0 | `ArbitratorUpdated` |
+| Set fee recipient | `setFeeRecipient(address)` | owner; ≠ 0 | `FeeRecipientUpdated` |
+| Set window | `setAutoReleaseDelay(uint64 _seconds)` | owner; 1 day ≤ s ≤ 90 days | `AutoReleaseDelayUpdated` |
+| Transfer ownership | `transferOwnership(address)` | owner; ≠ 0 | `OwnershipTransferred` |
+
+Details: [Admin operations](/contracts/escrow/admin).
+
+## Views
+
+### `getTrade`
+
+```solidity
+function getTrade(uint256 _id) external view returns (Trade memory)
+```
+
+The whole struct. Returns a zeroed struct for unknown ids (`amount == 0`).
+
+### `previewSellerProceeds`
+
+```solidity
+function previewSellerProceeds(uint256 _id) external view returns (uint256 net, uint256 fee)
+```
+
+What the seller would receive if this trade released in full right now: `fee = amount × feeBps / 10000`, `net = amount − fee`.
+
+### `escrowedBalance`
+
+```solidity
+function escrowedBalance(address _token) external view returns (uint256)
+```
+
+Customer money currently held for open trades in one asset: `balance − accruedFees[_token]` (`address(0)` for MON). **No admin function can reach this amount.**
+
+### Public getters
+
+`owner()`, `arbitrator()`, `feeRecipient()`, `feeBps()`, `autoReleaseDelay()`, `nextTradeId()`, `trades(uint256)`, `accruedFees(address)`, `BPS_DENOMINATOR()`, `MAX_FEE_BPS()`.
+
+## Internal
+
+### `_payout(id, toBuyer, toSeller)`
+
+```solidity
+if (toSeller > 0 && t.feeBps > 0) {
+    uint256 fee = (toSeller * t.feeBps) / BPS_DENOMINATOR;
+    if (fee > 0) { toSeller -= fee; accruedFees[t.token] += fee; emit FeeCharged(_id, fee); }
+}
+if (toBuyer  > 0) _send(t.token, t.buyer,  toBuyer);
+if (toSeller > 0) _send(t.token, t.seller, toSeller);
+```
+
+### `_send(token, to, value)`
+
+Native: `payable(to).call{value}("")` with `require(ok, "transfer failed")`. ERC-20: `require(IERC20(token).transfer(to, value), "token transfer failed")`.
+
+### `_requireOpen(t)`
+
+`require(t.amount > 0, "no such trade")`; `require(!t.released && !t.refunded, "already settled")`.
+
+### `receive()`
+
+Reverts with `use createTrade to send funds` — stray MON can't enter.

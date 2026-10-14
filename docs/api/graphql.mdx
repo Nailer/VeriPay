@@ -1,0 +1,73 @@
+---
+title: "Envio GraphQL"
+description: "Query VeriPay's hosted Envio HyperIndex directly for trade records and per-address reputation."
+icon: "share-2"
+---
+
+```text
+POST https://indexer.dev.hyperindex.xyz/09eb2b1/v1/graphql
+```
+
+Hasura-style GraphQL over two entities: `TradeRecord` and `AddressReputation`. Public, read-only.
+
+<Accordion title="In plain words" icon="lightbulb">
+  A public search service over all VeriPay orders. Developers can ask it questions like "show me the top sellers" or "list all orders for this account".
+</Accordion>
+
+<Warning>
+  Development tier: the endpoint path may change if the indexer is redeployed from scratch. Prefer `GET /api/reputation/:address` for production integrations, which falls back to the chain.
+</Warning>
+
+## Entities
+
+| Entity | Fields |
+|---|---|
+| `TradeRecord` | `id`, `buyer`, `seller`, `amount`, `token`, `status` (`open · released · refunded · disputed · resolved`), `createdAt` |
+| `AddressReputation` | `id` (lowercase address), `totalTrades`, `completedTrades`, `disputedTrades`, `refundedTrades`, `lastActivityAt` |
+
+## Examples
+
+<CodeGroup>
+```graphql One address
+query Reputation($id: String!) {
+  AddressReputation(where: { id: { _eq: $id } }) {
+    id totalTrades completedTrades disputedTrades refundedTrades lastActivityAt
+  }
+}
+# variables: { "id": "0xefd0497f4557b49e84369cfb884b6c7446e11aba" }
+```
+
+```graphql Top sellers
+query TopSellers {
+  AddressReputation(order_by: { completedTrades: desc }, limit: 10) {
+    id completedTrades disputedTrades totalTrades
+  }
+}
+```
+
+```graphql Orders for a seller
+query SellerOrders($seller: String!) {
+  TradeRecord(where: { seller: { _eq: $seller } }, order_by: { createdAt: desc }) {
+    id buyer amount token status createdAt
+  }
+}
+```
+
+```graphql Open disputes
+query Disputes {
+  TradeRecord(where: { status: { _eq: "disputed" } }) { id buyer seller amount token }
+}
+```
+</CodeGroup>
+
+```bash curl
+curl -s https://indexer.dev.hyperindex.xyz/09eb2b1/v1/graphql \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"query($id:String!){AddressReputation(where:{id:{_eq:$id}}){totalTrades completedTrades disputedTrades refundedTrades}}","variables":{"id":"0xefd0497f4557b49e84369cfb884b6c7446e11aba"}}'
+```
+
+## Notes
+
+- Addresses must be **lowercase** in filters.
+- `amount` is a `BigInt` in base units (vNGN/AUSD 6 decimals, MON 18). Check `token` before formatting.
+- `TradeRecord.status` becomes `resolved` after an arbitration ruling, regardless of the split.

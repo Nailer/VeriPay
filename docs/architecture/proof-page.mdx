@@ -1,0 +1,51 @@
+---
+title: "Proof page"
+description: "The /proof/[hash] route: an independent, plain-language view of any VeriPay transaction read live from a Monad node."
+icon: "scan-search"
+---
+
+> "Don't take our word for it."
+
+`/proof/<txHash>` (`src/app/proof/[hash]/page.tsx`) is a **client-side** page that queries a Monad RPC node directly — **not VeriPay's API or database** — and renders what the chain says happened.
+
+<Accordion title="In plain words" icon="lightbulb">
+  A page that goes directly to the blockchain, looks up a transaction, and explains it in normal words. It doesn't rely on VeriPay's servers at all.
+</Accordion>
+
+## Algorithm
+
+1. Validate the hash: `^0x[a-fA-F0-9]{64}$`.
+2. `getTransactionReceipt(hash)` and `getBlock(receipt.blockNumber)` via viem over `NEXT_PUBLIC_MONAD_RPC_URL`.
+3. `parseEventLogs` with the escrow and receiver event ABIs; keep logs whose `address` is the escrow or the receiver.
+4. Map each event to a sentence.
+5. Name the destination: *VeriPay escrow contract*, *VeriPay auto-release contract*, *Chainlink forwarder*, or *Contract*.
+6. Compute the fee: `gasUsed × effectiveGasPrice` in MON.
+
+## Event → sentence
+
+| Event | Sentence |
+|---|---|
+| `TradeCreated` | Payment for order #id locked in the VeriPay contract |
+| `FundsReleased` | Money for order #id paid out |
+| `AutoReleased` | Order #id released automatically — the buyer's window had passed |
+| `FeeCharged` | 1% VeriPay fee taken on order #id |
+| `DisputeRaised` | A problem was reported on order #id — money frozen |
+| `DisputeResolved` | Order #id settled after review |
+| `RefundAuthorized` | Seller approved a refund for order #id |
+| `AutoReleaseSucceeded` | Chainlink automation triggered the release of order #id |
+
+<Note>
+  The `FeeCharged` sentence says "1%" because that's the deployed default; if `feeBps` changes, the sentence should be updated to read the actual amount.
+</Note>
+
+## Fields shown
+
+Status (**Confirmed on Monad** / **This transaction failed**), *What happened* (sentences), Network (*Monad testnet*), Block, Time (`en-NG` locale), From, Sent to (named), Network fee (MON), Transaction hash, and a link to the explorer.
+
+## Why it matters
+
+The receipt says "Secured in 1.1s". The proof page lets the buyer — or a journalist, judge or regulator — verify that claim without trusting VeriPay. It's the only place on the consumer surface where the chain is visible, and it's opt-in.
+
+## Example
+
+[Auto-release of order #2 →](https://veripay.store/proof/0xa5cf52aeac617514c10055bf703c2766eb5366f640958c171006681b9d87f823)

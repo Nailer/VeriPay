@@ -1,0 +1,71 @@
+---
+title: "Use cases"
+description: "Seven concrete situations where VeriPay changes the outcome — what happens today, and what happens with VeriPay."
+icon: "lightbulb"
+---
+
+<Tabs>
+  <Tab title="Instagram thrift" icon="shirt">
+    ### Instagram fashion and thrift pages
+
+    **Today:** Adaeze sells thrift clothes on Instagram. New followers DM "how do I know you're real?" and half of them never pay. She posts screenshots of past customers; buyers know those can be faked.
+
+    **With VeriPay:** her bio link shows *"14 paid out · 0 disputes"*, read from the chain. Buyers pay through it without the back-and-forth. Every completed order makes the next sale easier.
+
+    **Mechanisms used:** [seller link](/guides/sellers/get-your-link) · [reputation](/architecture/reputation) · [card to escrow](/architecture/card-to-escrow).
+  </Tab>
+  <Tab title="Phone dealers" icon="smartphone">
+    ### Phone and gadget dealers on WhatsApp
+
+    **Today:** a ₦350,000 phone bought from someone across the city. The buyer won't send that much to a stranger; the dealer won't ship a phone on trust. The deal dies, or someone gets robbed at a "meet-up".
+
+    **With VeriPay:** the money is locked before the dealer ships. The buyer releases it once the phone arrives and works. If it's fake, the buyer reports a problem and the money stays frozen until reviewed.
+
+    **Mechanisms used:** [escrow lock](/contracts/escrow/functions) · [disputes](/architecture/disputes-and-arbitration).
+  </Tab>
+  <Tab title="Marketplaces" icon="tag">
+    ### Jiji and marketplace second-hand sales
+
+    **Today:** marketplaces list items but payment happens off-platform, by bank transfer, with no protection.
+
+    **With VeriPay:** the seller pastes their VeriPay link into the listing chat. The buyer gets the same protection a large e-commerce site would give them.
+  </Tab>
+  <Tab title="Small orders" icon="coins">
+    ### Small orders that were never worth protecting
+
+    **Today:** nobody uses escrow for a ₦2,000 hair accessory — fees and paperwork cost more than the item.
+
+    **With VeriPay:** a lock costs under ₦1 on Monad, so even tiny orders get full protection. This long tail is where most social commerce actually happens.
+
+    **Mechanisms used:** [why Monad](/product/why-monad) · [gas sponsorship](/architecture/gas-sponsorship).
+  </Tab>
+  <Tab title="Service deposits" icon="calendar-check">
+    ### Deposits for services
+
+    **Today:** a tailor, photographer, cake maker or event vendor asks for a deposit, and customers worry it won't be honoured.
+
+    **With VeriPay:** the deposit is held until the job is delivered. Both sides know exactly where the money is. The 7-day auto-release window is configurable by the contract owner (1–90 days) for longer jobs in future versions.
+  </Tab>
+  <Tab title="Seller vetting" icon="search">
+    ### Checking a seller before any deal
+
+    **Today:** a buyer has no way to verify a seller's history.
+
+    **With VeriPay:** anyone can type a seller's link name at [veripay.store/seller](https://veripay.store/seller) and see every order they've completed, disputed or refunded — without signing in and without paying. The record is rebuilt from the chain, so it can't be bought, faked or edited.
+  </Tab>
+  <Tab title="Cross-border (roadmap)" icon="globe">
+    ### Buying across borders
+
+    Nigerians abroad often pay sellers back home on behalf of family. The escrow already accepts any ERC-20 token, including Agora's **AUSD**, so a buyer in London could pay in dollars and a seller in Lagos receive the same protection. Supported in the contract today; on the [roadmap](/resources/roadmap) for the product.
+  </Tab>
+</Tabs>
+
+## When VeriPay is *not* the right tool
+
+<Warning>
+  Be honest with users about the boundaries:
+  - **In-person cash trades** — escrow adds nothing if goods and cash change hands at the same moment.
+  - **Real-money trades today** — VeriPay is on testnet. Don't promise protection for real naira yet.
+  - **Very long service contracts** — the default 7-day window means a buyer must confirm or report within a week.
+  - **Disputes needing legal judgement** — arbitration is currently a single reviewer, not a court.
+</Warning>
