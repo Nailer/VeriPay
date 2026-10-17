@@ -88,6 +88,11 @@ async function fromEnvio(address: string): Promise<Reputation | null> {
 
 let cache: { at: number; contract: string; trades: { id: number; t: EscrowTrade }[] } | null = null;
 
+/** Every trade on the escrow (bounded scan, cached 30s). Also used by the admin activity log. */
+export async function readAllTrades() {
+  return allTrades();
+}
+
 async function allTrades() {
   if (cache && cache.contract === CONTRACT_ADDRESS && Date.now() - cache.at < CACHE_MS) return cache.trades;
 
